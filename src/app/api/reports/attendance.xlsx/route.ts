@@ -17,7 +17,7 @@ export const GET = handle(async (req) => {
   // Ghi chú các tháng đã chốt công nằm trong kỳ báo cáo.
   const locks = await prisma.payrollLock.findMany({ where: { month: { gte: q.from.slice(0, 7), lte: q.to.slice(0, 7) } }, orderBy: { month: "asc" } });
   const notes = locks.map((l) => `Tháng ${fmtMonth(l.month)} đã chốt công lúc ${DateTime.fromJSDate(l.lockedAt).setZone(TZ).toFormat("HH:mm dd/MM/yyyy")} — số liệu lấy từ bản chốt.`);
-  const buf = reportToXlsx(report, notes);
+  const buf = await reportToXlsx(report, notes);
   const name = `BangCong_${q.from.replaceAll("-", "")}_${q.to.replaceAll("-", "")}.xlsx`;
   return new Response(new Uint8Array(buf), {
     headers: {

@@ -219,6 +219,19 @@ npm run lint && npm run typecheck && npm run build
 
 Logic chấm công nằm trọn trong hàm thuần `src/lib/attendance.ts`, không truy cập DB. Các API chỉ nạp dữ liệu qua `src/lib/attendance-service.ts`.
 
+### Bảo mật thư viện phụ thuộc
+
+Chạy `npm audit` trước mỗi lần phát hành. Mục tiêu là **0 lỗ hổng** (đạt ở v1.2.1).
+
+- **Xuất Excel dùng `exceljs`.** Gói `xlsx` trên npm đã ngừng cập nhật và còn lỗ hổng chưa có bản vá.
+- **`overrides` trong `package.json`** ép dùng bản đã vá của thư viện gián tiếp, không cần nâng major Next.js hay Prisma:
+  - `postcss` (qua Next 15);
+  - `deepmerge-ts` (qua `@prisma/config`);
+  - `uuid` (qua `exceljs`).
+
+  Khi nâng Next.js, Prisma hoặc exceljs, chạy `npm audit` lại và gỡ override nào không còn cần.
+- **Cấu hình Prisma CLI** nằm ở `prisma.config.ts` (thay khóa `prisma` trong `package.json`, sẽ bị bỏ ở Prisma 7). File này tự nạp `.env` nhưng không ghi đè biến môi trường đã có.
+
 ## Triển khai
 
 - Chạy trên 1 máy chủ hoặc VPS: `npm run build && npm start`, dưới PM2 hoặc Docker. Cần volume bền cho thư mục `data/` (SQLite, snapshot, bản sao lưu). **Không** dùng nền tảng serverless.

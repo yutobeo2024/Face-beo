@@ -58,3 +58,28 @@ export async function pairedDevice(name = "Kiosk test") {
   const d = await prisma.kioskDevice.create({ data: { name, tokenHash: sha256(token), active: true } });
   return { device: d, cookie: `${KIOSK_COOKIE}=${token}`, token };
 }
+
+/** Đọc file Excel (exceljs) thành { SheetNames, rows(sheet) } — dòng 1 là tiêu đề, mỗi dòng sau là một object. */
+export async function readXlsx(data: ArrayBuffer) {
+  const ExcelJS = (await import("exceljs")).default;
+  const wb = new ExcelJS.Workbook();
+  await wb.xlsx.load(data);
+  return {
+    SheetNames: wb.worksheets.map((w) => w.name),
+    rows<T = Record<string, unknown>>(name: string): T[] {
+      const ws = wb.getWorksheet(name);
+      if (!ws) return [];
+      const header = (ws.getRow(1).values as unknown[]).map((v) => (v == null ? "" : String(v)));
+      const out: T[] = [];
+      ws.eachRow((row, n) => {
+        if (n === 1) return;
+        const o: Record<string, unknown> = {};
+        (row.values as unknown[]).forEach((v, i) => {
+          if (v != null && header[i]) o[header[i]] = v;
+        });
+        out.push(o as T);
+      });
+      return out;
+    },
+  };
+}

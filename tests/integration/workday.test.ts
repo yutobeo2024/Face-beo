@@ -1,10 +1,9 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import * as XLSX from "xlsx";
 import { prisma } from "@/lib/db";
 import { addDays, startOfWeek, todayVN, vnDateTime, weekday } from "@/lib/attendance";
 import { recordScan } from "@/lib/attendance-service";
 import { buildAttendanceReport } from "@/lib/reports";
-import { byCode, ctx, req, sessionCookie } from "./helpers";
+import { byCode, ctx, readXlsx, req, sessionCookie } from "./helpers";
 
 import * as shiftRoute from "@/app/api/shifts/[id]/route";
 import * as weightsRoute from "@/app/api/shift-weights/route";
@@ -90,11 +89,11 @@ describe("nửa ngày phép & giờ công (D1)", () => {
   it("Excel có số lẻ ở Ngày công / Ngày phép và cột Công, Giờ công", async () => {
     const res = await xlsxRoute.GET(req(`/api/reports/attendance.xlsx?from=${MON}&to=${SAT}&departmentId=${emp.departmentId}`, { cookie: A }), ctx());
     expect(res.status).toBe(200);
-    const wb = XLSX.read(Buffer.from(await res.arrayBuffer()));
-    const summary = XLSX.utils.sheet_to_json<Record<string, unknown>>(wb.Sheets["Tổng hợp"]).find((x) => x["Mã NV"] === emp.code)!;
+    const wb = await readXlsx(await res.arrayBuffer());
+    const summary = wb.rows("Tổng hợp").find((x) => x["Mã NV"] === emp.code)!;
     expect(summary["Ngày công"]).toBe(0.5 + 0.5); // thứ Hai 0.5 + thứ Bảy 0.5 (+ các ngày khác không có log trong seed)
     expect(summary["Ngày phép"] ?? summary["Ngày nghỉ phép"]).toBe(0.5);
-    const detail = XLSX.utils.sheet_to_json<Record<string, unknown>>(wb.Sheets["Chi tiết"]).filter((x) => x["Mã NV"] === emp.code);
+    const detail = wb.rows("Chi tiết").filter((x) => x["Mã NV"] === emp.code);
     expect(detail.find((x) => x["Ngày"] === MON.split("-").reverse().join("/"))).toMatchObject({ "Công": 0.5, "Giờ công": 4 });
   });
 });

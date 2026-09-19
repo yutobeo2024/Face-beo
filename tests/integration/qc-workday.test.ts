@@ -4,12 +4,11 @@
  * Test đánh dấu là lỗi thật — cố ý để fail.
  */
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import * as XLSX from "xlsx";
 import { prisma } from "@/lib/db";
 import { addDays, startOfWeek, todayVN, vnDateTime, weekday } from "@/lib/attendance";
 import { recordScan, summarizeRange } from "@/lib/attendance-service";
 import { buildAttendanceReport } from "@/lib/reports";
-import { byCode, ctx, req, sessionCookie } from "./helpers";
+import { byCode, ctx, readXlsx, req, sessionCookie } from "./helpers";
 
 import * as shiftRoute from "@/app/api/shifts/[id]/route";
 import * as weightsRoute from "@/app/api/shift-weights/route";
@@ -239,15 +238,15 @@ describe("QC hệ số công & tổng số lẻ", () => {
   it("Excel: Ngày công / Ngày nghỉ phép / Giờ công / Công khớp báo cáo", async () => {
     const res = await xlsxRoute.GET(req(`/api/reports/attendance.xlsx?from=${J(1)}&to=${J(31)}&departmentId=${dA.id}`, { cookie: A }), ctx());
     expect(res.status).toBe(200);
-    const wb = XLSX.read(Buffer.from(await res.arrayBuffer()));
-    const sum = XLSX.utils.sheet_to_json<Record<string, unknown>>(wb.Sheets["Tổng hợp"]);
+    const wb = await readXlsx(await res.arrayBuffer());
+    const sum = wb.rows("Tổng hợp");
     const a = sum.find((x) => x["Mã NV"] === eA.code)!;
     const m = sum.find((x) => x["Mã NV"] === eMix.code)!;
     expect([a["Ngày công"], a["Ngày nghỉ phép"]]).toEqual([5.5, 3.5]);
     expect([m["Ngày công"], m["Ngày nghỉ phép"]]).toEqual([3.25, 1.25]);
     const rA = await monthRow(eA);
     expect(a["Giờ công"]).toBe(Math.round((rA.workMinutes / 60) * 100) / 100);
-    const detail = XLSX.utils.sheet_to_json<Record<string, unknown>>(wb.Sheets["Chi tiết"]).filter((x) => x["Mã NV"] === eMix.code);
+    const detail = wb.rows("Chi tiết").filter((x) => x["Mã NV"] === eMix.code);
     expect(detail.find((x) => x["Ngày"] === "18/07/2026")).toMatchObject({ "Công": 0.25 });
     expect(detail.find((x) => x["Ngày"] === "21/07/2026")).toMatchObject({ "Công": 0.5, "Giờ công": 4 });
   });

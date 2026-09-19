@@ -2,7 +2,6 @@ import { randomUUID } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
-import * as XLSX from "xlsx";
 import { prisma } from "@/lib/db";
 import { resetRateLimits } from "@/lib/rate-limit";
 import { addDays, todayVN, vnDateTime, weekday } from "@/lib/attendance";
@@ -12,7 +11,7 @@ import { notifyLateIfNeeded } from "@/lib/notify";
 import { registerServerLiveness } from "@/lib/liveness";
 import { modelPath } from "@/lib/liveness-l2";
 import { __setZaloTestHooks, refreshZaloToken } from "@/lib/zalo-token";
-import { byCode, ctx, enrollFake, pairedDevice, req, sessionCookie } from "./helpers";
+import { byCode, ctx, enrollFake, pairedDevice, readXlsx, req, sessionCookie } from "./helpers";
 
 import * as dashboardRoute from "@/app/api/dashboard/route";
 import * as employeesRoute from "@/app/api/employees/route";
@@ -406,9 +405,9 @@ describe("xuất Excel", () => {
     const res = await xlsxRoute.GET(req(`/api/reports/attendance.xlsx?from=${from}&to=${to}`, { cookie }), ctx());
     expect(res.status).toBe(200);
     expect(res.headers.get("content-disposition")).toContain(`BangCong_${from.replaceAll("-", "")}_${to.replaceAll("-", "")}.xlsx`);
-    const wb = XLSX.read(new Uint8Array(await res.arrayBuffer()), { type: "array" });
+    const wb = await readXlsx(await res.arrayBuffer());
     expect(wb.SheetNames).toEqual(["Tổng hợp", "Chi tiết"]);
-    const rows = XLSX.utils.sheet_to_json<Record<string, number>>(wb.Sheets["Tổng hợp"]);
+    const rows = wb.rows<Record<string, number>>("Tổng hợp");
     const total = rows.reduce((s, r) => s + (r["Tổng phút trễ"] ?? 0), 0);
     const agg = await prisma.attendanceLog.aggregate({
       where: { type: "IN", isLate: true, workDate: { gte: from, lte: to }, shiftId: { not: null }, employee: { active: true } },

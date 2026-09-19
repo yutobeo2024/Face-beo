@@ -1,5 +1,5 @@
 /** Bảng công tổng hợp + chi tiết, xuất Excel phía server (PRD mục 5). */
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 import { prisma } from "./db";
 import { summarizeRange } from "./attendance-service";
 import { lockedMonths } from "./payroll-lock-state";
@@ -189,9 +189,40 @@ export async function buildAttendanceReport(where: object, from: string, to: str
   return { summary, detail };
 }
 
-export function reportToXlsx(r: { summary: SummaryRow[]; detail: DetailRow[] }, notes: string[] = []): Buffer {
-  const wb = XLSX.utils.book_new();
-  const s1 = XLSX.utils.json_to_sheet(
+/** Thêm một sheet từ danh sách object (dòng đầu là tiêu đề), kèm độ rộng cột. */
+function addSheet(wb: ExcelJS.Workbook, name: string, rows: Record<string, string | number>[], widths: number[], headers?: string[]) {
+  const ws = wb.addWorksheet(name);
+  const cols = headers ?? Object.keys(rows[0] ?? {});
+  ws.columns = cols.map((h, i) => ({ header: h, key: h, width: widths[i] ?? 12 }));
+  ws.getRow(1).font = { bold: true };
+  for (const r of rows) ws.addRow(r);
+  return ws;
+}
+
+const SUMMARY_HEADERS = [
+  "Mã NV",
+  "Họ tên",
+  "Phòng ban",
+  "Ngày công",
+  "Giờ công",
+  "Số lần trễ",
+  "Tổng phút trễ",
+  "Số lần về sớm",
+  "Tổng phút về sớm",
+  "Giờ OT",
+  "Ngày nghỉ phép",
+  "Ngày vắng không phép",
+  "Số ngày thiếu giờ ra",
+  "Số lần bổ sung công",
+];
+const DETAIL_HEADERS = ["Mã NV", "Họ tên", "Phòng ban", "Ngày", "Ca", "Giờ vào", "Giờ ra", "Phút trễ", "Phút sớm", "Phút OT", "Công", "Giờ công", "Trạng thái", "Ghi chú"];
+
+export async function reportToXlsx(r: { summary: SummaryRow[]; detail: DetailRow[] }, notes: string[] = []): Promise<Buffer> {
+  const wb = new ExcelJS.Workbook();
+  wb.creator = "Face Beo";
+  addSheet(
+    wb,
+    "Tổng hợp",
     r.summary.map((x) => ({
       "Mã NV": x.code,
       "Họ tên": x.name,
@@ -202,15 +233,18 @@ export function reportToXlsx(r: { summary: SummaryRow[]; detail: DetailRow[] }, 
       "Tổng phút trễ": x.lateMinutes,
       "Số lần về sớm": x.earlyCount,
       "Tổng phút về sớm": x.earlyMinutes,
-      "Giờ OT": Math.round((x.otMinutes / 60) * 100) / 100,
+      "Giờ OT": r2(x.otMinutes / 60),
       "Ngày nghỉ phép": x.leaveDays,
       "Ngày vắng không phép": x.absentDays,
       "Số ngày thiếu giờ ra": x.missingOutDays,
       "Số lần bổ sung công": x.correctionCount,
     })),
+    [8, 24, 22, 10, 9.5, 10, 13, 13, 16, 8, 14, 18, 18, 18],
+    SUMMARY_HEADERS,
   );
-  s1["!cols"] = [8, 24, 22, 10, 9, 10, 13, 13, 16, 8, 14, 18, 18, 18].map((w) => ({ wch: w }));
-  const s2 = XLSX.utils.json_to_sheet(
+  addSheet(
+    wb,
+    "Chi tiết",
     r.detail.map((x) => ({
       "Mã NV": x.code,
       "Họ tên": x.name,
@@ -227,14 +261,9 @@ export function reportToXlsx(r: { summary: SummaryRow[]; detail: DetailRow[] }, 
       "Trạng thái": x.status,
       "Ghi chú": x.note,
     })),
+    [8, 24, 22, 11, 26, 8, 8, 9.5, 9.5, 9.5, 6, 9.5, 16, 50],
+    DETAIL_HEADERS,
   );
-  s2["!cols"] = [8, 24, 22, 11, 26, 8, 8, 9, 9, 9, 6, 9, 16, 50].map((w) => ({ wch: w }));
-  XLSX.utils.book_append_sheet(wb, s1, "Tổng hợp");
-  XLSX.utils.book_append_sheet(wb, s2, "Chi tiết");
-  if (notes.length) {
-    const s3 = XLSX.utils.aoa_to_sheet([["Ghi chú"], ...notes.map((n) => [n])]);
-    s3["!cols"] = [{ wch: 100 }];
-    XLSX.utils.book_append_sheet(wb, s3, "Ghi chú");
-  }
-  return XLSX.write(wb, { type: "buffer", bookType: "xlsx" }) as Buffer;
+  if (notes.length) addSheet(wb, "Ghi chú", notes.map((n) => ({ "Ghi chú": n })), [100], ["Ghi chú"]);
+  return Buffer.from(await wb.xlsx.writeBuffer());
 }

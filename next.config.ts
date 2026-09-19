@@ -4,7 +4,7 @@ import path from "node:path";
 const humanBrowser = path.join(process.cwd(), "node_modules", "@vladmandic", "human", "dist", "human.esm.js");
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["@prisma/client", "node-cron", "xlsx", "onnxruntime-node", "sharp"],
+  serverExternalPackages: ["@prisma/client", "node-cron", "exceljs", "onnxruntime-node", "sharp"],
   poweredByHeader: false,
   webpack(config) {
     // Human chỉ chạy trên trình duyệt (kiosk/enroll). Luôn dùng bản ESM cho browser,
