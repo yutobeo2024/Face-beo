@@ -121,13 +121,13 @@ describe("(2) phân loại mã lỗi Zalo", () => {
     expect((await send()).status).toBe("FAILED");
   });
 
-  it("getoa dùng /v3.0/oa/getoa với header access_token", async () => {
+  it("getoa dùng /v2.0/oa/getoa với header access_token", async () => {
     await goLive();
     useFakeZalo();
     replies = [{ body: { error: 0, data: { oa_id: "1", name: "OA" } } }];
     await zaloStatusRoute.GET(req("/api/settings/zalo", { cookie: A }), ctx());
     const c = calls.find((x) => x.url.includes("/oa/getoa"))!;
-    expect(c.url).toBe("https://openapi.zalo.me/v3.0/oa/getoa");
+    expect(c.url).toBe("https://openapi.zalo.me/v2.0/oa/getoa");
     expect((c.init.headers as Record<string, string>).access_token).toBe("at-1");
   });
 });

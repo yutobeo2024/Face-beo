@@ -4,7 +4,8 @@ import { audit } from "./audit";
 
 const REFRESH_URL = "https://oauth.zaloapp.com/v4/oa/access_token";
 const SEND_URL = "https://openapi.zalo.me/v3.0/oa/message/cs";
-const OA_INFO_URL = "https://openapi.zalo.me/v3.0/oa/getoa";
+// Lấy thông tin OA vẫn là bản v2.0 (v3.0/oa/getoa trả lỗi 404 "empty or invalid API" — đã thử thật 19/09/2026).
+const OA_INFO_URL = "https://openapi.zalo.me/v2.0/oa/getoa";
 const LOCK_KEY = "zaloRefreshLock";
 
 /** Đã thấy token trong DB (nạp lúc khởi động hoặc lần đầu dùng) — để công tắc mô phỏng không phụ thuộc token trong .env. */
