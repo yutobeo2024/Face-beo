@@ -1,0 +1,79 @@
+import bcrypt from "bcryptjs";
+import { z } from "zod";
+import { prisma } from "@/lib/db";
+import { badRequest, handle, json, parseJson, parseQuery } from "@/lib/api";
+import { employeeScopeWhere, requireUser } from "@/lib/auth";
+import { employeeCreateSchema, optId } from "@/lib/validators";
+import { audit } from "@/lib/audit";
+import { FACE_MODEL_VERSION } from "@/lib/roles";
+
+const listQuery = z.object({
+  departmentId: optId,
+  q: z.string().trim().max(50).optional(),
+  includeInactive: z.enum(["0", "1"]).optional(),
+});
+
+export const GET = handle(async (req) => {
+  const u = await requireUser(req, ["ADMIN", "MANAGER"]);
+  const q = parseQuery(req, listQuery);
+  const rows = await prisma.employee.findMany({
+    where: {
+      ...employeeScopeWhere(u, q.departmentId),
+      ...(q.includeInactive === "1" && u.role === "ADMIN" ? {} : { active: true }),
+      ...(q.q ? { OR: [{ name: { contains: q.q } }, { code: { contains: q.q } }, { phone: { contains: q.q } }] } : {}),
+    },
+    orderBy: [{ departmentId: "asc" }, { code: "asc" }],
+    select: {
+      id: true,
+      code: true,
+      name: true,
+      phone: true,
+      role: true,
+      active: true,
+      departmentId: true,
+      department: { select: { name: true } },
+      defaultShiftId: true,
+      defaultShift: { select: { name: true, startTime: true, endTime: true } },
+      zaloUserId: true,
+      zaloLinkedAt: true,
+      biometricConsentAt: true,
+      lockedUntil: true,
+      faceTemplates: { select: { modelVersion: true } },
+      _count: { select: { schedules: true } },
+    },
+  });
+  return json({
+    employees: rows.map(({ faceTemplates, zaloUserId, _count, ...e }) => {
+      const current = faceTemplates.filter((t) => t.modelVersion === FACE_MODEL_VERSION).length;
+      return {
+        ...e,
+        phone: u.role === "ADMIN" ? e.phone : undefined,
+        zaloLinked: !!zaloUserId,
+        faceCount: current,
+        faceStatus: current > 0 ? "ENROLLED" : faceTemplates.length > 0 ? "REENROLL" : "NONE",
+        hasSchedules: _count.schedules > 0,
+      };
+    }),
+  });
+});
+
+export const POST = handle(async (req) => {
+  const u = await requireUser(req, ["ADMIN"]);
+  const body = await parseJson(req, employeeCreateSchema);
+  const dup = await prisma.employee.findFirst({ where: { OR: [{ code: body.code.toUpperCase() }, { phone: body.phone }] } });
+  if (dup) throw badRequest(dup.phone === body.phone ? "Số điện thoại đã tồn tại" : "Mã nhân viên đã tồn tại");
+  const e = await prisma.employee.create({
+    data: {
+      code: body.code.toUpperCase(),
+      name: body.name,
+      phone: body.phone,
+      role: body.role,
+      departmentId: body.departmentId,
+      defaultShiftId: body.defaultShiftId,
+      passwordHash: await bcrypt.hash(body.password || "123456", 10),
+      mustChangePassword: true,
+    },
+  });
+  await audit({ actorId: u.id, action: "EMPLOYEE_CREATE", entity: "Employee", entityId: e.id, detail: { code: e.code, role: e.role } });
+  return json({ employee: { id: e.id, code: e.code } }, { status: 201 });
+});

@@ -1,0 +1,198 @@
+/** Các job nền (PRD mục 8). Mọi job đều idempotent. */
+import { mkdir, readdir, rm } from "node:fs/promises";
+import { join } from "node:path";
+import { DateTime } from "luxon";
+import { prisma } from "./db";
+import { addDays, decideAbsence, shiftInterval, summarizeDay, TZ, vnDate, vnTime } from "./attendance";
+import { buildPlanner, loadRequests } from "./attendance-service";
+import { getSettings } from "./settings";
+import { sendZaloMessage } from "./zalo-oa";
+import { isZaloSimulated, refreshZaloToken } from "./zalo-token";
+import { approversFor, fmtDate } from "./notify";
+import { audit } from "./audit";
+import { dataDir, snapshotDir } from "./storage";
+import { FACE_MODEL_VERSION } from "./roles";
+import { invalidateFaceCache } from "./face-matcher";
+
+export const JOBS = ["absence-check", "missing-checkout", "zalo-token-refresh", "snapshot-cleanup", "db-backup"] as const;
+export type JobName = (typeof JOBS)[number];
+
+type DigestItem = { name: string; code: string; note?: string };
+
+export async function absenceCheck(now = new Date()) {
+  const settings = await getSettings();
+  const today = vnDate(now);
+  const yesterday = addDays(today, -1);
+  const emps = await prisma.employee.findMany({
+    where: { active: true },
+    select: {
+      id: true,
+      name: true,
+      code: true,
+      departmentId: true,
+      department: { select: { name: true } },
+      faceTemplates: { where: { modelVersion: FACE_MODEL_VERSION }, select: { id: true }, take: 1 },
+    },
+  });
+  if (!emps.length) return { warned: 0, digests: 0 };
+  const ids = emps.map((e) => e.id);
+  const planner = await buildPlanner(ids, yesterday, today);
+  const requests = await loadRequests(ids, new Date(now.getTime() - 36 * 3600_000), new Date(now.getTime() + 24 * 3600_000));
+  const ins = await prisma.attendanceLog.findMany({
+    where: { employeeId: { in: ids }, workDate: { in: [yesterday, today] }, shiftId: { not: null } },
+    select: { employeeId: true, workDate: true },
+  });
+  const hasIn = new Set(ins.map((l) => `${l.employeeId}|${l.workDate}`));
+
+  let warned = 0;
+  const digests = new Map<string, { deptId: number; deptName: string; workDate: string; shiftId: number; shiftName: string; items: DigestItem[] }>();
+
+  for (const e of emps) {
+    for (const d of [yesterday, today]) {
+      const plan = planner.planFor(e.id, d);
+      const reqs = requests.filter((r) => r.employeeId === e.id);
+      const decision = decideAbsence({
+        plan,
+        hasIn: hasIn.has(`${e.id}|${d}`),
+        enrolled: e.faceTemplates.length > 0,
+        requests: reqs,
+        now,
+        absentAfterMinutes: settings.absentAfterMinutes,
+      });
+      if (decision.action === "SKIP" || !plan.shift) continue;
+      const key = `${e.departmentId}|${d}|${plan.shift.id}`;
+      if (!digests.has(key)) {
+        digests.set(key, { deptId: e.departmentId, deptName: e.department.name, workDate: d, shiftId: plan.shift.id, shiftName: plan.shift.name, items: [] });
+      }
+      digests.get(key)!.items.push({ name: e.name, code: e.code, note: decision.action === "DIGEST_ONLY" ? "đơn chờ duyệt" : undefined });
+      if (decision.action === "WARN") {
+        const r = await sendZaloMessage({
+          toEmployeeId: e.id,
+          messageType: "ABSENT_WARNING",
+          dedupeKey: `absent:${e.id}:${d}`,
+          data: { shiftName: plan.shift.name, dateText: fmtDate(d), startText: vnTime(shiftInterval(d, plan.shift).start) },
+        });
+        if (r.status !== "DUPLICATE") warned++;
+      }
+    }
+  }
+
+  let digestCount = 0;
+  for (const dg of digests.values()) {
+    const dept = await prisma.department.findUnique({ where: { id: dg.deptId }, select: { managerId: true } });
+    const recipients = dept?.managerId ? [dept.managerId] : await approversFor(-1);
+    for (const to of recipients) {
+      const suffix = dept?.managerId ? "" : `:${to}`;
+      const r = await sendZaloMessage({
+        toEmployeeId: to,
+        messageType: "ABSENT_DIGEST",
+        dedupeKey: `absent-digest:${dg.deptId}:${dg.workDate}:${dg.shiftId}${suffix}`,
+        data: { departmentName: dg.deptName, dateText: fmtDate(dg.workDate), shiftName: dg.shiftName, items: dg.items },
+      });
+      if (r.status !== "DUPLICATE") digestCount++;
+    }
+  }
+  return { warned, digests: digestCount };
+}
+
+/** Gắn cờ "thiếu giờ ra": ghi AuditLog một lần cho mỗi (nhân viên, ngày công). Cờ cũng được tính động ở báo cáo. */
+export async function missingCheckout(now = new Date()) {
+  const today = vnDate(now);
+  const from = addDays(today, -2);
+  const logs = await prisma.attendanceLog.findMany({
+    where: { workDate: { gte: from, lte: today }, shiftId: { not: null } },
+    orderBy: { checkTime: "asc" },
+  });
+  const by = new Map<string, typeof logs>();
+  for (const l of logs) {
+    const k = `${l.employeeId}|${l.workDate}`;
+    if (!by.has(k)) by.set(k, []);
+    by.get(k)!.push(l);
+  }
+  const ids = [...new Set(logs.map((l) => l.employeeId))];
+  if (!ids.length) return { flagged: 0 };
+  const planner = await buildPlanner(ids, from, today);
+  let flagged = 0;
+  for (const [k, group] of by) {
+    const [id, d] = k.split("|");
+    const plan = planner.planFor(Number(id), d);
+    if (!plan.shift) continue;
+    const s = summarizeDay({ plan, logs: group, requests: [], now });
+    if (!s.missingOut) continue;
+    const exists = await prisma.auditLog.findFirst({ where: { action: "MISSING_CHECKOUT", entityId: k } });
+    if (exists) continue;
+    await audit({ action: "MISSING_CHECKOUT", entity: "AttendanceDay", entityId: k, detail: { employeeId: Number(id), workDate: d } });
+    flagged++;
+  }
+  return { flagged };
+}
+
+export async function zaloTokenRefresh() {
+  if (isZaloSimulated()) return { skipped: "simulation" };
+  await refreshZaloToken(true);
+  return { refreshed: true };
+}
+
+export async function snapshotCleanup(now = new Date()) {
+  const settings = await getSettings();
+  const cutoff = DateTime.fromJSDate(now, { zone: TZ }).minus({ days: settings.snapshotRetentionDays }).startOf("day");
+  let removedDirs = 0;
+  const root = snapshotDir();
+  const years = await readdir(root).catch(() => [] as string[]);
+  for (const y of years) {
+    const months = await readdir(join(root, y)).catch(() => [] as string[]);
+    for (const m of months) {
+      const days = await readdir(join(root, y, m)).catch(() => [] as string[]);
+      for (const d of days) {
+        const dt = DateTime.fromISO(`${y}-${m}-${d}`, { zone: TZ });
+        if (dt.isValid && dt < cutoff) {
+          await rm(join(root, y, m, d), { recursive: true, force: true });
+          removedDirs++;
+        }
+      }
+      if (!(await readdir(join(root, y, m)).catch(() => [])).length) await rm(join(root, y, m), { recursive: true, force: true });
+    }
+  }
+  const cleared = await prisma.attendanceLog.updateMany({
+    where: { checkTime: { lt: cutoff.toJSDate() }, snapshotUrl: { not: null } },
+    data: { snapshotUrl: null },
+  });
+  const pair = await prisma.kioskDevice.updateMany({
+    where: { pairExpiresAt: { lt: now } },
+    data: { pairCode: null, pairExpiresAt: null },
+  });
+  const links = await prisma.zaloLinkCode.deleteMany({ where: { expiresAt: { lt: now } } });
+  // Nhân viên nghỉ việc: xóa template khuôn mặt (PRD mục 9, trong vòng 30 ngày).
+  const faces = await prisma.faceTemplate.deleteMany({ where: { employee: { active: false } } });
+  if (faces.count) invalidateFaceCache();
+  return { removedDirs, clearedLogs: cleared.count, expiredPairCodes: pair.count, expiredLinkCodes: links.count, deletedTemplates: faces.count };
+}
+
+export async function dbBackup(now = new Date()) {
+  const dir = join(dataDir(), "backups");
+  await mkdir(dir, { recursive: true });
+  // Một bản mỗi ngày: chạy lại trong ngày không tạo thêm file, không đẩy bản cũ ra khỏi cửa sổ 14 ngày.
+  const name = `facebeo-${DateTime.fromJSDate(now, { zone: TZ }).toFormat("yyyyLLdd")}.db`;
+  if ((await readdir(dir)).includes(name)) return { file: name, skipped: "đã có bản sao lưu hôm nay", removed: 0 };
+  const target = join(dir, name).replace(/\\/g, "/").replace(/'/g, "''");
+  await prisma.$executeRawUnsafe(`VACUUM INTO '${target}'`);
+  const files = (await readdir(dir)).filter((f) => /^facebeo-\d{8}\.db$/.test(f)).sort();
+  const old = files.slice(0, Math.max(0, files.length - 14));
+  for (const f of old) await rm(join(dir, f), { force: true });
+  return { file: name, removed: old.length };
+}
+
+export async function runJob(name: JobName, now = new Date()) {
+  switch (name) {
+    case "absence-check":
+      return absenceCheck(now);
+    case "missing-checkout":
+      return missingCheckout(now);
+    case "zalo-token-refresh":
+      return zaloTokenRefresh();
+    case "snapshot-cleanup":
+      return snapshotCleanup(now);
+    case "db-backup":
+      return dbBackup(now);
+  }
+}

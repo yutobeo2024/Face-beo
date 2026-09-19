@@ -1,0 +1,22 @@
+// Khởi động phía Node: bật WAL, nạp template khuôn mặt vào bộ nhớ, lên lịch cron.
+import { ensureDb } from "./lib/db";
+import { getTemplates } from "./lib/face-matcher";
+import { startCron } from "./lib/cron";
+
+await ensureDb().catch((e) => console.error("[boot] không bật được WAL:", e.message));
+getTemplates()
+  .then((t) => console.log(`[boot] đã nạp ${t.length} template khuôn mặt`))
+  .catch((e) => console.error("[boot] nạp template lỗi:", e.message));
+if (process.env.DISABLE_CRON !== "true" && process.env.NEXT_PHASE !== "phase-production-build") {
+  startCron();
+}
+
+// Lớp L2: nạp sẵn MiniFASNetV2 để lượt quét đầu không bị chậm; lỗi chỉ ghi log (quét vẫn dùng L1 + cảnh báo ADMIN).
+if (process.env.LIVENESS_SERVER === "true") {
+  import("./lib/liveness-l2")
+    .then(async ({ loadL2, modelPath }) => {
+      const e = await loadL2();
+      console.log(`[boot] L2 liveness sẵn sàng: ${modelPath()} (input ${e.size.join("×")})`);
+    })
+    .catch((e) => console.error("[boot] L2 liveness KHÔNG sẵn sàng:", e.message));
+}

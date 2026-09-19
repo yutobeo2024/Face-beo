@@ -1,0 +1,64 @@
+{
+  "name": "face-beo",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Face Beo — HR, xếp ca, chấm công kiosk khuôn mặt, thông báo Zalo OA",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:tz": "cross-env SKIP_DB_SETUP=1 TZ=UTC vitest run tests/unit && cross-env SKIP_DB_SETUP=1 TZ=Asia/Ho_Chi_Minh vitest run tests/unit",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:seed": "prisma db seed",
+    "models:liveness": "node scripts/fetch-liveness-model.mjs",
+    "postinstall": "prisma generate && node scripts/copy-models.mjs"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.19.3",
+    "@vladmandic/human": "^3.3.6",
+    "bcryptjs": "^3.0.3",
+    "jose": "^6.2.12",
+    "luxon": "^3.7.2",
+    "next": "^15.5.25",
+    "node-cron": "^3.0.3",
+    "onnxruntime-node": "^1.30.0",
+    "react": "^19.1.9",
+    "react-dom": "^19.1.9",
+    "sharp": "^0.35.4",
+    "xlsx": "^0.18.5",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3.3.7",
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/luxon": "^3.7.5",
+    "@types/node": "^22.20.4",
+    "@types/node-cron": "^3.0.11",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "cross-env": "^10.1.0",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^15.5.25",
+    "postcss": "^8.5.28",
+    "prisma": "^6.19.3",
+    "tailwindcss": "^4.3.3",
+    "tsx": "^4.23.13",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.7"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true,
+    "@prisma/engines@6.19.3": true,
+    "@prisma/client@6.19.3": true,
+    "prisma@6.19.3": true,
+    "unrs-resolver@1.12.2": true
+  }
+}

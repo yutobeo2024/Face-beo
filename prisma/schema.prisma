@@ -1,0 +1,189 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Department {
+  id        Int        @id @default(autoincrement())
+  name      String     @unique
+  managerId Int?
+  manager   Employee?  @relation("DeptManager", fields: [managerId], references: [id])
+  employees Employee[] @relation("DeptMembers")
+}
+
+model Employee {
+  id                 Int               @id @default(autoincrement())
+  code               String            @unique
+  name               String
+  phone              String            @unique
+  passwordHash       String
+  mustChangePassword Boolean           @default(true)
+  role               String            @default("EMPLOYEE") // ADMIN | MANAGER | EMPLOYEE
+  zaloUserId         String?           @unique
+  zaloLinkedAt       DateTime?
+  departmentId       Int
+  department         Department        @relation("DeptMembers", fields: [departmentId], references: [id])
+  managedDepartments Department[]      @relation("DeptManager")
+  defaultShiftId     Int
+  defaultShift       Shift             @relation(fields: [defaultShiftId], references: [id])
+  avatarUrl          String?
+  active             Boolean           @default(true)
+  biometricConsentAt DateTime?
+  failedLogins       Int               @default(0)
+  lockedUntil        DateTime?
+  createdAt          DateTime          @default(now())
+  schedules          WorkSchedule[]
+  logs               AttendanceLog[]
+  faceTemplates      FaceTemplate[]
+  requests           LeaveRequest[]    @relation("Requester")
+  decidedRequests    LeaveRequest[]    @relation("Approver")
+  notifications      NotificationLog[]
+}
+
+model Shift {
+  id                Int             @id @default(autoincrement())
+  name              String          @unique
+  startTime         String          // "HH:mm" giờ VN
+  endTime           String          // "HH:mm"; endTime <= startTime nghĩa là ca qua đêm
+  breakMinutes      Int             @default(60)
+  graceLateMinutes  Int             @default(5)
+  graceEarlyMinutes Int             @default(0)
+  employees         Employee[]
+  schedules         WorkSchedule[]
+  logs              AttendanceLog[]
+}
+
+model WorkSchedule {
+  id         Int      @id @default(autoincrement())
+  employeeId Int
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  date       String   // "YYYY-MM-DD", ngày công theo giờ VN
+  shiftId    Int?
+  shift      Shift?   @relation(fields: [shiftId], references: [id])
+  isDayOff   Boolean  @default(false)
+
+  @@unique([employeeId, date])
+  @@index([date])
+}
+
+model Holiday {
+  date String @id // "YYYY-MM-DD"
+  name String
+}
+
+model FaceTemplate {
+  id           Int      @id @default(autoincrement())
+  employeeId   Int
+  employee     Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  descriptor   Bytes    // Float32Array, mã hóa AES-256-GCM bằng BIOMETRIC_KEY
+  modelVersion String
+  createdById  Int
+  createdAt    DateTime @default(now())
+
+  @@index([employeeId])
+}
+
+model KioskDevice {
+  id            Int             @id @default(autoincrement())
+  name          String
+  location      String?
+  tokenHash     String?         @unique
+  pairCode      String?
+  pairExpiresAt DateTime?
+  active        Boolean         @default(true)
+  lastSeenAt    DateTime?
+  logs          AttendanceLog[]
+}
+
+model AttendanceLog {
+  id                 Int          @id @default(autoincrement())
+  employeeId         Int
+  employee           Employee     @relation(fields: [employeeId], references: [id])
+  workDate           String       // ngày công mà lần quét thuộc về
+  shiftId            Int?
+  shift              Shift?       @relation(fields: [shiftId], references: [id])
+  checkTime          DateTime     // UTC
+  type               String       // IN | OUT
+  isLate             Boolean      @default(false)
+  lateMinutes        Int          @default(0)
+  isEarly            Boolean      @default(false)
+  earlyMinutes       Int          @default(0)
+  excusedByRequestId Int?
+  snapshotUrl        String?
+  verified3D         Boolean      @default(false) // kết luận liveness do SERVER đặt
+  livenessScore      Float?
+  matchScore         Float?
+  source             String       @default("KIOSK") // KIOSK | MANUAL
+  deviceId           Int?
+  device             KioskDevice? @relation(fields: [deviceId], references: [id])
+  clientEventId      String?      @unique // chống ghi trùng khi đồng bộ offline
+  note               String?
+  createdById        Int?
+  createdAt          DateTime     @default(now())
+
+  @@index([employeeId, workDate])
+  @@index([workDate])
+}
+
+model LeaveRequest {
+  id           Int       @id @default(autoincrement())
+  employeeId   Int
+  employee     Employee  @relation("Requester", fields: [employeeId], references: [id])
+  type         String    // NGHI_PHEP | VE_SOM | TANG_CA_OT
+  fromTime     DateTime
+  toTime       DateTime
+  reason       String
+  status       String    @default("PENDING") // PENDING | APPROVED | REJECTED | CANCELLED
+  approverId   Int?
+  approver     Employee? @relation("Approver", fields: [approverId], references: [id])
+  decidedAt    DateTime?
+  decisionNote String?
+  createdAt    DateTime  @default(now())
+
+  @@index([employeeId, status])
+}
+
+model NotificationLog {
+  id           Int      @id @default(autoincrement())
+  dedupeKey    String   @unique
+  toEmployeeId Int
+  toEmployee   Employee @relation(fields: [toEmployeeId], references: [id])
+  messageType  String
+  payload      String   // JSON
+  status       String   // SENT | SIMULATED | FAILED | SKIPPED_NO_ZALO
+  error        String?
+  createdAt    DateTime @default(now())
+}
+
+model ZaloToken {
+  id           Int      @id @default(1)
+  accessToken  String
+  refreshToken String
+  expiresAt    DateTime
+  updatedAt    DateTime @updatedAt
+}
+
+model ZaloLinkCode {
+  code       String   @id
+  employeeId Int
+  expiresAt  DateTime
+}
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  actorId   Int?
+  action    String
+  entity    String
+  entityId  String?
+  detail    String?  // JSON
+  createdAt DateTime @default(now())
+}
+
+model AppSetting {
+  key   String @id
+  value String
+}
