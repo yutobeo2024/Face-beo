@@ -3,6 +3,7 @@
  * KHÔNG gửi: lần quét chấm công, và thao tác ngang quyền nhân viên (tự làm đơn, liên kết Zalo, xem công).
  * Không bao giờ ném lỗi — thông báo lỗi không được làm hỏng nghiệp vụ.
  */
+import { randomUUID } from "node:crypto";
 import { DateTime } from "luxon";
 import { TZ } from "./attendance";
 import { getStringSetting } from "./settings";
@@ -47,4 +48,4 @@ export async function announce(
 }
 
 /** Khóa dedupe cho thao tác có thể lặp lại (sửa hồ sơ nhiều lần): gắn thời điểm. */
-export const onceKey = (...parts: (string | number)[]) => `${parts.join(":")}:${Date.now()}`;
+export const onceKey = (...parts: (string | number)[]) => `${parts.join(":")}:${randomUUID()}`;

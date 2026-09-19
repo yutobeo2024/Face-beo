@@ -54,6 +54,7 @@ export default function EmployeesPage() {
   const [inactive, setInactive] = useState(false);
   const [form, setForm] = useState<Form | null>(null);
   const [busy, setBusy] = useState(false);
+  const [tempPw, setTempPw] = useState<string | null>(null);
   const { data, error, loading, reload } = useApi<{ employees: Emp[] }>(`/api/employees${qs({ q, departmentId: dept, includeInactive: inactive ? 1 : "" })}`);
   const depts = useDepartments();
   const shifts = useApi<{ shifts: Shift[] }>("/api/shifts");
@@ -86,8 +87,9 @@ export default function EmployeesPage() {
   async function action(id: number, body: Record<string, unknown>, msg: string) {
     setBusy(true);
     try {
-      await api(`/api/employees/${id}`, { method: "PATCH", body });
-      toast.success(msg);
+      const r = await api<{ tempPassword?: string }>(`/api/employees/${id}`, { method: "PATCH", body });
+      if (r.tempPassword) setTempPw(r.tempPassword);
+      else toast.success(msg);
       void reload();
     } catch (e) {
       toast.error((e as Error).message);
@@ -256,7 +258,7 @@ export default function EmployeesPage() {
                   Đang làm việc (bỏ chọn = nghỉ việc, dữ liệu khuôn mặt sẽ bị xóa)
                 </label>
                 <div className="flex flex-wrap gap-2 pt-1">
-                  <Button size="sm" variant="secondary" icon="key" disabled={busy} onClick={() => action(current.id, { resetPassword: true }, "Đã đặt lại mật khẩu về 123456")}>
+                  <Button size="sm" variant="secondary" icon="key" disabled={busy} onClick={() => action(current.id, { resetPassword: true }, "Đã đặt lại mật khẩu")}>
                     Đặt lại mật khẩu
                   </Button>
                   {current.zaloLinked && (
@@ -274,6 +276,10 @@ export default function EmployeesPage() {
             )}
           </div>
         )}
+      </Modal>
+      <Modal open={!!tempPw} onClose={() => setTempPw(null)} title="Mật khẩu tạm thời" footer={<Button onClick={() => setTempPw(null)}>Đã ghi lại</Button>}>
+        <p className="text-sm text-slate-600">Gửi mật khẩu này cho nhân viên. Họ bắt buộc phải đổi ở lần đăng nhập tới. Mật khẩu chỉ hiển thị một lần.</p>
+        <p className="mt-3 rounded-xl bg-slate-900 py-3 text-center font-mono text-2xl font-bold tracking-widest text-white select-all">{tempPw}</p>
       </Modal>
     </>
   );

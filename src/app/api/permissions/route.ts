@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { handle, json, parseJson } from "@/lib/api";
 import { audit } from "@/lib/audit";
@@ -43,7 +44,7 @@ export const PUT = handle(async (req) => {
         `${ROLE_LABEL[d.role as keyof typeof ROLE_LABEL] ?? d.role}: ` +
         [...d.added.map((c) => `+ ${capLabel(c)}`), ...d.removed.map((c) => `− ${capLabel(c)}`)].join("; "),
     );
-    await announce(u, "đã thay đổi phân quyền", { key: `perm:${Date.now()}`, detail: lines.join("\n"), reason: body.reason, always: true });
+    await announce(u, "đã thay đổi phân quyền", { key: `perm:${randomUUID()}`, detail: lines.join("\n"), reason: body.reason, always: true });
   }
   return json({ ok: true, diff });
 });

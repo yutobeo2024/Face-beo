@@ -1,4 +1,5 @@
 import bcrypt from "bcryptjs";
+import { randomInt } from "node:crypto";
 import { prisma } from "@/lib/db";
 import { badRequest, forbidden, handle, idParam, json, notFound, parseJson } from "@/lib/api";
 import { canViewEmployee, requireUser } from "@/lib/auth";
@@ -6,7 +7,7 @@ import { employeeUpdateSchema } from "@/lib/validators";
 import { audit } from "@/lib/audit";
 import { invalidateFaceCache } from "@/lib/face-matcher";
 import { FACE_MODEL_VERSION } from "@/lib/roles";
-import { requirePerm } from "@/lib/permissions";
+import { can, requirePerm } from "@/lib/permissions";
 import { assertCanModify } from "@/lib/employee-guards";
 import { announce, onceKey } from "@/lib/announce";
 import { ROLE_LABEL, type Role } from "@/lib/roles";
@@ -34,6 +35,7 @@ export const GET = handle<{ id: string }>(async (req, ctx) => {
   if (!e) throw notFound();
   if (!canViewEmployee(u, e)) throw forbidden();
   const { faceTemplates, ...rest } = e;
+  if (e.id !== u.id && !(await can(u, "employees.manage"))) (rest as { phone?: string }).phone = undefined;
   return json({
     employee: {
       ...rest,
@@ -55,8 +57,10 @@ export const PATCH = handle<{ id: string }>(async (req, ctx) => {
   }
   const { resetPassword, unlinkZalo, ...fields } = body;
   const data: Record<string, unknown> = { ...fields };
+  // Mật khẩu tạm ngẫu nhiên (không dùng mật khẩu mặc định đoán được), bắt buộc đổi ở lần đăng nhập sau.
+  const tempPassword = resetPassword ? randomTempPassword() : null;
   if (resetPassword) {
-    data.passwordHash = await bcrypt.hash("123456", 10);
+    data.passwordHash = await bcrypt.hash(tempPassword!, 10);
     data.mustChangePassword = true;
     data.failedLogins = 0;
     data.lockedUntil = null;
@@ -96,8 +100,17 @@ export const PATCH = handle<{ id: string }>(async (req, ctx) => {
   if (fields.active === true && !e.active) changes.push("kích hoạt lại tài khoản");
   if (resetPassword) changes.push("đặt lại mật khẩu");
   if (unlinkZalo) changes.push("hủy liên kết Zalo");
-  if (changes.length) {
+  // Sửa hồ sơ của chính mình (SĐT, hủy Zalo...) là thao tác ngang quyền nhân viên — không công khai vào nhóm.
+  const selfPersonal = id === u.id && !fields.role && fields.active === undefined && !fields.departmentId;
+  if (changes.length && !selfPersonal) {
     await announce(u, `đã sửa hồ sơ ${e.code} — ${e.name}`, { key: onceKey("emp-update", id), detail: changes.join("; ") });
   }
-  return json({ ok: true });
+  return json({ ok: true, ...(tempPassword ? { tempPassword } : {}) });
 });
+
+function randomTempPassword() {
+  const A = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz";
+  const D = "23456789";
+  const pick = (s: string) => s[randomInt(0, s.length)];
+  return Array.from({ length: 6 }, () => pick(A)).join("") + pick(D) + pick(D);
+}

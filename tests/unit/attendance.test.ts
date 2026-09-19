@@ -209,6 +209,10 @@ describe("nhắc đi trễ", () => {
     expect(shouldSendLateReminder(true, MON, HC, [])).toBe(true);
     expect(shouldSendLateReminder(false, MON, HC, [])).toBe(false);
   });
+  it("đơn bổ sung công trùng giờ vào ca không chặn tin nhắc trễ", () => {
+    const corr = req(42, "BO_SUNG_CONG", at(MON, "08:00"), at(MON, "08:01"), "PENDING");
+    expect(shouldSendLateReminder(true, MON, HC, [corr])).toBe(true);
+  });
 });
 
 describe("múi giờ máy chủ", () => {

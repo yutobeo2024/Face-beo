@@ -8,12 +8,13 @@ export const ROLE_LABEL: Record<Role, string> = {
   EMPLOYEE: "Nhân viên",
 };
 
-export const REQUEST_TYPES = ["NGHI_PHEP", "VE_SOM", "TANG_CA_OT"] as const;
+export const REQUEST_TYPES = ["NGHI_PHEP", "VE_SOM", "TANG_CA_OT", "BO_SUNG_CONG"] as const;
 export type RequestTypeT = (typeof REQUEST_TYPES)[number];
 export const REQUEST_TYPE_LABEL: Record<RequestTypeT, string> = {
   NGHI_PHEP: "Nghỉ phép",
   VE_SOM: "Về sớm",
   TANG_CA_OT: "Tăng ca (OT)",
+  BO_SUNG_CONG: "Bổ sung công",
 };
 
 export const REQUEST_STATUSES = ["PENDING", "APPROVED", "REJECTED", "CANCELLED"] as const;

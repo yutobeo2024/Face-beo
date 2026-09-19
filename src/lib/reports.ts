@@ -2,7 +2,7 @@
 import * as XLSX from "xlsx";
 import { prisma } from "./db";
 import { summarizeRange } from "./attendance-service";
-import { vnTime, type DayStatus } from "./attendance";
+import { vnDayRange, vnTime, type DayStatus } from "./attendance";
 import { REQUEST_TYPE_LABEL, type RequestTypeT } from "./roles";
 
 export const STATUS_LABEL: Record<DayStatus, string> = {
@@ -30,6 +30,7 @@ export type SummaryRow = {
   leaveDays: number;
   absentDays: number;
   missingOutDays: number;
+  correctionCount: number;
 };
 
 export type DetailRow = {
@@ -57,6 +58,13 @@ export async function buildAttendanceReport(where: object, from: string, to: str
   const ids = emps.map((e) => e.id);
   const { summaries, planner, requests } = await summarizeRange(ids, from, to, now);
   const reqById = new Map(requests.map((r) => [r.id, r]));
+  // Số lần bổ sung công đã được chấm tay trong kỳ (chống lạm dụng quên chấm).
+  const corrRows = await prisma.leaveRequest.groupBy({
+    by: ["employeeId"],
+    where: { employeeId: { in: ids }, type: "BO_SUNG_CONG", executedAt: { not: null }, correctionAt: { gte: vnDayRange(from).start, lt: vnDayRange(to).end } },
+    _count: true,
+  });
+  const corrections = new Map(corrRows.map((c) => [c.employeeId, c._count]));
   const summary: SummaryRow[] = [];
   const detail: DetailRow[] = [];
 
@@ -75,6 +83,7 @@ export async function buildAttendanceReport(where: object, from: string, to: str
       leaveDays: 0,
       absentDays: 0,
       missingOutDays: 0,
+      correctionCount: corrections.get(e.id) ?? 0,
     };
     for (const [k, s] of summaries) {
       if (!k.startsWith(`${e.id}|`)) continue;
@@ -139,9 +148,10 @@ export function reportToXlsx(r: { summary: SummaryRow[]; detail: DetailRow[] }):
       "Ngày nghỉ phép": x.leaveDays,
       "Ngày vắng không phép": x.absentDays,
       "Số ngày thiếu giờ ra": x.missingOutDays,
+      "Số lần bổ sung công": x.correctionCount,
     })),
   );
-  s1["!cols"] = [8, 24, 22, 10, 10, 13, 13, 16, 8, 14, 18, 18].map((w) => ({ wch: w }));
+  s1["!cols"] = [8, 24, 22, 10, 10, 13, 13, 16, 8, 14, 18, 18, 18].map((w) => ({ wch: w }));
   const s2 = XLSX.utils.json_to_sheet(
     r.detail.map((x) => ({
       "Mã NV": x.code,

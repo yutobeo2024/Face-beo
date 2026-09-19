@@ -4,7 +4,7 @@ import { requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { invalidateFaceCache } from "@/lib/face-matcher";
 import { can, requirePerm } from "@/lib/permissions";
-import { assertDept } from "@/lib/auth";
+import { assertCanTouchBiometrics } from "@/lib/employee-guards";
 
 /** Ghi nhận đồng ý xử lý dữ liệu sinh trắc học (ADMIN thao tác khi nhân viên tick đồng ý tại chỗ). */
 export const POST = handle<{ id: string }>(async (req, ctx) => {
@@ -12,7 +12,7 @@ export const POST = handle<{ id: string }>(async (req, ctx) => {
   const id = await idParam(ctx);
   const e = await prisma.employee.findUnique({ where: { id } });
   if (!e || !e.active) throw notFound();
-  assertDept(u, e.departmentId);
+  await assertCanTouchBiometrics(u, e);
   const at = new Date();
   await prisma.employee.update({ where: { id }, data: { biometricConsentAt: at } });
   await audit({ actorId: u.id, action: "CONSENT_GIVEN", entity: "Employee", entityId: id, detail: { at } });
@@ -28,7 +28,7 @@ export const DELETE = handle<{ id: string }>(async (req, ctx) => {
   // Nhân viên tự rút đồng ý, hoặc người có quyền enroll trong phạm vi phòng ban.
   if (u.id !== id) {
     if (!(await can(u, "faces.enroll"))) throw forbidden();
-    assertDept(u, e.departmentId);
+    await assertCanTouchBiometrics(u, e);
   }
   const del = await prisma.faceTemplate.deleteMany({ where: { employeeId: id } });
   await prisma.employee.update({ where: { id }, data: { biometricConsentAt: null } });

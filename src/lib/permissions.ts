@@ -69,8 +69,10 @@ export const ADMIN_AREA_CAPS: Capability[] = [
   "roster.view",
   "requests.decide",
   "attendance.view",
+  "attendance.executeCorrection",
   "reports.view",
   "employees.view",
+  "employees.manage",
   "org.manage",
   "settings.system",
   "devices.manage",
@@ -83,9 +85,10 @@ export const ADMIN_AREA_CAPS: Capability[] = [
 
 type Matrix = Record<EditableRole, Set<string>>;
 const CACHE_MS = 60_000;
-const g = globalThis as unknown as { __permCache?: { at: number; matrix: Matrix } | null; __permLoading?: Promise<Matrix> | null };
+const g = globalThis as unknown as { __permCache?: { at: number; matrix: Matrix } | null; __permLoading?: Promise<Matrix> | null; __permGen?: number };
 
 export function invalidatePermissionCache() {
+  g.__permGen = (g.__permGen ?? 0) + 1;
   g.__permCache = null;
   g.__permLoading = null;
 }
@@ -107,6 +110,7 @@ export async function ensureDefaultPermissions() {
 }
 
 async function loadMatrix(): Promise<Matrix> {
+  const gen = g.__permGen ?? 0;
   await ensureDefaultPermissions();
   const rows = await prisma.rolePermission.findMany();
   const m: Matrix = { HR: new Set(), MANAGER: new Set(), EMPLOYEE: new Set() };
@@ -114,7 +118,8 @@ async function loadMatrix(): Promise<Matrix> {
     // Bỏ qua mọi dữ liệu lạ trong DB: quyền không tồn tại hoặc quyền khóa cứng.
     if (r.role in m && ALL_CAPS.has(r.capability) && !LOCKED_CAPS.has(r.capability)) m[r.role as EditableRole].add(r.capability);
   }
-  g.__permCache = { at: Date.now(), matrix: m };
+  // Không ghi cache nếu ma trận vừa được lưu trong lúc đang nạp (tránh giữ quyền đã thu hồi).
+  if ((g.__permGen ?? 0) === gen) g.__permCache = { at: Date.now(), matrix: m };
   return m;
 }
 
@@ -167,6 +172,9 @@ export type MatrixInput = Partial<Record<string, string[]>>;
 /** Kiểm tra và chuẩn hóa ma trận gửi lên. Từ chối hàng ADMIN, vai trò lạ, quyền lạ hoặc quyền khóa cứng. */
 export function validateMatrix(input: MatrixInput): Record<EditableRole, string[]> {
   const out = { HR: [], MANAGER: [], EMPLOYEE: [] } as Record<EditableRole, string[]>;
+  for (const role of EDITABLE_ROLES) {
+    if (!(role in input)) throw badRequest(`Thiếu vai trò ${role} trong ma trận (phải gửi đủ các vai trò)`);
+  }
   for (const [role, caps] of Object.entries(input)) {
     if (role === "ADMIN") throw badRequest("Không thể thay đổi quyền của Quản trị");
     if (!(EDITABLE_ROLES as readonly string[]).includes(role)) throw badRequest(`Vai trò không hợp lệ: ${role}`);
@@ -180,6 +188,7 @@ export function validateMatrix(input: MatrixInput): Record<EditableRole, string[
 }
 
 export async function saveMatrix(next: Record<EditableRole, string[]>) {
+  invalidatePermissionCache();
   const before = await getMatrix();
   const diff: { role: string; added: string[]; removed: string[] }[] = [];
   for (const role of EDITABLE_ROLES) {

@@ -7,7 +7,7 @@ import { getSettings } from "@/lib/settings";
 import { audit } from "@/lib/audit";
 import { FACE_MODEL_VERSION } from "@/lib/roles";
 import { requirePerm } from "@/lib/permissions";
-import { assertDept } from "@/lib/auth";
+import { assertCanTouchBiometrics } from "@/lib/employee-guards";
 import { announce, onceKey } from "@/lib/announce";
 
 const MIN_ENROLL_FACE_PX = 200;
@@ -19,7 +19,7 @@ export const POST = handle<{ id: string }>(async (req, ctx) => {
   const body = await parseJson(req, enrollSchema);
   const e = await prisma.employee.findUnique({ where: { id } });
   if (!e || !e.active) throw notFound();
-  assertDept(u, e.departmentId);
+  await assertCanTouchBiometrics(u, e);
   if (!e.biometricConsentAt) throw forbidden("Nhân viên chưa đồng ý xử lý dữ liệu sinh trắc học");
 
   const poses = new Set(body.samples.map((s) => s.pose));
@@ -76,9 +76,9 @@ export const POST = handle<{ id: string }>(async (req, ctx) => {
 export const DELETE = handle<{ id: string }>(async (req, ctx) => {
   const u = await requirePerm(req, "faces.enroll");
   const id = await idParam(ctx);
-  const e = await prisma.employee.findUnique({ where: { id }, select: { code: true, name: true, departmentId: true } });
+  const e = await prisma.employee.findUnique({ where: { id }, select: { id: true, role: true, code: true, name: true, departmentId: true } });
   if (!e) throw notFound();
-  assertDept(u, e.departmentId);
+  await assertCanTouchBiometrics(u, e);
   const del = await prisma.faceTemplate.deleteMany({ where: { employeeId: id } });
   invalidateFaceCache();
   await audit({ actorId: u.id, action: "FACE_DELETE", entity: "Employee", entityId: id, detail: { count: del.count } });

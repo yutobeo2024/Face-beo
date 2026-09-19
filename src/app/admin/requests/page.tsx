@@ -3,10 +3,11 @@ import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { api, qs, useApi } from "@/lib/client/api";
-import { fmtDateTime, relTime } from "@/lib/client/format";
+import { fmtDateTime, fromLocalInput, relTime, toLocalInput } from "@/lib/client/format";
 import { Avatar, Badge, Button, Card, EmptyState, ErrorBox, Field, Loading, Modal, PageHeader, Segmented } from "@/components/ui";
 import { DeptSelect } from "@/components/dept-select";
-import { REQ_TYPE, ReqStatusBadge } from "@/components/status";
+import { CorrectionBadge, REQ_TYPE, ReqStatusBadge } from "@/components/status";
+import { useCan } from "../admin-nav";
 import { useToast } from "@/components/toast";
 
 type Req = {
@@ -20,6 +21,10 @@ type Req = {
   decidedAt: string | null;
   decisionNote: string | null;
   canDecide: boolean;
+  canExecute: boolean;
+  correctionAt: string | null;
+  correctionKind: string | null;
+  executedAt: string | null;
   employee: { id: number; code: string; name: string; department: { name: string } };
   approver: { name: string } | null;
 };
@@ -27,12 +32,16 @@ type Req = {
 function RequestsInner() {
   const toast = useToast();
   const sp = useSearchParams();
-  const [status, setStatus] = useState(sp.get("status") ?? "PENDING");
+  const can = useCan();
+  const [status, setStatus] = useState(sp.get("view") === "execute" ? "EXECUTE" : (sp.get("status") ?? "PENDING"));
+  const [exec, setExec] = useState<{ r: Req; at: string; note: string } | null>(null);
   const [dept, setDept] = useState("");
   const [rejecting, setRejecting] = useState<Req | null>(null);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState<number | null>(null);
-  const { data, error, loading, reload } = useApi<{ requests: Req[] }>(`/api/requests${qs({ scope: "team", status: status === "ALL" ? "" : status, departmentId: dept })}`);
+  const { data, error, loading, reload } = useApi<{ requests: Req[] }>(
+    `/api/requests${qs(status === "EXECUTE" ? { scope: "team", view: "execute", departmentId: dept } : { scope: "team", status: status === "ALL" ? "" : status, departmentId: dept })}`,
+  );
 
   async function decide(r: Req, action: "APPROVE" | "REJECT", decisionNote?: string) {
     setBusy(r.id);
@@ -41,6 +50,21 @@ function RequestsInner() {
       toast.success(action === "APPROVE" ? `Đã duyệt đơn #${r.id}${res.recomputedDays ? ` · tính lại ${res.recomputedDays} ngày công` : ""}` : `Đã từ chối đơn #${r.id}`);
       setRejecting(null);
       setNote("");
+      void reload();
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function execute() {
+    if (!exec) return;
+    setBusy(exec.r.id);
+    try {
+      await api(`/api/requests/${exec.r.id}/execute`, { body: { checkTime: fromLocalInput(exec.at), note: exec.note.trim() || undefined } });
+      toast.success(`Đã chấm tay theo đơn #${exec.r.id}`);
+      setExec(null);
       void reload();
     } catch (e) {
       toast.error((e as Error).message);
@@ -61,6 +85,7 @@ function RequestsInner() {
             { value: "APPROVED", label: "Đã duyệt" },
             { value: "REJECTED", label: "Từ chối" },
             { value: "ALL", label: "Tất cả" },
+            ...(can("attendance.executeCorrection") ? [{ value: "EXECUTE", label: "Chờ chấm tay" }] : []),
           ]}
         />
         <DeptSelect value={dept} onChange={setDept} className="w-full sm:w-56" />
@@ -92,13 +117,16 @@ function RequestsInner() {
                         {t?.emoji} {t?.label ?? r.type}
                       </Badge>
                       <ReqStatusBadge status={r.status} />
+                      <CorrectionBadge r={r} />
                       <span className="text-xs text-slate-400">#{r.id} · {relTime(r.createdAt)}</span>
                     </div>
                   </div>
                 </div>
                 <div className="mt-3 rounded-xl bg-slate-50 px-3 py-2.5 text-sm">
                   <p className="font-semibold text-slate-700 tabular-nums">
-                    {fmtDateTime(r.fromTime)} → {fmtDateTime(r.toTime)}
+                    {r.type === "BO_SUNG_CONG" && r.correctionAt
+                      ? `Bổ sung ${r.correctionKind === "OUT" ? "giờ ra" : "giờ vào"} lúc ${fmtDateTime(r.correctionAt)}`
+                      : `${fmtDateTime(r.fromTime)} → ${fmtDateTime(r.toTime)}`}
                   </p>
                   <p className="mt-1 text-slate-600">{r.reason}</p>
                 </div>
@@ -120,11 +148,46 @@ function RequestsInner() {
                   </div>
                 )}
                 {r.status === "PENDING" && !r.canDecide && <p className="mt-3 text-xs text-slate-500">Đơn này do người khác duyệt.</p>}
+                {r.canExecute && (
+                  <Button className="mt-3" icon="clock" onClick={() => setExec({ r, at: toLocalInput(r.correctionAt!), note: "" })}>
+                    Thực hiện chấm tay
+                  </Button>
+                )}
               </Card>
             );
           })}
         </div>
       )}
+
+      <Modal
+        open={!!exec}
+        onClose={() => setExec(null)}
+        title={`Chấm tay theo đơn #${exec?.r.id ?? ""}`}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setExec(null)}>
+              Hủy
+            </Button>
+            <Button loading={busy === exec?.r.id} onClick={execute}>
+              Xác nhận chấm tay
+            </Button>
+          </>
+        }
+      >
+        {exec && (
+          <div className="space-y-3">
+            <p className="text-sm text-slate-600">
+              {exec.r.employee.name} ({exec.r.employee.code}) — {exec.r.correctionKind === "OUT" ? "quên chấm ra" : "quên chấm vào"}. Lý do: “{exec.r.reason}”
+            </p>
+            <Field label="Giờ chấm tay" hint="Mặc định là giờ nhân viên ghi trong đơn. Nếu sửa, ghi rõ lý do bên dưới.">
+              {(id) => <input id={id} type="datetime-local" className="input" value={exec.at} onChange={(e) => setExec({ ...exec, at: e.target.value })} />}
+            </Field>
+            <Field label="Ghi chú (tùy chọn, gửi vào nhóm Zalo)">
+              {(id) => <textarea id={id} className="input min-h-20" value={exec.note} onChange={(e) => setExec({ ...exec, note: e.target.value })} />}
+            </Field>
+          </div>
+        )}
+      </Modal>
 
       <Modal
         open={!!rejecting}

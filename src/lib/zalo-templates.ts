@@ -1,7 +1,16 @@
 /** Mẫu nội dung tin Zalo OA (PRD mục 7). Mỗi loại một hàm nhận data, trả chuỗi tiếng Việt kèm link. */
 import { env } from "./env";
 
-export type MessageType = "REQUEST_CREATED" | "REQUEST_DECIDED" | "LATE_REMINDER" | "ABSENT_WARNING" | "ABSENT_DIGEST" | "GROUP_EVENT";
+export type MessageType =
+  | "REQUEST_CREATED"
+  | "REQUEST_DECIDED"
+  | "LATE_REMINDER"
+  | "ABSENT_WARNING"
+  | "ABSENT_DIGEST"
+  | "GROUP_EVENT"
+  | "CORRECTION_READY"
+  | "CORRECTION_DONE"
+  | "MISSING_OUT_NUDGE";
 
 const link = (path: string) => `${env.appBaseUrl.replace(/\/$/, "")}${path}`;
 
@@ -13,14 +22,14 @@ export const zaloTemplates: Record<MessageType, (d: Data) => string> = {
     [
       `📝 Đơn mới cần duyệt`,
       `${s(d.employeeName)} (${s(d.employeeCode)}) gửi đơn ${s(d.typeLabel)}.`,
-      `Thời gian: ${s(d.fromText)} → ${s(d.toText)}`,
+      d.correctionText ? `Cần bổ sung ${s(d.correctionText)}` : `Thời gian: ${s(d.fromText)} → ${s(d.toText)}`,
       `Lý do: ${s(d.reason)}`,
       `Duyệt tại: ${link("/admin/requests?status=PENDING")}`,
     ].join("\n"),
   REQUEST_DECIDED: (d) =>
     [
       d.status === "APPROVED" ? `✅ Đơn của bạn đã được duyệt` : `❌ Đơn của bạn bị từ chối`,
-      `Loại: ${s(d.typeLabel)} (${s(d.fromText)} → ${s(d.toText)})`,
+      d.correctionText ? `Loại: ${s(d.typeLabel)} — ${s(d.correctionText)}` : `Loại: ${s(d.typeLabel)} (${s(d.fromText)} → ${s(d.toText)})`,
       d.decisionNote ? `Ghi chú: ${s(d.decisionNote)}` : "",
       `Người xử lý: ${s(d.approverName)}`,
       `Xem chi tiết: ${link("/me/requests")}`,
@@ -38,6 +47,25 @@ export const zaloTemplates: Record<MessageType, (d: Data) => string> = {
       `⚠️ Chưa ghi nhận chấm công`,
       `Ca ${s(d.shiftName)} ngày ${s(d.dateText)} bắt đầu lúc ${s(d.startText)} nhưng hệ thống chưa thấy bạn chấm vào.`,
       `Nếu bạn nghỉ, vui lòng tạo đơn: ${link("/me/requests?new=1")}`,
+    ].join("\n"),
+  CORRECTION_READY: (d) =>
+    [
+      `🛠️ Đơn bổ sung công #${s(d.requestId)} đã được duyệt — chờ chấm tay`,
+      `${s(d.employeeName)} (${s(d.employeeCode)}) cần bổ sung ${s(d.correctionText)}.`,
+      `Lý do: ${s(d.reason)}`,
+      `Thực hiện tại: ${link("/admin/requests?view=execute")}`,
+    ].join("\n"),
+  CORRECTION_DONE: (d) =>
+    [
+      `✅ Đã bổ sung ${s(d.kindText)} lúc ${s(d.timeText)} theo đơn #${s(d.requestId)}`,
+      `Người thực hiện: ${s(d.executorName)}`,
+      `Xem công: ${link("/me/attendance")}`,
+    ].join("\n"),
+  MISSING_OUT_NUDGE: (d) =>
+    [
+      `🔔 Thiếu giờ ra ngày ${s(d.dateText)}`,
+      `Hệ thống chỉ ghi nhận giờ vào lúc ${s(d.inText)} (ca ${s(d.shiftName)}).`,
+      `Nếu bạn quên chấm ra, hãy tạo đơn bổ sung công: ${link(`/me/requests?new=1&type=BO_SUNG_CONG&date=${s(d.date)}`)}`,
     ].join("\n"),
   // Tin minh bạch gửi vào nhóm Zalo OA: ai làm gì, cho ai, lý do.
   GROUP_EVENT: (d) =>

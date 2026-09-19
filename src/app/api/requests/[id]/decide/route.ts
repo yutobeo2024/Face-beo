@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 import { badRequest, forbidden, handle, idParam, json, notFound, parseJson } from "@/lib/api";
 import { decideSchema } from "@/lib/validators";
-import { canDecideRequest, notifyRequestDecided } from "@/lib/notify";
+import { canDecideRequest, correctionText, notifyCorrectionReady, notifyRequestDecided } from "@/lib/notify";
 import { addDays, vnDate } from "@/lib/attendance";
 import { recomputeDay } from "@/lib/attendance-service";
 import { audit } from "@/lib/audit";
@@ -27,7 +27,8 @@ export const POST = handle<{ id: string }>(async (req, ctx) => {
   const decided = await prisma.leaveRequest.findUniqueOrThrow({ where: { id } });
 
   let recomputed = 0;
-  if (status === "APPROVED") {
+  // Đơn bổ sung công chưa ảnh hưởng công cho tới khi Nhân sự chấm tay (bước 2).
+  if (status === "APPROVED" && r.type !== "BO_SUNG_CONG") {
     const days = await prisma.attendanceLog.findMany({
       where: { employeeId: r.employeeId, workDate: { gte: addDays(vnDate(r.fromTime), -1), lte: vnDate(r.toTime) } },
       select: { workDate: true },
@@ -46,11 +47,12 @@ export const POST = handle<{ id: string }>(async (req, ctx) => {
     detail: { employeeId: r.employeeId, type: r.type, note: body.note ?? null, recomputedDays: recomputed },
   });
   await notifyRequestDecided(decided);
+  if (status === "APPROVED" && r.type === "BO_SUNG_CONG") await notifyCorrectionReady(decided);
   const who = await prisma.employee.findUnique({ where: { id: r.employeeId }, select: { code: true, name: true } });
   await announce(
     u,
     `đã ${status === "APPROVED" ? "DUYỆT" : "TỪ CHỐI"} đơn ${REQUEST_TYPE_LABEL[r.type as RequestTypeT] ?? r.type} #${r.id} của ${who?.code} — ${who?.name}`,
-    { key: `req-decided:${r.id}`, detail: `${fmtDT(r.fromTime)} → ${fmtDT(r.toTime)}`, reason: body.note },
+    { key: `req-decided:${r.id}`, detail: r.type === "BO_SUNG_CONG" ? `Bổ sung ${correctionText(r)}` : `${fmtDT(r.fromTime)} → ${fmtDT(r.toTime)}`, reason: body.note },
   );
   return json({ request: decided, recomputedDays: recomputed });
 });

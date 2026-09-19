@@ -529,7 +529,7 @@ export function shouldSendLateReminder(isLate: boolean, workDate: string, shift:
   if (!isLate) return false;
   const start = shiftInterval(workDate, shift).start;
   return !requests.some(
-    (r) => (r.status === "APPROVED" || r.status === "PENDING") && r.type !== "TANG_CA_OT" && requestCovers(r, start),
+    (r) => (r.status === "APPROVED" || r.status === "PENDING") && (r.type === "NGHI_PHEP" || r.type === "VE_SOM") && requestCovers(r, start),
   );
 }
 

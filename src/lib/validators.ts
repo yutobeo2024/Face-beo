@@ -61,14 +61,30 @@ export const rosterCellSchema = z.object({
 export const rosterUpdateSchema = z.object({ cells: z.array(rosterCellSchema).min(1).max(1000) });
 export const copyWeekSchema = z.object({ fromWeek: dateStr, toWeek: dateStr, departmentId: optId, employeeIds: z.array(idNum).optional() });
 
-export const requestCreateSchema = z
-  .object({
-    type: z.enum(REQUEST_TYPES),
-    fromTime: isoDateTime,
-    toTime: isoDateTime,
-    reason: z.string().trim().min(10, "lý do tối thiểu 10 ký tự").max(500),
-  })
-  .refine((r) => r.toTime > r.fromTime, { message: "thời gian kết thúc phải sau thời gian bắt đầu", path: ["toTime"] });
+const reasonStr = z.string().trim().min(10, "lý do tối thiểu 10 ký tự").max(500);
+
+export const requestCreateSchema = z.union([
+  z
+    .object({
+      type: z.enum(REQUEST_TYPES).exclude(["BO_SUNG_CONG"]),
+      fromTime: isoDateTime,
+      toTime: isoDateTime,
+      reason: reasonStr,
+    })
+    .refine((r) => r.toTime > r.fromTime, { message: "thời gian kết thúc phải sau thời gian bắt đầu", path: ["toTime"] }),
+  // Đơn bổ sung công: quên chấm vào/ra tại một thời điểm cụ thể.
+  z.object({
+    type: z.literal("BO_SUNG_CONG"),
+    correctionAt: isoDateTime,
+    correctionKind: z.enum(["IN", "OUT"]),
+    reason: reasonStr,
+  }),
+]);
+
+export const executeCorrectionSchema = z.object({
+  checkTime: isoDateTime.optional(), // mặc định = giờ ghi trong đơn
+  note: z.string().trim().max(300).optional(),
+});
 
 export const decideSchema = z
   .object({ action: z.enum(["APPROVE", "REJECT"]), note: z.string().trim().max(500).optional() })

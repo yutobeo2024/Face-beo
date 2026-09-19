@@ -31,7 +31,14 @@ export const REQ_TYPE: Record<string, { label: string; tone: Tone; emoji: string
   NGHI_PHEP: { label: "Nghỉ phép", tone: "leave", emoji: "🌴" },
   VE_SOM: { label: "Về sớm", tone: "late", emoji: "🏃" },
   TANG_CA_OT: { label: "Tăng ca (OT)", tone: "violet", emoji: "⏱️" },
+  BO_SUNG_CONG: { label: "Bổ sung công", tone: "brand", emoji: "🛠️" },
 };
+
+/** Trạng thái bước 2 của đơn bổ sung công (sau khi duyệt). */
+export function CorrectionBadge({ r }: { r: { type: string; status: string; executedAt?: string | null } }) {
+  if (r.type !== "BO_SUNG_CONG" || r.status !== "APPROVED") return null;
+  return r.executedAt ? <Badge tone="ontime">Đã chấm tay</Badge> : <Badge tone="late">Chờ Nhân sự chấm tay</Badge>;
+}
 
 export function ReqStatusBadge({ status }: { status: string }) {
   const s = REQ_STATUS[status] ?? { label: status, tone: "neutral" as Tone };

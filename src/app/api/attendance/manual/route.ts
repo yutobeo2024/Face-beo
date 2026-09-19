@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
-import { badRequest, handle, json, notFound, parseJson } from "@/lib/api";
+import { badRequest, forbidden, handle, json, notFound, parseJson } from "@/lib/api";
+import { assertDept } from "@/lib/auth";
 import { manualLogSchema } from "@/lib/validators";
 import { recordScan } from "@/lib/attendance-service";
 import { audit } from "@/lib/audit";
@@ -11,6 +12,8 @@ export const POST = handle(async (req) => {
   const body = await parseJson(req, manualLogSchema);
   const e = await prisma.employee.findUnique({ where: { id: body.employeeId } });
   if (!e) throw notFound("Không tìm thấy nhân viên");
+  assertDept(u, e.departmentId);
+  if (e.id === u.id && u.role !== "ADMIN") throw forbidden("Không thể tự chấm tay cho chính mình");
   if (body.checkTime.getTime() > Date.now() + 5 * 60_000) throw badRequest("Không thể thêm log ở tương lai");
   const r = await recordScan({
     employeeId: body.employeeId,

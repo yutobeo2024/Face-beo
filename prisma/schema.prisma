@@ -121,6 +121,7 @@ model AttendanceLog {
   deviceId           Int?
   device             KioskDevice? @relation(fields: [deviceId], references: [id])
   clientEventId      String?      @unique // chống ghi trùng khi đồng bộ offline
+  sourceRequestId    Int? // log MANUAL sinh từ đơn bổ sung công đã duyệt
   note               String?
   createdById        Int?
   createdAt          DateTime     @default(now())
@@ -133,7 +134,7 @@ model LeaveRequest {
   id           Int       @id @default(autoincrement())
   employeeId   Int
   employee     Employee  @relation("Requester", fields: [employeeId], references: [id])
-  type         String    // NGHI_PHEP | VE_SOM | TANG_CA_OT
+  type         String    // NGHI_PHEP | VE_SOM | TANG_CA_OT | BO_SUNG_CONG
   fromTime     DateTime
   toTime       DateTime
   reason       String
@@ -142,6 +143,12 @@ model LeaveRequest {
   approver     Employee? @relation("Approver", fields: [approverId], references: [id])
   decidedAt    DateTime?
   decisionNote String?
+  // Đơn bổ sung công (quên chấm vào/ra): giờ cần bổ sung, và bước 2 "chấm tay" do Nhân sự thực hiện.
+  correctionAt   DateTime?
+  correctionKind String? // IN | OUT
+  executedById   Int?
+  executedAt     DateTime?
+  executedLogId  Int?
   createdAt    DateTime  @default(now())
 
   @@index([employeeId, status])

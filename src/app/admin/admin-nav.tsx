@@ -18,7 +18,7 @@ export function AdminNav({ user, caps, children }: { user: ShellUser & { id: num
   const nav: NavItem[] = [
     has("dashboard.view") && { href: "/admin", label: "Tổng quan", icon: "dashboard", exact: true, mobile: true },
     has("roster.view") && { href: "/admin/roster", label: "Xếp ca", icon: "calendar", mobile: true },
-    has("requests.decide") && { href: "/admin/requests", label: "Đơn từ", icon: "inbox", mobile: true },
+    (has("requests.decide") || has("attendance.executeCorrection")) && { href: "/admin/requests", label: "Đơn từ", icon: "inbox", mobile: true },
     has("attendance.view") && { href: "/admin/attendance", label: "Chấm công", icon: "clock", mobile: true },
     has("reports.view") && { href: "/admin/reports", label: "Báo cáo", icon: "chart" },
     (has("employees.view") || has("employees.manage")) && { href: "/admin/employees", label: "Nhân viên", icon: "users" },

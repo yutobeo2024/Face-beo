@@ -122,6 +122,13 @@ export async function missingCheckout(now = new Date()) {
     const exists = await prisma.auditLog.findFirst({ where: { action: "MISSING_CHECKOUT", entityId: k } });
     if (exists) continue;
     await audit({ action: "MISSING_CHECKOUT", entity: "AttendanceDay", entityId: k, detail: { employeeId: Number(id), workDate: d } });
+    // Nhắc nhân viên tạo đơn bổ sung công (link điền sẵn ngày).
+    await sendZaloMessage({
+      toEmployeeId: Number(id),
+      messageType: "MISSING_OUT_NUDGE",
+      dedupeKey: `missing-out:${k}`,
+      data: { date: d, dateText: fmtDate(d), inText: s.inTime ? vnTime(s.inTime) : "", shiftName: plan.shift.name },
+    });
     flagged++;
   }
   return { flagged };
