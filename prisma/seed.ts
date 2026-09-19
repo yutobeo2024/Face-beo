@@ -8,6 +8,7 @@ import { recordScan } from "../src/lib/attendance-service";
 import { DEFAULT_APP_SETTINGS } from "../src/lib/settings";
 import { randomDigits } from "../src/lib/crypto";
 import { ensureDefaultPermissions } from "../src/lib/permissions";
+import { BASELINE_DATE, snapshotAssignment } from "../src/lib/schedule-assignments";
 
 const prisma = new PrismaClient();
 
@@ -26,6 +27,7 @@ async function wipe() {
     prisma.leaveRequest.deleteMany(),
     prisma.workSchedule.deleteMany(),
     prisma.rosterWeek.deleteMany(),
+    prisma.scheduleAssignment.deleteMany(),
     prisma.faceTemplate.deleteMany(),
     prisma.zaloLinkCode.deleteMany(),
     prisma.kioskDevice.deleteMany(),
@@ -128,6 +130,9 @@ async function main() {
       await prisma.rosterWeek.create({ data: { departmentId: deptId, weekStart: ws, status: "REGISTERED", registeredById: emps[0].id, registeredAt: new Date() } });
     }
   }
+
+  // Lịch sử phân công gốc (áp dụng cho mọi ngày) theo cấu hình hiện tại của từng nhân viên.
+  for (const e of await prisma.employee.findMany({ select: { id: true } })) await snapshotAssignment(e.id, BASELINE_DATE);
 
   await prisma.holiday.createMany({
     data: [

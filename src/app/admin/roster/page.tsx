@@ -1,5 +1,5 @@
 "use client";
-import { Suspense, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { api, qs, useApi } from "@/lib/client/api";
 import { addDaysStr, fmtDateTime, fmtDay, fmtDayShort, mondayOf, todayStr, weekdayOf, WEEKDAY_SHORT } from "@/lib/client/format";
@@ -61,6 +61,9 @@ function RosterInner() {
   const [choice, setChoice] = useState<Choice | null>(null);
   const [reason, setReason] = useState("");
   const [saving, setSaving] = useState(false);
+  const [copyAsk, setCopyAsk] = useState(false);
+  // Đổi tuần / phòng: bỏ các ô đã chọn (tránh gửi lẫn ô của tuần khác).
+  useEffect(() => setSelected(new Set()), [week, dept]);
   const url = `/api/roster${qs({ week, departmentId: dept, group })}`;
   const { data, error, loading, reload } = useApi<Roster>(url);
   const history = useApi<History>(tab === "history" ? `/api/roster/history?week=${week}` : null);
@@ -129,17 +132,32 @@ function RosterInner() {
     }
   }
 
-  async function copyLastWeek() {
+  /** Sao chép tuần trước cho từng phòng còn sửa được (phòng bị khóa bỏ qua); tuần đã đăng ký cần lý do. */
+  const copyTargets = () => Object.entries(data?.departments ?? {}).filter(([id, d]) => d.canEdit && (!dept || id === dept));
+  function copyLastWeek() {
+    const targets = copyTargets();
+    if (!targets.length) return toast.info("Không có phòng nào sửa được lịch tuần này");
+    if (targets.some(([, d]) => d.needReason)) return setCopyAsk(true);
+    void doCopy();
+  }
+  async function doCopy(why?: string) {
     setSaving(true);
-    try {
-      const r = await api<{ saved: number; message?: string }>("/api/roster/copy-week", { body: { fromWeek: addDaysStr(week, -7), toWeek: week, departmentId: dept || undefined } });
-      toast.success(r.message ?? `Đã sao chép ${r.saved} ô từ tuần trước (nháp — nhớ bấm Đăng ký)`);
-      void reload();
-    } catch (e) {
-      toast.error((e as Error).message);
-    } finally {
-      setSaving(false);
+    let saved = 0;
+    const errs: string[] = [];
+    for (const [id, d] of copyTargets()) {
+      try {
+        const r = await api<{ saved: number }>("/api/roster/copy-week", { body: { fromWeek: addDaysStr(week, -7), toWeek: week, departmentId: Number(id), reason: why } });
+        saved += r.saved;
+      } catch (e) {
+        errs.push(`${d.name}: ${(e as Error).message}`);
+      }
     }
+    setSaving(false);
+    setCopyAsk(false);
+    setReason("");
+    if (saved) toast.success(`Đã sao chép ${saved} ô từ tuần trước${copyTargets().some(([, d]) => d.status === "DRAFT") ? " (nháp — nhớ bấm Đăng ký)" : ""}`);
+    if (errs.length) toast.error(errs.join(" · "));
+    void reload();
   }
 
   const depts = data ? Object.entries(data.departments) : [];
@@ -367,6 +385,27 @@ function RosterInner() {
           </div>
         </div>
       )}
+
+      <Modal
+        open={copyAsk}
+        onClose={() => (setCopyAsk(false), setReason(""))}
+        title="Sao chép lịch tuần trước"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => (setCopyAsk(false), setReason(""))}>
+              Hủy
+            </Button>
+            <Button loading={saving} disabled={reason.trim().length < 5} onClick={() => doCopy(reason.trim())}>
+              Sao chép
+            </Button>
+          </>
+        }
+      >
+        <p className="mb-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">Có phòng đã đăng ký ca tuần này — thay đổi có hiệu lực ngay, được ghi nhật ký và gửi vào nhóm Zalo.</p>
+        <Field label="Lý do (bắt buộc)">
+          {(id) => <textarea id={id} className="input min-h-16" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="VD: Áp dụng lại lịch tuần trước theo đề nghị của trưởng kho" />}
+        </Field>
+      </Modal>
 
       <Modal open={!!editing} onClose={() => (setEditing(null), setChoice(null), setReason(""))} title={editing?.title ?? ""}>
         {editing?.needReason && (

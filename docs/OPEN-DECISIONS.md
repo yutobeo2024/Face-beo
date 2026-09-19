@@ -18,6 +18,32 @@ Ghi lại những điểm đã phát hiện trong quá trình làm và test, c�
 - **Ảnh hưởng:** chỉ ảnh hưởng số "giờ công" trong bảng công và Excel. **Không** ảnh hưởng đi trễ, về sớm, OT hay vắng mặt.
 - **Trạng thái:** tạm giữ theo PRD, quyết định sau.
 
-## Đã chốt
+### D2. Khóa công theo tháng
 
-_(chưa có)_
+- **Vấn đề:** HR/ADMIN hiện vẫn sửa được ca, xóa log hay chấm tay theo đơn ở những ngày thuộc tháng đã chốt lương, trong giới hạn 7 ngày của đơn bổ sung công. Bảng công đã xuất có thể lệch với dữ liệu hiện tại.
+- **Phương án:** thêm thao tác "Chốt công tháng" (chỉ ADMIN). Sau khi chốt, mọi thao tác làm đổi công trong tháng đó bị chặn, trừ khi ADMIN mở khóa kèm lý do (ghi AuditLog và gửi tin nhóm Zalo).
+- **Trạng thái:** chờ quyết định.
+
+### D3. Đơn chờ HR quá lâu có tự chuyển lên Quản trị không
+
+- **Vấn đề:** đơn của quản lý và đơn bổ sung công chờ HR xử lý. Nếu HR vắng mặt, đơn có thể bị treo.
+- **Phương án:** job nhắc HR khi đơn chờ quá 24 giờ. Quá 48 giờ thì báo ADMIN (ADMIN vốn đã duyệt hay chấm tay thay được).
+- **Trạng thái:** chờ quyết định.
+
+## Đã chốt (19/09/2026, xem `PRD-v2.1-HR.md`)
+
+- **Vai trò Nhân sự (HR):**
+  - Được: xem toàn công ty, quản lý nhân viên, enroll/xóa khuôn mặt, xem snapshot, xuất bảng công.
+  - Không được: cấu hình hệ thống, thiết bị, phòng ban/quản lý, ngày lễ, định nghĩa ca.
+- **Ma trận phân quyền:** lưu trong DB, chỉ ADMIN chỉnh trên web (phương án B). Các quyền lõi khóa cứng cho ADMIN.
+- **Tuyến duyệt:** nhân viên → quản lý; quản lý → HR; HR → ADMIN.
+- **Đơn bổ sung công hai bước:** duyệt, sau đó HR chấm tay; đơn của HR do ADMIN chấm tay. Chỉ ADMIN chấm tay trực tiếp.
+- **Đăng ký ca tuần:**
+  - Quản lý đăng ký trước 00:00 thứ Hai.
+  - Sau khi đăng ký, chỉ HR sửa được, bắt buộc có lý do và có tin nhóm Zalo.
+  - Bản nháp không được tính công.
+- **Nhóm cố định theo mẫu tuần:** hai mẫu T2–T6 + T7 nửa ngày và T2–T7 cả ngày.
+  - Nhân viên xoay ca mà tuần chưa đăng ký: trạng thái "Chưa có lịch", không báo vắng, báo HR.
+  - Quyết định này thay quyết định cũ "chấm theo ca mặc định".
+- **OT ngày không có ca:** tính theo đơn tăng ca đã duyệt.
+- **Minh bạch:** thao tác duyệt/sửa của HR và ADMIN được gửi vào nhóm Zalo OA. Không gửi lần quét chấm công, cũng như thao tác ngang quyền nhân viên.

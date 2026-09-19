@@ -37,27 +37,68 @@ Mật khẩu mặc định của tất cả tài khoản là `123456`, và hệ 
 | NV005 | Hoàng Thu Hà | MANAGER | Kho vận | 0901000005 |
 | NV006 | Vũ Đức Hải | MANAGER | Chăm sóc khách hàng | 0901000006 |
 | NV007–NV009 | … | EMPLOYEE (ca cố định) | | 0901000007–09 |
-| NV010–NV015 | … | EMPLOYEE (xoay ca, có lịch tuần này + tuần sau) | | 0901000010–15 |
+| NV010–NV015 | … | EMPLOYEE (xoay ca, tuần này + tuần sau đã đăng ký) | | 0901000010–15 |
+| NV016 | Lê Thị Nhân Sự | HR | Hành chính | 0901000016 |
 
-Seed còn tạo 3 ca (Hành chính 08:00–17:00, Sáng sớm 07:00–17:00, Ca đêm 22:00–06:00), 2 ngày lễ, 3 đơn mẫu (mỗi trạng thái một đơn), log chấm công MANUAL cho 5 ngày làm việc gần nhất, và 1 kiosk mẫu kèm mã ghép in ra console. Seed **không** tạo khuôn mặt: khuôn mặt phải được enroll thật.
+Seed còn tạo 4 ca (Hành chính 08:00–17:00, Sáng sớm 07:00–17:00, Ca đêm 22:00–06:00, Sáng thứ Bảy 08:00–12:00), 3 mẫu tuần (HC T2–T6 + T7 sáng, HC T2–T7, Sáng sớm T2–T7), ma trận phân quyền mặc định, 2 ngày lễ, 3 đơn mẫu (mỗi trạng thái một đơn), log chấm công MANUAL cho 5 ngày làm việc gần nhất, và 1 kiosk mẫu kèm mã ghép in ra console. Seed **không** tạo khuôn mặt: khuôn mặt phải được enroll thật.
 
 ## Phân hệ
 
-| Đường dẫn | Vai trò | Nội dung |
+| Đường dẫn | Quyền cần có | Nội dung |
 | --- | --- | --- |
 | `/login` | Tất cả | Đăng nhập, đổi mật khẩu lần đầu. Khóa 15 phút sau 5 lần sai |
-| `/admin` | ADMIN, MANAGER | Dashboard hôm nay, tự làm mới mỗi 60 giây |
-| `/admin/roster` | ADMIN, MANAGER | Bảng xếp ca tuần: chọn nhiều ô, sao chép tuần trước |
-| `/admin/requests` | ADMIN, MANAGER | Duyệt / từ chối đơn |
-| `/admin/attendance` | ADMIN, MANAGER | Log theo ngày, snapshot, cờ bất thường, sửa công thủ công (ADMIN), quét đáng ngờ (ADMIN) |
-| `/admin/reports` | ADMIN, MANAGER | Bảng công tổng hợp, xuất Excel |
-| `/admin/employees` | ADMIN | Nhân viên, enroll khuôn mặt, trạng thái Zalo |
-| `/admin/devices` | ADMIN | Ghép / thu hồi kiosk |
-| `/admin/settings` | ADMIN | Ca, ngày lễ, phòng ban, ngưỡng, thời hạn lưu ảnh |
-| `/me`, `/me/requests`, `/me/attendance`, `/me/zalo` | Mọi người đăng nhập | Lịch tuần, đơn của tôi, lịch sử công, liên kết Zalo |
+| `/admin` | `dashboard.view` | Dashboard hôm nay, cảnh báo phòng chưa đăng ký ca, danh sách "Chưa có lịch" |
+| `/admin/roster` | `roster.view` / `roster.edit` | Xếp ca tuần nhóm xoay ca, đăng ký tuần, lịch sử thay đổi |
+| `/admin/requests` | `requests.decide` | Duyệt đơn; tab "Chờ chấm tay" (`attendance.executeCorrection`) |
+| `/admin/attendance` | `attendance.view` | Log theo ngày, snapshot, chấm tay trực tiếp (`attendance.manualDirect`, chỉ ADMIN) |
+| `/admin/reports` | `reports.view` | Bảng công tổng hợp, xuất Excel |
+| `/admin/employees` | `employees.view` / `employees.manage` | Nhân viên, loại lịch + mẫu tuần, enroll khuôn mặt (`faces.enroll`) |
+| `/admin/devices` | 🔒 ADMIN | Ghép / thu hồi kiosk |
+| `/admin/settings` | 🔒 ADMIN / `org.manage` | Ca, mẫu tuần, ngày lễ, phòng ban, ngưỡng, ID nhóm Zalo |
+| `/admin/settings/permissions` | 🔒 ADMIN | Ma trận phân quyền |
+| `/me`, `/me/requests`, `/me/attendance`, `/me/zalo` | Mọi người đăng nhập | Lịch tuần, đơn của tôi (nghỉ, về sớm, tăng ca, bổ sung công), lịch sử công, liên kết Zalo |
 | `/kiosk`, `/kiosk/pair`, `/kiosk/benchmark` | Thiết bị đã ghép | Chấm công, ghép thiết bị, đo hiệu năng |
 
-MANAGER chỉ thấy và thao tác trên các phòng mình quản lý (`Department.managerId`). Mọi API đều kiểm tra lại quyền ở server.
+### Vai trò và ma trận phân quyền
+
+Có 4 vai trò: **Quản trị (ADMIN)**, **Nhân sự (HR)**, **Quản lý (MANAGER)**, **Nhân viên (EMPLOYEE)**.
+
+Quyền của từng vai trò lưu trong bảng `RolePermission`. ADMIN bật/tắt ở **Cấu hình → Phân quyền**; mỗi lần lưu phải nhập lý do, hệ thống ghi AuditLog và gửi tin vào nhóm Zalo. Danh mục quyền và ma trận mặc định nằm trong `src/lib/permissions.ts`.
+
+Các luật khóa cứng trong code (ma trận không đổi được):
+- ADMIN luôn có mọi quyền.
+- Cấu hình hệ thống, thiết bị, phân quyền và gán vai trò HR/ADMIN chỉ thuộc ADMIN.
+- Không ai tự duyệt đơn của mình, tự chấm tay đơn của mình hay tự đổi vai trò của mình. HR không sửa được tài khoản HR/ADMIN.
+- **Phạm vi dữ liệu:** ADMIN/HR thấy toàn công ty, MANAGER chỉ thấy phòng mình quản lý (`Department.managerId`), nhân viên chỉ thấy dữ liệu của mình. Mọi API đều kiểm tra lại ở server.
+
+### Tuyến duyệt đơn
+
+| Người tạo đơn | Người duyệt |
+| --- | --- |
+| Nhân viên | Quản lý phòng; không có quản lý thì HR; không có HR thì ADMIN |
+| Quản lý | HR (không có HR thì ADMIN) |
+| HR | ADMIN |
+| ADMIN | ADMIN khác, không có thì HR |
+
+**Đơn bổ sung công** (quên chấm vào/ra, trong vòng 3 ngày) đi qua hai bước:
+1. **Duyệt** theo tuyến trên. HR luôn nhận thông báo khi đơn được tạo.
+2. **Chấm tay** do HR thực hiện; đơn của chính HR thì ADMIN thực hiện.
+   - Có thể chỉnh giờ tối đa 60 phút trong cùng ngày công, nhưng phải kèm ghi chú.
+   - Log MANUAL tạo ra có `sourceRequestId`.
+   - Đơn chưa chấm tay không ảnh hưởng tính công.
+
+Chỉ ADMIN chấm tay trực tiếp được (không qua đơn), dùng cho trường hợp khẩn cấp.
+
+### Nhóm cố định, xoay ca và đăng ký ca tuần
+
+- **Ca cố định (`scheduleType = FIXED`):** chấm công theo **mẫu tuần** (ca của từng thứ; để trống là ngày nghỉ). Không cần xếp ca hằng tuần. Mẫu tuần do ADMIN quản lý ở Cấu hình.
+- **Xoay ca (`ROTATING`):** phải có lịch tuần **đã đăng ký**. Bản nháp không bao giờ được tính công.
+  - Tuần chưa đăng ký thì trạng thái là **"Chưa có lịch"**: không báo vắng, mọi lần quét vẫn được lưu, và HR nhận thông báo.
+  - Khi tuần được đăng ký, công các ngày đã qua tự tính lại.
+- **Quản lý** chỉ xếp và đăng ký tuần **chưa bắt đầu** (trước 00:00 thứ Hai) của phòng mình.
+- **Sau khi đăng ký**, hoặc khi tuần đã bắt đầu, chỉ HR/ADMIN sửa được. Sửa tuần đã đăng ký bắt buộc có lý do; hệ thống ghi AuditLog, gửi tin vào nhóm Zalo, và xem lại được ở tab "Lịch sử thay đổi".
+- Ngày không có ca (mẫu nghỉ, Chủ nhật, ngày lễ) mà có đơn tăng ca đã duyệt thì OT = phần giao giữa đơn và thời gian có mặt.
+- **Hiệu lực theo ngày:** đổi mẫu tuần, loại lịch, phòng ban hay ca mặc định của nhân viên, hoặc sửa ca theo thứ của một mẫu tuần, chỉ áp dụng **từ hôm nay**. Công các ngày đã qua giữ nguyên (bảng `ScheduleAssignment`). Khi chuyển phòng, lịch tương lai do phòng cũ xếp sẽ bị hủy.
 
 ## Ghép kiosk
 
@@ -121,6 +162,19 @@ Thiếu **bất kỳ** biến `ZALO_*` nào thì hệ thống chạy ở **chế
 3. Cấu hình webhook `POST https://<máy-chủ>/api/zalo/webhook`, bật sự kiện `user_send_text`, và điền `ZALO_WEBHOOK_SECRET`. Chữ ký được kiểm tra theo `X-ZEvent-Signature`.
 4. Nhân viên vào `/me/zalo`, lấy mã 6 ký tự (hạn 15 phút) rồi nhắn mã đó cho OA để liên kết.
 
+### Nhóm Zalo minh bạch
+
+Mọi thao tác duyệt/sửa của HR và ADMIN được gửi vào một nhóm Zalo do OA quản lý (nhóm GMF, cần OA gói Doanh nghiệp), gồm:
+- duyệt/từ chối đơn, chấm tay theo đơn;
+- nhân viên (thêm, sửa, cho nghỉ, đặt lại mật khẩu), khuôn mặt;
+- đăng ký và sửa ca tuần;
+- phân quyền, mẫu tuần;
+- báo cáo phòng chưa đăng ký ca.
+
+**Không** gửi các lần quét chấm công và thao tác ngang quyền nhân viên (HR tự làm đơn của mình).
+
+ADMIN nhập **ID nhóm** tại Cấu hình → Zalo. Ở chế độ mô phỏng, tin nhóm được in ra console và ghi `NotificationLog` (`toGroupId`). Khi chạy thật mà chưa nhập ID thì tin bị bỏ qua, kèm cảnh báo trong log server. **Cần xác minh** endpoint `/v3.0/oa/group/message` và payload theo tài liệu GMF trước khi chạy thật (`groupTransport` trong `src/lib/zalo-token.ts`).
+
 Nếu refresh token thất bại, dashboard ADMIN hiện cảnh báo đỏ. **Cần xác minh trước khi chạy thật:** chính sách tin tư vấn (chỉ gửi được trong một khoảng thời gian sau khi người dùng tương tác), tin giao dịch và ZNS có phí. Phần gửi tin được tách thành `transport` trong `src/lib/zalo-token.ts`, nên có thể đổi loại tin mà không phải sửa nghiệp vụ.
 
 ## Job nền
@@ -134,7 +188,9 @@ curl -X POST -H "x-cron-secret: $CRON_SECRET" https://<máy-chủ>/api/cron/abse
 | Job | Lịch | Việc |
 | --- | --- | --- |
 | `absence-check` | 5 phút | `ABSENT_WARNING` cho từng người vắng + `ABSENT_DIGEST` cho quản lý (chỉ xét ca bắt đầu trong 6 giờ gần nhất) |
-| `missing-checkout` | 30 phút | Gắn cờ “thiếu giờ ra” (AuditLog) |
+| `missing-checkout` | 30 phút | Gắn cờ “thiếu giờ ra” (AuditLog) + nhắc nhân viên làm đơn bổ sung công |
+| `roster-reminder` | Thứ Sáu 15:00 | Nhắc quản lý các phòng có nhân viên xoay ca chưa đăng ký ca tuần sau |
+| `roster-report` | Thứ Hai 07:00 | Báo HR và nhóm Zalo các phòng chưa đăng ký ca tuần này |
 | `zalo-token-refresh` | 6 giờ | Refresh token chủ động |
 | `snapshot-cleanup` | 02:00 | Xóa snapshot quá hạn, mã ghép/mã liên kết hết hạn, template của người đã nghỉ việc |
 | `db-backup` | 03:00 | `VACUUM INTO data/backups/`, giữ 14 bản |
@@ -144,7 +200,7 @@ Mọi job đều idempotent: chạy lại không sinh tin trùng, nhờ ràng bu
 ## Kiểm thử
 
 ```bash
-npm test          # unit (logic chấm công) + tích hợp (API, phân quyền, kiosk, Zalo, Excel) trên data/test.db
+npm test          # unit (logic chấm công) + tích hợp (API, phân quyền, bổ sung công, đăng ký ca, kiosk, Zalo, Excel) trên data/test.db
 npm run test:tz   # chạy unit test dưới TZ=UTC và TZ=Asia/Ho_Chi_Minh
 npm run lint && npm run typecheck && npm run build
 ```

@@ -174,10 +174,11 @@ export function resolveDayPlan(args: {
     const shift = shiftsById.get(schedule.shiftId) ?? null;
     return { workDate: date, shift, isDayOff: shift == null, isHoliday, source: "SCHEDULE" };
   }
+  // Ngày lễ ưu tiên hơn "chưa có lịch": ngày lễ là ngày nghỉ bất kể tuần đã đăng ký hay chưa.
+  if (isHoliday) return { workDate: date, shift: null, isDayOff: true, isHoliday, source: "DEFAULT" };
   if ((args.scheduleType ?? "FIXED") === "ROTATING" && !args.weekRegistered) {
     return { workDate: date, shift: null, isDayOff: false, isHoliday, source: "SCHEDULE", unscheduled: true };
   }
-  if (isHoliday) return { workDate: date, shift: null, isDayOff: true, isHoliday, source: "DEFAULT" };
   if ((args.scheduleType ?? "FIXED") === "FIXED" && args.pattern) {
     const id = args.pattern[weekday(date) as 1 | 2 | 3 | 4 | 5 | 6 | 7] ?? null;
     const shift = id != null ? (shiftsById.get(id) ?? null) : null;

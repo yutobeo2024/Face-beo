@@ -43,7 +43,7 @@ type Form = {
   scheduleType: "FIXED" | "ROTATING";
   workPatternId: string;
 };
-type Pattern = { id: number; name: string };
+type Pattern = { id: number; name: string; monShiftId: number | null };
 
 const ROLE: Record<string, string> = { ADMIN: "Quản trị", HR: "Nhân sự", MANAGER: "Quản lý", EMPLOYEE: "Nhân viên" };
 const PRIVILEGED = ["ADMIN", "HR"];
@@ -76,7 +76,7 @@ export default function EmployeesPage() {
   const patterns = useApi<{ patterns: Pattern[] }>("/api/work-patterns");
 
   function openCreate() {
-    setForm({ code: "", name: "", phone: "", role: "EMPLOYEE", departmentId: String(depts.data?.departments[0]?.id ?? ""), defaultShiftId: String(shifts.data?.shifts[0]?.id ?? ""), active: true, scheduleType: "FIXED", workPatternId: String(patterns.data?.patterns[0]?.id ?? "") });
+    setForm({ code: "", name: "", phone: "", role: "EMPLOYEE", departmentId: String(depts.data?.departments[0]?.id ?? ""), defaultShiftId: String(shifts.data?.shifts[0]?.id ?? ""), active: true, scheduleType: "FIXED", workPatternId: String(patterns.data?.patterns.find((p) => p.monShiftId === shifts.data?.shifts[0]?.id)?.id ?? "") });
   }
 
   async function save() {

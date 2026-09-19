@@ -1,6 +1,8 @@
 import bcrypt from "bcryptjs";
 import { randomInt } from "node:crypto";
 import { prisma } from "@/lib/db";
+import { todayVN } from "@/lib/attendance";
+import { applyScheduleChangeFromToday, ensureBaseline } from "@/lib/schedule-assignments";
 import { badRequest, forbidden, handle, idParam, json, notFound, parseJson } from "@/lib/api";
 import { canViewEmployee, requireUser } from "@/lib/auth";
 import { employeeUpdateSchema } from "@/lib/validators";
@@ -76,7 +78,21 @@ export const PATCH = handle<{ id: string }>(async (req, ctx) => {
   if (fields.role && fields.role !== "MANAGER" && e.role === "MANAGER") {
     await prisma.department.updateMany({ where: { managerId: id }, data: { managerId: null } });
   }
+  await ensureBaseline([id]);
   await prisma.employee.update({ where: { id }, data });
+  // Đổi cấu hình lịch: chỉ có hiệu lực từ hôm nay (công đã qua giữ nguyên).
+  const deptChanged = fields.departmentId !== undefined && fields.departmentId !== e.departmentId;
+  const scheduleChanged =
+    deptChanged ||
+    (fields.scheduleType !== undefined && fields.scheduleType !== e.scheduleType) ||
+    (fields.defaultShiftId !== undefined && fields.defaultShiftId !== e.defaultShiftId) ||
+    ("workPatternId" in data && (data.workPatternId ?? null) !== e.workPatternId);
+  if (deptChanged) {
+    // Lịch tương lai do phòng cũ xếp (có thể chỉ là nháp) không được "ăn theo" trạng thái đăng ký của phòng mới.
+    const dropped = await prisma.workSchedule.deleteMany({ where: { employeeId: id, date: { gt: todayVN() } } });
+    if (dropped.count) await audit({ actorId: u.id, action: "ROSTER_CHANGE", entity: "Employee", entityId: id, detail: { reason: "department-change", droppedFutureCells: dropped.count } });
+  }
+  if (scheduleChanged) await applyScheduleChangeFromToday([id]);
   // Nghỉ việc: xóa dữ liệu khuôn mặt (PRD mục 9).
   if (fields.active === false) {
     const del = await prisma.faceTemplate.deleteMany({ where: { employeeId: id } });

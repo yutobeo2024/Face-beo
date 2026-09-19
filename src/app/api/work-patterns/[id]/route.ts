@@ -1,4 +1,7 @@
 import { prisma } from "@/lib/db";
+import { applyScheduleChangeFromToday, ensureBaseline } from "@/lib/schedule-assignments";
+
+const DAY_KEYS = ["monShiftId", "tueShiftId", "wedShiftId", "thuShiftId", "friShiftId", "satShiftId", "sunShiftId"] as const;
 import { badRequest, handle, idParam, json, notFound, parseJson } from "@/lib/api";
 import { requirePerm } from "@/lib/permissions";
 import { assertShiftsExist, patternSchema } from "@/lib/work-patterns";
@@ -14,9 +17,16 @@ export const PATCH = handle<{ id: string }>(async (req, ctx) => {
   if (!before) throw notFound();
   await assertShiftsExist(body);
   if (body.name && body.name !== before.name && (await prisma.workPattern.findUnique({ where: { name: body.name } }))) throw badRequest("Tên mẫu tuần đã tồn tại");
+  const users = await prisma.employee.findMany({ where: { workPatternId: id }, select: { id: true } });
+  await ensureBaseline(users.map((x) => x.id));
   const after = await prisma.workPattern.update({ where: { id }, data: body });
+  // Đổi ca theo thứ: áp dụng từ hôm nay cho người đang dùng mẫu (công đã qua giữ nguyên).
+  const dayChanged = DAY_KEYS.some((k) => body[k] !== undefined && body[k] !== before[k]);
+  if (dayChanged) {
+    await applyScheduleChangeFromToday(users.map((x) => x.id));
+  }
   await audit({ actorId: u.id, action: "PATTERN_UPDATE", entity: "WorkPattern", entityId: id, detail: { before, after } });
-  await announce(u, `đã sửa mẫu tuần làm việc "${after.name}"`, { key: onceKey("pattern-update", id), detail: `Áp dụng cho ${before._count.employees} nhân viên` });
+  await announce(u, `đã sửa mẫu tuần làm việc "${after.name}"`, { key: onceKey("pattern-update", id), detail: `Áp dụng cho ${before._count.employees} nhân viên${dayChanged ? ", có hiệu lực từ hôm nay" : ""}` });
   return json({ pattern: after });
 });
 

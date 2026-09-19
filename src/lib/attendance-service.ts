@@ -44,12 +44,13 @@ export function patternOf(p: { monShiftId: number | null; tueShiftId: number | n
 export async function buildPlanner(employeeIds: number[], from: string, to: string, db: Db = prisma) {
   const lo = addDays(from, -1);
   const hi = addDays(to, 1);
-  const [shifts, emps, schedules, holidays, weeks] = await Promise.all([
+  const [shifts, emps, assignments, schedules, holidays, weeks] = await Promise.all([
     loadShifts(db),
     db.employee.findMany({
       where: { id: { in: employeeIds } },
       select: { id: true, defaultShiftId: true, departmentId: true, scheduleType: true, workPattern: true },
     }),
+    db.scheduleAssignment.findMany({ where: { employeeId: { in: employeeIds }, effectiveFrom: { lte: hi } }, orderBy: { effectiveFrom: "asc" } }),
     db.workSchedule.findMany({ where: { employeeId: { in: employeeIds }, date: { gte: lo, lte: hi } } }),
     db.holiday.findMany({ where: { date: { gte: lo, lte: hi } } }),
     db.rosterWeek.findMany({ where: { status: "REGISTERED", weekStart: { gte: startOfWeek(lo), lte: startOfWeek(hi) } }, select: { departmentId: true, weekStart: true } }),
@@ -59,6 +60,20 @@ export async function buildPlanner(employeeIds: number[], from: string, to: stri
   const sched = new Map(schedules.map((s) => [`${s.employeeId}|${s.date}`, s]));
   const registered = new Set(weeks.map((w) => `${w.departmentId}|${w.weekStart}`));
   const isRegistered = (departmentId: number, date: string) => registered.has(`${departmentId}|${startOfWeek(date)}`);
+  const asgByEmp = new Map<number, typeof assignments>();
+  for (const a of assignments) asgByEmp.set(a.employeeId, [...(asgByEmp.get(a.employeeId) ?? []), a]);
+  /** Cấu hình lịch có hiệu lực vào ngày `date`: bản ghi mới nhất có effectiveFrom <= date (trước bản ghi đầu tiên thì dùng bản đầu). */
+  const configAt = (employeeId: number, date: string) => {
+    const list = asgByEmp.get(employeeId);
+    if (list?.length) {
+      let cur = list[0];
+      for (const a of list) if (a.effectiveFrom <= date) cur = a;
+      return { scheduleType: cur.scheduleType, departmentId: cur.departmentId, defaultShiftId: cur.defaultShiftId, pattern: cur.workPatternId ? patternOf(cur) : null };
+    }
+    const e = empById.get(employeeId);
+    if (!e) return null;
+    return { scheduleType: e.scheduleType, departmentId: e.departmentId, defaultShiftId: e.defaultShiftId, pattern: patternOf(e.workPattern ?? null) };
+  };
   return {
     shifts,
     holidays: holidaySet,
@@ -67,16 +82,16 @@ export async function buildPlanner(employeeIds: number[], from: string, to: stri
     /** Lịch nháp/đã đăng ký thô (để hiển thị bảng xếp ca), không dùng để tính công. */
     rawSchedule: (employeeId: number, date: string) => sched.get(`${employeeId}|${date}`) ?? null,
     planFor(employeeId: number, date: string): DayPlan {
-      const e = empById.get(employeeId);
-      const reg = e ? isRegistered(e.departmentId, date) : false;
+      const c = configAt(employeeId, date);
+      const reg = c ? isRegistered(c.departmentId, date) : false;
       return resolveDayPlan({
         date,
         schedule: reg ? (sched.get(`${employeeId}|${date}`) ?? null) : null,
-        defaultShift: e ? (shifts.get(e.defaultShiftId) ?? null) : null,
+        defaultShift: c ? (shifts.get(c.defaultShiftId) ?? null) : null,
         shiftsById: shifts,
         holidays: holidaySet,
-        scheduleType: (e?.scheduleType as ScheduleType) ?? "FIXED",
-        pattern: patternOf(e?.workPattern ?? null),
+        scheduleType: (c?.scheduleType as ScheduleType) ?? "FIXED",
+        pattern: c?.pattern ?? null,
         weekRegistered: reg,
       });
     },

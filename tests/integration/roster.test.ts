@@ -74,6 +74,19 @@ describe("đăng ký & khóa ca tuần", () => {
     expect((await register(await sessionCookie(mgrHC.id), today, [mgrHC.departmentId])).status).toBe(403);
   });
 
+  it("Quản trị cấp roster.editRegistered cho Quản lý: vẫn chỉ trong phạm vi phòng mình", async () => {
+    const { getMatrix, saveMatrix } = await import("@/lib/permissions");
+    const before = await getMatrix();
+    const next = { HR: [...before.HR], MANAGER: [...before.MANAGER, "roster.editRegistered"], EMPLOYEE: [...before.EMPLOYEE] };
+    await saveMatrix(next as never);
+    try {
+      const week = addDays(thisMonday(), 14);
+      expect((await put(MKD, [cell(rotKho, week, hc.id)], "Thử vượt phạm vi")).status).toBe(403);
+    } finally {
+      await saveMatrix({ HR: [...before.HR], MANAGER: [...before.MANAGER], EMPLOYEE: [...before.EMPLOYEE] } as never);
+    }
+  });
+
   it("GET roster trả trạng thái tuần + quyền theo phòng; mặc định chỉ nhóm xoay ca", async () => {
     const r = await (await rosterRoute.GET(req(`/api/roster?week=${thisMonday()}`, { cookie: MKHO }), ctx())).json();
     expect(r.employees.every((e: { scheduleType: string }) => e.scheduleType === "ROTATING")).toBe(true);

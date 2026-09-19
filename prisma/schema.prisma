@@ -234,3 +234,26 @@ model RosterWeek {
   @@unique([departmentId, weekStart])
   @@index([weekStart])
 }
+
+// Lịch sử phân công lịch làm việc (có hiệu lực từ ngày). Tính công ngày D dùng bản ghi mới nhất có effectiveFrom <= D,
+// nên đổi mẫu tuần / loại lịch / phòng ban chỉ ảnh hưởng từ ngày đổi trở đi — công đã qua giữ nguyên.
+// Cột ca theo thứ là bản chụp của mẫu tuần tại thời điểm đó (sửa mẫu tuần tạo bản ghi mới cho người đang dùng mẫu).
+model ScheduleAssignment {
+  id             Int      @id @default(autoincrement())
+  employeeId     Int
+  effectiveFrom  String // "YYYY-MM-DD"
+  scheduleType   String
+  departmentId   Int
+  defaultShiftId Int
+  workPatternId  Int?
+  monShiftId     Int?
+  tueShiftId     Int?
+  wedShiftId     Int?
+  thuShiftId     Int?
+  friShiftId     Int?
+  satShiftId     Int?
+  sunShiftId     Int?
+  createdAt      DateTime @default(now())
+
+  @@unique([employeeId, effectiveFrom])
+}

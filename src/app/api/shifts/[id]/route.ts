@@ -21,12 +21,16 @@ export const PATCH = handle<{ id: string }>(async (req, ctx) => {
 export const DELETE = handle<{ id: string }>(async (req, ctx) => {
   const u = await requirePerm(req, "org.manage");
   const id = await idParam(ctx);
-  const [emps, scheds, logs] = await Promise.all([
+  // Mẫu tuần và lịch sử phân công không có khóa ngoại tới Shift => phải tự kiểm tra, nếu không ngày làm sẽ âm thầm thành ngày nghỉ.
+  const dayRefs = ["monShiftId", "tueShiftId", "wedShiftId", "thuShiftId", "friShiftId", "satShiftId", "sunShiftId"].map((k) => ({ [k]: id }));
+  const [emps, scheds, logs, patterns, assignments] = await Promise.all([
     prisma.employee.count({ where: { defaultShiftId: id } }),
     prisma.workSchedule.count({ where: { shiftId: id } }),
     prisma.attendanceLog.count({ where: { shiftId: id } }),
+    prisma.workPattern.count({ where: { OR: dayRefs } }),
+    prisma.scheduleAssignment.count({ where: { OR: [{ defaultShiftId: id }, ...dayRefs] } }),
   ]);
-  if (emps + scheds + logs > 0) throw badRequest("Ca đang được dùng (nhân viên, lịch hoặc log chấm công), không thể xóa");
+  if (emps + scheds + logs + patterns + assignments > 0) throw badRequest("Ca đang được dùng (nhân viên, mẫu tuần, lịch hoặc log chấm công), không thể xóa");
   await prisma.shift.delete({ where: { id } });
   await audit({ actorId: u.id, action: "SHIFT_UPDATE", entity: "Shift", entityId: id, detail: { deleted: true } });
   return json({ ok: true });

@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
+import { BASELINE_DATE, snapshotAssignment } from "@/lib/schedule-assignments";
 import { badRequest, handle, json, parseJson, parseQuery } from "@/lib/api";
 import { employeeScopeWhere } from "@/lib/auth";
 import { employeeCreateSchema, optId } from "@/lib/validators";
@@ -72,6 +73,9 @@ export const POST = handle(async (req) => {
   await assertCanCreate(u, body);
   const dup = await prisma.employee.findFirst({ where: { OR: [{ code: body.code.toUpperCase() }, { phone: body.phone }] } });
   if (dup) throw badRequest(dup.phone === body.phone ? "Số điện thoại đã tồn tại" : "Mã nhân viên đã tồn tại");
+  if (!(await prisma.shift.findUnique({ where: { id: body.defaultShiftId } }))) throw badRequest("Ca mặc định không tồn tại");
+  if (!(await prisma.department.findUnique({ where: { id: body.departmentId } }))) throw badRequest("Phòng ban không tồn tại");
+  if (body.workPatternId && !(await prisma.workPattern.findUnique({ where: { id: body.workPatternId } }))) throw badRequest("Mẫu tuần không tồn tại");
   const e = await prisma.employee.create({
     data: {
       code: body.code.toUpperCase(),
@@ -86,6 +90,7 @@ export const POST = handle(async (req) => {
       mustChangePassword: true,
     },
   });
+  await snapshotAssignment(e.id, BASELINE_DATE);
   await audit({ actorId: u.id, action: "EMPLOYEE_CREATE", entity: "Employee", entityId: e.id, detail: { code: e.code, role: e.role } });
   await announce(u, `đã tạo nhân viên ${e.code} — ${e.name}`, { key: `emp-create:${e.id}`, detail: `Vai trò: ${ROLE_LABEL[e.role as Role] ?? e.role}` });
   return json({ employee: { id: e.id, code: e.code } }, { status: 201 });

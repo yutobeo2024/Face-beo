@@ -13,7 +13,10 @@ export const GET = handle(async (req) => {
   const monday = startOfWeek(week);
   const scope = deptScope(u);
   const rows = await prisma.auditLog.findMany({
-    where: { action: { in: ["ROSTER_REGISTER", "ROSTER_CHANGE"] }, entity: "RosterWeek", entityId: { endsWith: `|${monday}` } },
+    where: { action: { in: ["ROSTER_REGISTER", "ROSTER_CHANGE"] }, entity: "RosterWeek",
+      // Lọc phạm vi ngay trong truy vấn (không cắt 200 dòng rồi mới lọc).
+      entityId: scope === null ? { endsWith: `|${monday}` } : { in: scope.map((d) => `${d}|${monday}`) },
+    },
     orderBy: { createdAt: "desc" },
     take: 200,
   });
@@ -27,7 +30,6 @@ export const GET = handle(async (req) => {
       .map((r) => {
         const deptId = Number((r.entityId ?? "").split("|")[0]);
         return { id: r.id, action: r.action, at: r.createdAt, deptId, department: depts.get(deptId) ?? "", actor: actors.get(r.actorId ?? 0) ?? null, detail: r.detail ? JSON.parse(r.detail) : null };
-      })
-      .filter((x) => scope === null || scope.includes(x.deptId)),
+      }),
   });
 });

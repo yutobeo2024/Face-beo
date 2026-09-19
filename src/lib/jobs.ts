@@ -14,6 +14,7 @@ import { dataDir, snapshotDir } from "./storage";
 import { FACE_MODEL_VERSION } from "./roles";
 import { invalidateFaceCache } from "./face-matcher";
 import { announceSystem } from "./announce";
+import { can } from "./permissions";
 import { startOfWeek } from "./attendance";
 
 export const JOBS = ["absence-check", "missing-checkout", "zalo-token-refresh", "snapshot-cleanup", "db-backup", "roster-reminder", "roster-report"] as const;
@@ -197,7 +198,7 @@ async function unregisteredDepartments(week: string) {
   if (!rot.length) return [];
   const reg = await prisma.rosterWeek.findMany({ where: { weekStart: week, status: "REGISTERED" }, select: { departmentId: true } });
   const done = new Set(reg.map((r) => r.departmentId));
-  const depts = await prisma.department.findMany({ where: { id: { in: rot.map((r) => r.departmentId) } }, select: { id: true, name: true, managerId: true } });
+  const depts = await prisma.department.findMany({ where: { id: { in: rot.map((r) => r.departmentId) } }, select: { id: true, name: true, manager: { select: { id: true, role: true, active: true } } } });
   return depts.filter((d) => !done.has(d.id)).map((d) => ({ ...d, rotatingCount: rot.find((r) => r.departmentId === d.id)!._count }));
 }
 
@@ -207,7 +208,9 @@ export async function rosterReminder(now = new Date()) {
   const pending = await unregisteredDepartments(week);
   let sent = 0;
   for (const d of pending) {
-    const to = d.managerId ? [d.managerId] : await approversFor(-1);
+    // Quản lý phải còn làm việc và còn quyền xếp ca; nếu không, nhắc người duyệt dự phòng (HR/Quản trị).
+    const m = d.manager;
+    const to = m && m.active && (await can(m, "roster.edit")) ? [m.id] : await approversFor(-1);
     for (const id of to) {
       const r = await sendZaloMessage({
         toEmployeeId: id,

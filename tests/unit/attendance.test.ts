@@ -267,6 +267,13 @@ describe("mẫu tuần làm việc & nhóm xoay ca (v1.1)", () => {
     expect(decideAbsence({ plan: p, hasIn: false, enrolled: true, requests: [], now: at(MON, "09:00"), absentAfterMinutes: 30 })).toEqual({ action: "SKIP", reason: "NO_SCHEDULE" });
   });
 
+  it("xoay ca, tuần chưa đăng ký nhưng là NGÀY LỄ: nghỉ lễ, không phải 'Chưa có lịch'", () => {
+    const p = resolveDayPlan({ date: MON, schedule: null, defaultShift: HC, shiftsById: byId, holidays: new Set([MON]), scheduleType: "ROTATING", weekRegistered: false });
+    expect(p.unscheduled).toBeFalsy();
+    expect(p.isDayOff).toBe(true);
+    expect(p.isHoliday).toBe(true);
+  });
+
   it("xoay ca, tuần ĐÃ đăng ký: dùng lịch; ô trống dùng ca mặc định như bảng xếp ca hiển thị", () => {
     const base = { defaultShift: HC, shiftsById: byId, holidays: new Set<string>(), scheduleType: "ROTATING" as const, weekRegistered: true };
     expect(resolveDayPlan({ ...base, date: MON, schedule: { shiftId: DEM.id, isDayOff: false } }).shift?.id).toBe(DEM.id);

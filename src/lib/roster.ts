@@ -16,6 +16,7 @@ import { addDays, startOfWeek, todayVN, weekDates } from "./attendance";
 import { audit } from "./audit";
 import { announce } from "./announce";
 import { fmtDate } from "./notify";
+import { withLock } from "./mutex";
 
 export type Cell = { employeeId: number; date: string; shiftId: number | null; isDayOff: boolean; clear?: boolean };
 
@@ -35,14 +36,15 @@ export const weekStarted = (weekStart: string, today = todayVN()) => weekStart <
 
 /** Người dùng có được sửa lịch của (phòng, tuần) này không, và có cần lý do không. */
 export async function editRule(u: AuthUser, departmentId: number, weekStart: string, registered: boolean) {
-  const privileged = await can(u, "roster.editRegistered");
-  if (privileged) return { allowed: true, needReason: registered, reason: null as string | null };
-  if (!(await can(u, "roster.edit"))) return { allowed: false, needReason: false, reason: "Không có quyền xếp ca" };
+  // Phạm vi phòng ban kiểm tra TRƯỚC: kể cả khi Quản trị cấp roster.editRegistered cho vai trò Quản lý.
   try {
     assertDept(u, departmentId);
   } catch {
-    return { allowed: false, needReason: false, reason: "Phòng ban ngoài phạm vi quản lý" };
+    return { allowed: false, needReason: false, reason: "Phòng ban ngoài phạm vi quản lý" as string | null };
   }
+  const privileged = await can(u, "roster.editRegistered");
+  if (privileged) return { allowed: true, needReason: registered, reason: null as string | null };
+  if (!(await can(u, "roster.edit"))) return { allowed: false, needReason: false, reason: "Không có quyền xếp ca" };
   if (registered) return { allowed: false, needReason: false, reason: "Tuần đã đăng ký — chỉ Nhân sự sửa được" };
   if (weekStarted(weekStart)) return { allowed: false, needReason: false, reason: "Tuần đã bắt đầu — quá hạn đăng ký, liên hệ Nhân sự" };
   return { allowed: true, needReason: false, reason: null };
@@ -51,7 +53,14 @@ export async function editRule(u: AuthUser, departmentId: number, weekStart: str
 type SchedRow = { shiftId: number | null; isDayOff: boolean } | null;
 const describe = (s: SchedRow, shiftName: (id: number) => string) => (!s ? "mặc định" : s.isDayOff || s.shiftId == null ? "Nghỉ" : shiftName(s.shiftId));
 
-export async function applyCells(u: AuthUser, cells: Cell[], reason?: string | null) {
+/** Mọi thao tác ghi lịch / đăng ký tuần chạy tuần tự để trạng thái tuần không đổi giữa lúc kiểm tra và lúc ghi. */
+const ROSTER_LOCK = "roster-write";
+
+export function applyCells(u: AuthUser, cells: Cell[], reason?: string | null) {
+  return withLock(ROSTER_LOCK, () => applyCellsLocked(u, cells, reason));
+}
+
+async function applyCellsLocked(u: AuthUser, cells: Cell[], reason?: string | null) {
   const ids = [...new Set(cells.map((c) => c.employeeId))];
   const emps = await prisma.employee.findMany({ where: { id: { in: ids } }, select: { id: true, code: true, name: true, departmentId: true } });
   const empById = new Map(emps.map((e) => [e.id, e]));
@@ -63,6 +72,7 @@ export async function applyCells(u: AuthUser, cells: Cell[], reason?: string | n
   // Kiểm tra toàn bộ trước khi ghi (tất cả hoặc không gì cả).
   const plan: { c: Cell; e: (typeof emps)[number]; registered: boolean }[] = [];
   for (const c of cells) {
+    if (!c.clear && !c.isDayOff && c.shiftId != null && !shifts.has(c.shiftId)) throw badRequest(`Ca #${c.shiftId} không tồn tại`);
     const e = empById.get(c.employeeId);
     if (!e) throw forbidden("Nhân viên không tồn tại");
     const registered = statuses.get(weekKey(e.departmentId, startOfWeek(c.date)))?.status === "REGISTERED";
@@ -77,19 +87,29 @@ export async function applyCells(u: AuthUser, cells: Cell[], reason?: string | n
   const today = todayVN();
   const changes: { employeeId: number; code: string; name: string; date: string; before: string; after: string; weekKey: string }[] = [];
   const recompute = new Set<string>();
-  for (const { c, e, registered } of plan) {
-    const before = await prisma.workSchedule.findUnique({ where: { employeeId_date: { employeeId: c.employeeId, date: c.date } } });
-    let after: SchedRow = null;
-    if (c.clear) {
-      await prisma.workSchedule.deleteMany({ where: { employeeId: c.employeeId, date: c.date } });
-    } else {
-      after = { shiftId: c.isDayOff ? null : c.shiftId, isDayOff: c.isDayOff || c.shiftId == null };
-      await prisma.workSchedule.upsert({
-        where: { employeeId_date: { employeeId: c.employeeId, date: c.date } },
-        create: { employeeId: c.employeeId, date: c.date, ...after },
-        update: after,
-      });
-    }
+  const existing = await prisma.workSchedule.findMany({
+    where: { OR: plan.map(({ c }) => ({ employeeId: c.employeeId, date: c.date })) },
+  });
+  const beforeOf = new Map(existing.map((x) => [`${x.employeeId}|${x.date}`, x]));
+  const writes: { c: Cell; e: (typeof emps)[number]; registered: boolean; before: SchedRow; after: SchedRow }[] = plan.map(({ c, e, registered }) => ({
+    c,
+    e,
+    registered,
+    before: beforeOf.get(`${c.employeeId}|${c.date}`) ?? null,
+    after: c.clear ? null : { shiftId: c.isDayOff ? null : c.shiftId, isDayOff: c.isDayOff || c.shiftId == null },
+  }));
+  await prisma.$transaction(
+    writes.map(({ c, after }) =>
+      after
+        ? prisma.workSchedule.upsert({
+            where: { employeeId_date: { employeeId: c.employeeId, date: c.date } },
+            create: { employeeId: c.employeeId, date: c.date, ...after },
+            update: after,
+          })
+        : prisma.workSchedule.deleteMany({ where: { employeeId: c.employeeId, date: c.date } }),
+    ),
+  );
+  for (const { c, e, registered, before, after } of writes) {
     if (registered) {
       const b = describe(before, shiftName);
       const a = describe(after, shiftName);
@@ -114,7 +134,11 @@ export async function applyCells(u: AuthUser, cells: Cell[], reason?: string | n
 }
 
 /** Đăng ký (khóa) ca tuần cho các phòng ban. Đăng ký muộn (tuần đã bắt đầu) chỉ Nhân sự/Quản trị, và tính lại công. */
-export async function registerWeeks(u: AuthUser, departmentIds: number[], weekInput: string) {
+export function registerWeeks(u: AuthUser, departmentIds: number[], weekInput: string) {
+  return withLock(ROSTER_LOCK, () => registerWeeksLocked(u, departmentIds, weekInput));
+}
+
+async function registerWeeksLocked(u: AuthUser, departmentIds: number[], weekInput: string) {
   const week = startOfWeek(weekInput);
   const privileged = await can(u, "roster.editRegistered");
   const depts = await prisma.department.findMany({ where: { id: { in: departmentIds } }, select: { id: true, name: true } });
@@ -136,9 +160,19 @@ export async function registerWeeks(u: AuthUser, departmentIds: number[], weekIn
     registered.push(d.name);
     // Đăng ký muộn: lịch vừa có hiệu lực cho các ngày đã qua => gán lại ca cho log cũ.
     if (weekStarted(week)) {
-      const emps = await prisma.employee.findMany({ where: { departmentId: d.id, active: true }, select: { id: true } });
+      // Chỉ những ngày có log mới cần gán lại ca (không log => không có gì để tính lại).
       const today = todayVN();
-      for (const e of emps) for (const date of weekDates(week)) if (date <= today) await recomputeDay(e.id, date);
+      const days = await prisma.attendanceLog.findMany({
+        where: { employee: { departmentId: d.id }, workDate: { gte: addDays(week, -1), lte: addDays(week, 7) } },
+        select: { employeeId: true, workDate: true },
+        distinct: ["employeeId", "workDate"],
+      });
+      const todo = new Set<string>();
+      for (const x of days) for (const date of weekDates(week)) if (date <= today && Math.abs(Date.parse(date) - Date.parse(x.workDate)) <= 86_400_000) todo.add(`${x.employeeId}|${date}`);
+      for (const k of todo) {
+        const [id, date] = k.split("|");
+        await recomputeDay(Number(id), date);
+      }
     }
   }
   if (registered.length) {
