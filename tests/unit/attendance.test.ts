@@ -9,6 +9,8 @@ import {
   shouldSendLateReminder,
   summarizeDay,
   vnDateTime,
+  workMinutes,
+  breakFitsShift,
   type DayPlan,
   type RequestLite,
   type ShiftDef,
@@ -289,5 +291,68 @@ describe("mẫu tuần làm việc & nhóm xoay ca (v1.1)", () => {
     expect(s.otMinutes).toBe(240);
     expect(s.relatedRequestIds).toContain(61);
     expect(summarizeDay({ plan: off, logs: logsAt(SUN2, "07:55", "12:40"), requests: [], now: at(SUN2, "20:00") }).otMinutes).toBe(0);
+  });
+});
+
+describe("giờ công theo giờ nghỉ thực tế (D1) & ngày công theo hệ số (v1.2)", () => {
+  const HCB: ShiftDef = { ...HC, breakStart: "12:00" };
+  const DEMB: ShiftDef = { ...DEM, breakStart: "02:00" };
+  const T7S: ShiftDef = { id: 4, name: "Sáng thứ Bảy", startTime: "08:00", endTime: "12:00", breakMinutes: 0, graceLateMinutes: 5, graceEarlyMinutes: 0, workDayValue: 0.5 };
+  const sum = (p: DayPlan, times: string[], reqs: RequestLite[] = [], date = MON) =>
+    summarizeDay({ plan: p, logs: logsAt(date, ...times), requests: reqs, now: at(date, "23:00") });
+
+  it("có giờ bắt đầu nghỉ: chỉ trừ phần nghỉ giao với khoảng có mặt", () => {
+    expect(workMinutes(HCB, at(MON, "08:00"), at(MON, "17:00"), MON)).toBe(480);
+    expect(workMinutes(HCB, at(MON, "13:00"), at(MON, "17:00"), MON)).toBe(240);
+    expect(workMinutes(HCB, at(MON, "08:00"), at(MON, "12:00"), MON)).toBe(240);
+    expect(workMinutes(HCB, at(MON, "11:30"), at(MON, "12:30"), MON)).toBe(30);
+    expect(workMinutes(HCB, at(MON, "07:30"), at(MON, "18:00"), MON)).toBe(480); // kẹp trong ca
+  });
+
+  it("không khai giờ bắt đầu nghỉ: giữ cách cũ (trừ đủ)", () => {
+    expect(workMinutes(HC, at(MON, "13:00"), at(MON, "17:00"), MON)).toBe(180);
+  });
+
+  it("ca qua đêm: giờ nghỉ 02:00 thuộc ngày hôm sau", () => {
+    expect(workMinutes(DEMB, at(MON, "22:00"), at("2026-09-22", "06:00"), MON)).toBe(420);
+    expect(workMinutes(DEMB, at(MON, "22:00"), at("2026-09-22", "01:30"), MON)).toBe(210);
+    expect(breakFitsShift(DEMB)).toBe(true);
+    expect(breakFitsShift({ ...HC, breakStart: "16:30" })).toBe(false);
+  });
+
+  it("đi làm đủ ngày = 1 công; ca T7 sáng hệ số 0.5 = 0.5 công", () => {
+    expect(sum(plan(MON, HCB), ["07:55", "17:05"])).toMatchObject({ workDayUnits: 1, leaveDayUnits: 0 });
+    expect(sum(plan(MON, T7S), ["07:55", "12:05"])).toMatchObject({ workDayUnits: 0.5, leaveDayUnits: 0 });
+  });
+
+  it("hệ số riêng của phòng (plan.workDayValue) ghi đè hệ số chung của ca", () => {
+    expect(sum(plan(MON, T7S, { workDayValue: 1 }), ["07:55", "12:05"]).workDayUnits).toBe(1);
+  });
+
+  it("làm sáng + nghỉ phép chiều đã duyệt = 0.5 công + 0.5 phép", () => {
+    const leave = req(90, "NGHI_PHEP", at(MON, "13:00"), at(MON, "17:00"));
+    expect(sum(plan(MON, HCB), ["07:55", "12:01"], [leave])).toMatchObject({ workDayUnits: 0.5, leaveDayUnits: 0.5 });
+  });
+
+  it("nghỉ phép sáng đã duyệt, chiều đi làm = 0.5 công + 0.5 phép", () => {
+    const leave = req(91, "NGHI_PHEP", at(MON, "08:00"), at(MON, "12:00"));
+    expect(sum(plan(MON, HCB), ["12:58", "17:02"], [leave])).toMatchObject({ workDayUnits: 0.5, leaveDayUnits: 0.5 });
+  });
+
+  it("nghỉ phép 1 giờ / đơn chờ duyệt / đơn về sớm: vẫn 1 công", () => {
+    expect(sum(plan(MON, HCB), ["09:00", "17:02"], [req(92, "NGHI_PHEP", at(MON, "08:00"), at(MON, "09:00"))]).workDayUnits).toBe(1);
+    expect(sum(plan(MON, HCB), ["07:55", "12:01"], [req(93, "NGHI_PHEP", at(MON, "13:00"), at(MON, "17:00"), "PENDING")]).workDayUnits).toBe(1);
+    expect(sum(plan(MON, HCB), ["07:55", "12:01"], [req(94, "VE_SOM", at(MON, "12:00"), at(MON, "17:00"))]).workDayUnits).toBe(1);
+  });
+
+  it("nghỉ phép cả ca = 1 phép (theo hệ số); vắng = 0", () => {
+    const leave = req(95, "NGHI_PHEP", at(MON, "08:00"), at(MON, "17:00"));
+    expect(sum(plan(MON, HCB), [], [leave])).toMatchObject({ status: "ON_LEAVE", workDayUnits: 0, leaveDayUnits: 1 });
+    expect(sum(plan(MON, T7S), [], [req(96, "NGHI_PHEP", at(MON, "08:00"), at(MON, "12:00"))])).toMatchObject({ leaveDayUnits: 0.5 });
+    expect(sum(plan(MON, HCB), [])).toMatchObject({ status: "ABSENT", workDayUnits: 0, leaveDayUnits: 0 });
+  });
+
+  it("làm ngày nghỉ (không có ca) = 0 công", () => {
+    expect(sum(plan(SUN, null), ["08:00", "12:00"], [], SUN)).toMatchObject({ workDayUnits: 0, leaveDayUnits: 0 });
   });
 });

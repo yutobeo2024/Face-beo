@@ -43,6 +43,12 @@ export const employeeUpdateSchema = employeeCreateSchema
     unlinkZalo: z.boolean().optional(),
   });
 
+const workDayValue = z.coerce
+  .number()
+  .min(0)
+  .max(3)
+  .refine((v) => Number.isInteger(v * 4), "Hệ số công phải là bội số của 0.25");
+
 export const shiftSchema = z.object({
   name: z.string().trim().min(2).max(50),
   startTime: timeStr,
@@ -50,6 +56,13 @@ export const shiftSchema = z.object({
   breakMinutes: z.coerce.number().int().min(0).max(240),
   graceLateMinutes: z.coerce.number().int().min(0).max(60),
   graceEarlyMinutes: z.coerce.number().int().min(0).max(60),
+  breakStart: timeStr.nullable().optional(),
+  workDayValue: workDayValue.optional(),
+});
+
+/** Hệ số công của ca: 0–3, bước 0.25 (vd. 0.5 = nửa công). */
+export const shiftWeightsSchema = z.object({
+  weights: z.array(z.object({ departmentId: idNum, shiftId: idNum, workDayValue: workDayValue.nullable() })).min(1).max(500),
 });
 
 export const holidaySchema = z.object({ date: dateStr, name: z.string().trim().min(2).max(100) });

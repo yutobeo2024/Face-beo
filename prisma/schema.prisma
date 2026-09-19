@@ -55,6 +55,8 @@ model Shift {
   breakMinutes      Int             @default(60)
   graceLateMinutes  Int             @default(5)
   graceEarlyMinutes Int             @default(0)
+  breakStart        String?         // "HH:mm" giờ bắt đầu nghỉ; null => trừ đủ breakMinutes (cách cũ)
+  workDayValue      Float           @default(1) // hệ số công chung của ca (vd. ca sáng T7 = 0.5)
   employees         Employee[]
   schedules         WorkSchedule[]
   logs              AttendanceLog[]
@@ -256,4 +258,13 @@ model ScheduleAssignment {
   createdAt      DateTime @default(now())
 
   @@unique([employeeId, effectiveFrom])
+}
+
+// Hệ số công riêng của phòng ban cho một ca (ghi đè Shift.workDayValue). Do Quản trị cấu hình.
+model DepartmentShiftWeight {
+  departmentId Int
+  shiftId      Int
+  workDayValue Float
+
+  @@id([departmentId, shiftId])
 }

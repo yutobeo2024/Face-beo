@@ -18,6 +18,8 @@ type Day = {
   earlyMinutes: number;
   workMinutes: number;
   otMinutes: number;
+  workDayUnits: number;
+  leaveDayUnits: number;
   missingOut: boolean;
   holidayWork: boolean;
 };
@@ -119,6 +121,8 @@ export default function MyAttendancePage() {
                           {d.isLate && <Badge tone="late">Trễ {d.lateMinutes}p</Badge>}
                           {d.isEarly && <Badge tone="late">Sớm {d.earlyMinutes}p</Badge>}
                           {d.otMinutes > 0 && <Badge tone="brand">OT {fmtMinutes(d.otMinutes)}</Badge>}
+                          {d.workDayUnits > 0 && d.workDayUnits !== 1 && <Badge tone="ontime">{d.workDayUnits} công</Badge>}
+                          {d.leaveDayUnits > 0 && d.leaveDayUnits !== 1 && <Badge tone="leave">{d.leaveDayUnits} phép</Badge>}
                           {d.missingOut && <Badge tone="absent">Thiếu giờ ra</Badge>}
                           {d.holidayWork && <Badge tone="violet">Làm ngày lễ</Badge>}
                         </div>

@@ -6,6 +6,8 @@ import { summarizeRange } from "@/lib/attendance-service";
 import { TZ, todayVN } from "@/lib/attendance";
 import { toDayRow } from "@/lib/day-rows";
 
+const r2 = (n: number) => Math.round(n * 100) / 100;
+
 /** Lịch sử công theo tháng của chính nhân viên. */
 export const GET = handle(async (req) => {
   const u = await requireUser(req);
@@ -17,14 +19,14 @@ export const GET = handle(async (req) => {
   const { summaries } = await summarizeRange([u.id], from, to);
   const days = [...summaries.values()].map(toDayRow);
   const totals = {
-    workDays: days.filter((d) => d.status === "ON_TIME" || d.status === "LATE").length,
+    workDays: r2(days.reduce((s, d) => s + d.workDayUnits, 0)),
     lateCount: days.filter((d) => d.isLate).length,
     lateMinutes: days.reduce((s, d) => s + d.lateMinutes, 0),
     earlyCount: days.filter((d) => d.isEarly).length,
     earlyMinutes: days.reduce((s, d) => s + d.earlyMinutes, 0),
     otMinutes: days.reduce((s, d) => s + d.otMinutes, 0),
     workMinutes: days.reduce((s, d) => s + d.workMinutes, 0),
-    leaveDays: days.filter((d) => d.status === "ON_LEAVE").length,
+    leaveDays: r2(days.reduce((s, d) => s + d.leaveDayUnits, 0)),
     absentDays: days.filter((d) => d.status === "ABSENT").length,
     missingOut: days.filter((d) => d.missingOut).length,
   };

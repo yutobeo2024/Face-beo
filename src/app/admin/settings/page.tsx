@@ -8,7 +8,18 @@ import { useToast } from "@/components/toast";
 import { useCan } from "../admin-nav";
 
 type Settings = { matchThreshold: number; matchMargin: number; livenessThreshold: number; livenessServerThreshold: number; absentAfterMinutes: number; snapshotRetentionDays: number; otRoundMinutes: number };
-type Shift = { id: number; name: string; startTime: string; endTime: string; breakMinutes: number; graceLateMinutes: number; graceEarlyMinutes: number };
+type Shift = {
+  id: number;
+  name: string;
+  startTime: string;
+  endTime: string;
+  breakMinutes: number;
+  graceLateMinutes: number;
+  graceEarlyMinutes: number;
+  breakStart: string | null;
+  workDayValue: number;
+};
+type Weight = { departmentId: number; shiftId: number; workDayValue: number };
 type Holiday = { date: string; name: string };
 const DAY_KEYS = ["monShiftId", "tueShiftId", "wedShiftId", "thuShiftId", "friShiftId", "satShiftId", "sunShiftId"] as const;
 const DAY_LABEL = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
@@ -39,6 +50,8 @@ export default function SettingsPage() {
   const [form, setForm] = useState<Settings | null>(null);
   const [groupId, setGroupId] = useState("");
   const [shiftForm, setShiftForm] = useState<(Omit<Shift, "id"> & { id?: number }) | null>(null);
+  const weights = useApi<{ weights: Weight[] }>(org ? "/api/shift-weights" : null);
+  const [weightForm, setWeightForm] = useState<{ departmentId: string; shiftId: string; value: string } | null>(null);
   const [holiday, setHoliday] = useState<Holiday>({ date: "", name: "" });
   const [newDept, setNewDept] = useState("");
   const [busy, setBusy] = useState(false);
@@ -119,7 +132,7 @@ export default function SettingsPage() {
           <CardHeader
             title="Ca làm việc"
             actions={
-              <Button size="sm" variant="secondary" icon="plus" onClick={() => setShiftForm({ name: "", startTime: "08:00", endTime: "17:00", breakMinutes: 60, graceLateMinutes: 5, graceEarlyMinutes: 0 })}>
+              <Button size="sm" variant="secondary" icon="plus" onClick={() => setShiftForm({ name: "", startTime: "08:00", endTime: "17:00", breakMinutes: 60, graceLateMinutes: 5, graceEarlyMinutes: 0, breakStart: "12:00", workDayValue: 1 })}>
                 Thêm ca
               </Button>
             }
@@ -133,13 +146,65 @@ export default function SettingsPage() {
                     {sh.endTime <= sh.startTime && <Badge tone="violet" className="ml-2">qua đêm</Badge>}
                   </p>
                   <p className="text-xs text-slate-500">
-                    Nghỉ {sh.breakMinutes}p · ân hạn trễ {sh.graceLateMinutes}p · ân hạn sớm {sh.graceEarlyMinutes}p
+                    Nghỉ {sh.breakMinutes}p{sh.breakStart ? ` từ ${sh.breakStart}` : ""} · ân hạn trễ {sh.graceLateMinutes}p · ân hạn sớm {sh.graceEarlyMinutes}p ·{" "}
+                    <span className="font-semibold text-slate-700">{sh.workDayValue} công</span>
                   </p>
                 </div>
                 <IconButton icon="edit" label="Sửa ca" onClick={() => setShiftForm(sh)} />
               </li>
             ))}
           </ul>
+        </Card>
+
+        <Card>
+          <CardHeader
+            title="Hệ số công theo phòng"
+            actions={
+              <Button size="sm" variant="secondary" icon="plus" onClick={() => setWeightForm({ departmentId: "", shiftId: "", value: "1" })}>
+                Thêm
+              </Button>
+            }
+          />
+          <p className="px-4 pt-3 text-xs text-slate-500 sm:px-5">
+            Ghi đè hệ số công chung của ca cho từng phòng (vd. Hành chính: Sáng thứ Bảy = 0.5). Phòng không đặt riêng dùng hệ số của ca. Thay đổi áp dụng cho các tháng
+            chưa chốt công.
+          </p>
+          {weights.data?.weights.length ? (
+            <ul className="divide-y divide-slate-100">
+              {weights.data.weights.map((w) => {
+                const sh = shifts.data?.shifts.find((x) => x.id === w.shiftId);
+                const d = depts.data?.departments.find((x) => x.id === w.departmentId);
+                return (
+                  <li key={`${w.departmentId}-${w.shiftId}`} className="flex items-center gap-3 px-4 py-3 sm:px-5">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-slate-800">{d?.name ?? `Phòng #${w.departmentId}`}</p>
+                      <p className="text-xs text-slate-500">
+                        {sh?.name ?? `Ca #${w.shiftId}`} · chung {sh?.workDayValue ?? 1} → <span className="font-semibold text-slate-700">{w.workDayValue} công</span>
+                      </p>
+                    </div>
+                    <IconButton
+                      icon="edit"
+                      label="Sửa hệ số"
+                      onClick={() => setWeightForm({ departmentId: String(w.departmentId), shiftId: String(w.shiftId), value: String(w.workDayValue) })}
+                    />
+                    <IconButton
+                      icon="trash"
+                      label="Xóa hệ số riêng"
+                      onClick={() =>
+                        run(
+                          () => api("/api/shift-weights", { method: "PUT", body: { weights: [{ departmentId: w.departmentId, shiftId: w.shiftId, workDayValue: null }] } }),
+                          "Đã xóa hệ số riêng — dùng hệ số của ca",
+                          weights.reload,
+                        )
+                      }
+                    />
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <p className="px-4 py-3 text-sm text-slate-500 sm:px-5">Chưa có hệ số riêng — mọi phòng dùng hệ số chung của ca.</p>
+          )}
         </Card>
 
         <Card>
@@ -301,6 +366,62 @@ export default function SettingsPage() {
       </Modal>
 
       <Modal
+        open={!!weightForm}
+        onClose={() => setWeightForm(null)}
+        title="Hệ số công theo phòng"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setWeightForm(null)}>
+              Hủy
+            </Button>
+            <Button
+              loading={busy}
+              disabled={!weightForm?.departmentId || !weightForm?.shiftId || weightForm.value === ""}
+              onClick={() => {
+                if (!weightForm) return;
+                const body = { weights: [{ departmentId: Number(weightForm.departmentId), shiftId: Number(weightForm.shiftId), workDayValue: Number(weightForm.value) }] };
+                void run(() => api("/api/shift-weights", { method: "PUT", body }), "Đã lưu hệ số công", () => (setWeightForm(null), weights.reload()));
+              }}
+            >
+              Lưu
+            </Button>
+          </>
+        }
+      >
+        {weightForm && (
+          <div className="grid gap-3">
+            <Field label="Phòng ban">
+              {(id) => (
+                <Select id={id} value={weightForm.departmentId} onChange={(e) => setWeightForm({ ...weightForm, departmentId: e.target.value })}>
+                  <option value="">— Chọn phòng —</option>
+                  {depts.data?.departments.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.name}
+                    </option>
+                  ))}
+                </Select>
+              )}
+            </Field>
+            <Field label="Ca">
+              {(id) => (
+                <Select id={id} value={weightForm.shiftId} onChange={(e) => setWeightForm({ ...weightForm, shiftId: e.target.value })}>
+                  <option value="">— Chọn ca —</option>
+                  {shifts.data?.shifts.map((sh) => (
+                    <option key={sh.id} value={sh.id}>
+                      {sh.name} {sh.startTime}–{sh.endTime} (chung {sh.workDayValue})
+                    </option>
+                  ))}
+                </Select>
+              )}
+            </Field>
+            <Field label="Hệ số công của phòng" hint="Bội số 0.25, từ 0 đến 3">
+              {(id) => <input id={id} type="number" step="0.25" min="0" max="3" className="input" value={weightForm.value} onChange={(e) => setWeightForm({ ...weightForm, value: e.target.value })} />}
+            </Field>
+          </div>
+        )}
+      </Modal>
+
+      <Modal
         open={!!shiftForm}
         onClose={() => setShiftForm(null)}
         title={shiftForm?.id ? "Sửa ca" : "Thêm ca"}
@@ -333,6 +454,14 @@ export default function SettingsPage() {
             </Field>
             <Field label="Nghỉ giữa ca (phút)">
               {(id) => <input id={id} type="number" className="input" value={shiftForm.breakMinutes} onChange={(e) => setShiftForm({ ...shiftForm, breakMinutes: Number(e.target.value) })} />}
+            </Field>
+            <Field label="Giờ bắt đầu nghỉ" hint="Để trống: luôn trừ đủ giờ nghỉ">
+              {(id) => <input id={id} type="time" className="input" value={shiftForm.breakStart ?? ""} onChange={(e) => setShiftForm({ ...shiftForm, breakStart: e.target.value || null })} />}
+            </Field>
+            <Field label="Hệ số công" hint="1 = một công; 0.5 = nửa công">
+              {(id) => (
+                <input id={id} type="number" step="0.25" min="0" max="3" className="input" value={shiftForm.workDayValue} onChange={(e) => setShiftForm({ ...shiftForm, workDayValue: Number(e.target.value) })} />
+              )}
             </Field>
             <Field label="Ân hạn trễ (phút)">
               {(id) => <input id={id} type="number" className="input" value={shiftForm.graceLateMinutes} onChange={(e) => setShiftForm({ ...shiftForm, graceLateMinutes: Number(e.target.value) })} />}

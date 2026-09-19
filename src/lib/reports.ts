@@ -17,12 +17,17 @@ export const STATUS_LABEL: Record<DayStatus, string> = {
   NO_SCHEDULE: "Chưa có lịch",
 };
 
+/** Làm tròn 2 chữ số thập phân (tránh sai số cộng dồn 0.1 + 0.2). */
+const r2 = (n: number) => Math.round(n * 100) / 100;
+
 export type SummaryRow = {
   employeeId: number;
   code: string;
   name: string;
   department: string;
+  /** Tổng ngày công theo hệ số (có thể lẻ 0.5). */
   workDays: number;
+  workMinutes: number;
   lateCount: number;
   lateMinutes: number;
   earlyCount: number;
@@ -46,6 +51,8 @@ export type DetailRow = {
   lateMinutes: number;
   earlyMinutes: number;
   otMinutes: number;
+  workDayUnits: number;
+  workMinutes: number;
   status: string;
   note: string;
 };
@@ -76,6 +83,7 @@ export async function buildAttendanceReport(where: object, from: string, to: str
       name: e.name,
       department: e.department.name,
       workDays: 0,
+      workMinutes: 0,
       lateCount: 0,
       lateMinutes: 0,
       earlyCount: 0,
@@ -88,7 +96,8 @@ export async function buildAttendanceReport(where: object, from: string, to: str
     };
     for (const [k, s] of summaries) {
       if (!k.startsWith(`${e.id}|`)) continue;
-      if (s.status === "ON_TIME" || s.status === "LATE") row.workDays++;
+      row.workDays = r2(row.workDays + s.workDayUnits);
+      row.workMinutes += s.workMinutes;
       if (s.isLate) {
         row.lateCount++;
         row.lateMinutes += s.lateMinutes;
@@ -98,7 +107,7 @@ export async function buildAttendanceReport(where: object, from: string, to: str
         row.earlyMinutes += s.earlyMinutes;
       }
       row.otMinutes += s.otMinutes;
-      if (s.status === "ON_LEAVE") row.leaveDays++;
+      row.leaveDays = r2(row.leaveDays + s.leaveDayUnits);
       if (s.status === "ABSENT") row.absentDays++;
       if (s.missingOut) row.missingOutDays++;
 
@@ -124,6 +133,8 @@ export async function buildAttendanceReport(where: object, from: string, to: str
         lateMinutes: s.lateMinutes,
         earlyMinutes: s.earlyMinutes,
         otMinutes: s.otMinutes,
+        workDayUnits: s.workDayUnits,
+        workMinutes: s.workMinutes,
         status: STATUS_LABEL[s.status],
         note: notes.join("; "),
       });
@@ -141,6 +152,7 @@ export function reportToXlsx(r: { summary: SummaryRow[]; detail: DetailRow[] }):
       "Họ tên": x.name,
       "Phòng ban": x.department,
       "Ngày công": x.workDays,
+      "Giờ công": r2(x.workMinutes / 60),
       "Số lần trễ": x.lateCount,
       "Tổng phút trễ": x.lateMinutes,
       "Số lần về sớm": x.earlyCount,
@@ -152,7 +164,7 @@ export function reportToXlsx(r: { summary: SummaryRow[]; detail: DetailRow[] }):
       "Số lần bổ sung công": x.correctionCount,
     })),
   );
-  s1["!cols"] = [8, 24, 22, 10, 10, 13, 13, 16, 8, 14, 18, 18, 18].map((w) => ({ wch: w }));
+  s1["!cols"] = [8, 24, 22, 10, 9, 10, 13, 13, 16, 8, 14, 18, 18, 18].map((w) => ({ wch: w }));
   const s2 = XLSX.utils.json_to_sheet(
     r.detail.map((x) => ({
       "Mã NV": x.code,
@@ -165,11 +177,13 @@ export function reportToXlsx(r: { summary: SummaryRow[]; detail: DetailRow[] }):
       "Phút trễ": x.lateMinutes,
       "Phút sớm": x.earlyMinutes,
       "Phút OT": x.otMinutes,
+      "Công": x.workDayUnits,
+      "Giờ công": r2(x.workMinutes / 60),
       "Trạng thái": x.status,
       "Ghi chú": x.note,
     })),
   );
-  s2["!cols"] = [8, 24, 22, 11, 26, 8, 8, 9, 9, 9, 16, 50].map((w) => ({ wch: w }));
+  s2["!cols"] = [8, 24, 22, 11, 26, 8, 8, 9, 9, 9, 6, 9, 16, 50].map((w) => ({ wch: w }));
   XLSX.utils.book_append_sheet(wb, s1, "Tổng hợp");
   XLSX.utils.book_append_sheet(wb, s2, "Chi tiết");
   return XLSX.write(wb, { type: "buffer", bookType: "xlsx" }) as Buffer;

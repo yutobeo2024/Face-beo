@@ -28,6 +28,7 @@ async function wipe() {
     prisma.workSchedule.deleteMany(),
     prisma.rosterWeek.deleteMany(),
     prisma.scheduleAssignment.deleteMany(),
+    prisma.departmentShiftWeight.deleteMany(),
     prisma.faceTemplate.deleteMany(),
     prisma.zaloLinkCode.deleteMany(),
     prisma.kioskDevice.deleteMany(),
@@ -49,8 +50,8 @@ async function main() {
   const rand = rng(20260919);
 
   const [hc, sang, dem, satAm] = await Promise.all([
-    prisma.shift.create({ data: { name: "Hành chính", startTime: "08:00", endTime: "17:00", breakMinutes: 60, graceLateMinutes: 5 } }),
-    prisma.shift.create({ data: { name: "Sáng sớm", startTime: "07:00", endTime: "17:00", breakMinutes: 60, graceLateMinutes: 5 } }),
+    prisma.shift.create({ data: { name: "Hành chính", startTime: "08:00", endTime: "17:00", breakMinutes: 60, breakStart: "12:00", graceLateMinutes: 5 } }),
+    prisma.shift.create({ data: { name: "Sáng sớm", startTime: "07:00", endTime: "17:00", breakMinutes: 60, breakStart: "12:00", graceLateMinutes: 5 } }),
     prisma.shift.create({ data: { name: "Ca đêm", startTime: "22:00", endTime: "06:00", breakMinutes: 60, graceLateMinutes: 5 } }),
     prisma.shift.create({ data: { name: "Sáng thứ Bảy", startTime: "08:00", endTime: "12:00", breakMinutes: 0, graceLateMinutes: 5 } }),
   ]);

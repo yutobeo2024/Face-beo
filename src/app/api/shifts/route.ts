@@ -4,6 +4,7 @@ import { requireUser } from "@/lib/auth";
 import { shiftSchema } from "@/lib/validators";
 import { audit } from "@/lib/audit";
 import { requirePerm } from "@/lib/permissions";
+import { breakFitsShift } from "@/lib/attendance";
 
 export const GET = handle(async (req) => {
   await requireUser(req);
@@ -16,6 +17,7 @@ export const POST = handle(async (req) => {
   const body = await parseJson(req, shiftSchema);
   if (body.startTime === body.endTime) throw badRequest("Giờ bắt đầu và kết thúc không được trùng nhau");
   if (await prisma.shift.findUnique({ where: { name: body.name } })) throw badRequest("Tên ca đã tồn tại");
+  if (!breakFitsShift({ id: 0, ...body })) throw badRequest("Giờ nghỉ phải nằm trọn trong ca");
   const s = await prisma.shift.create({ data: body });
   await audit({ actorId: u.id, action: "SHIFT_UPDATE", entity: "Shift", entityId: s.id, detail: body });
   return json({ shift: s }, { status: 201 });

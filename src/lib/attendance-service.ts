@@ -44,7 +44,7 @@ export function patternOf(p: { monShiftId: number | null; tueShiftId: number | n
 export async function buildPlanner(employeeIds: number[], from: string, to: string, db: Db = prisma) {
   const lo = addDays(from, -1);
   const hi = addDays(to, 1);
-  const [shifts, emps, assignments, schedules, holidays, weeks] = await Promise.all([
+  const [shifts, emps, assignments, schedules, holidays, weeks, weights] = await Promise.all([
     loadShifts(db),
     db.employee.findMany({
       where: { id: { in: employeeIds } },
@@ -54,7 +54,9 @@ export async function buildPlanner(employeeIds: number[], from: string, to: stri
     db.workSchedule.findMany({ where: { employeeId: { in: employeeIds }, date: { gte: lo, lte: hi } } }),
     db.holiday.findMany({ where: { date: { gte: lo, lte: hi } } }),
     db.rosterWeek.findMany({ where: { status: "REGISTERED", weekStart: { gte: startOfWeek(lo), lte: startOfWeek(hi) } }, select: { departmentId: true, weekStart: true } }),
+    db.departmentShiftWeight.findMany(),
   ]);
+  const weightOf = new Map(weights.map((w) => [`${w.departmentId}|${w.shiftId}`, w.workDayValue]));
   const holidaySet = new Set(holidays.map((h) => h.date));
   const empById = new Map(emps.map((e) => [e.id, e]));
   const sched = new Map(schedules.map((s) => [`${s.employeeId}|${s.date}`, s]));
@@ -84,7 +86,7 @@ export async function buildPlanner(employeeIds: number[], from: string, to: stri
     planFor(employeeId: number, date: string): DayPlan {
       const c = configAt(employeeId, date);
       const reg = c ? isRegistered(c.departmentId, date) : false;
-      return resolveDayPlan({
+      const plan = resolveDayPlan({
         date,
         schedule: reg ? (sched.get(`${employeeId}|${date}`) ?? null) : null,
         defaultShift: c ? (shifts.get(c.defaultShiftId) ?? null) : null,
@@ -94,6 +96,9 @@ export async function buildPlanner(employeeIds: number[], from: string, to: stri
         pattern: c?.pattern ?? null,
         weekRegistered: reg,
       });
+      // Hệ số công: hệ số riêng của phòng (theo phòng có hiệu lực ngày đó) ghi đè hệ số chung của ca.
+      if (plan.shift) plan.workDayValue = (c && weightOf.get(`${c.departmentId}|${plan.shift.id}`)) ?? plan.shift.workDayValue ?? 1;
+      return plan;
     },
   };
 }

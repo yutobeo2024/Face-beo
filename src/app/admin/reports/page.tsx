@@ -32,7 +32,7 @@ export default function ReportsPage() {
   const params = qs({ from, to, departmentId: dept });
   const { data, error, loading, reload } = useApi<{ summary: Summary[] }>(valid ? `/api/reports/summary${params}` : null);
   const rows = data?.summary ?? [];
-  const sum = (k: keyof Summary) => rows.reduce((s, r) => s + (r[k] as number), 0);
+  const sum = (k: keyof Summary) => Math.round(rows.reduce((s, r) => s + (r[k] as number), 0) * 100) / 100;
 
   const presets = [
     { label: "Tháng này", from: monthStart(), to: todayStr() },

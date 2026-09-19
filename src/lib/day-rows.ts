@@ -34,6 +34,8 @@ export function toDayRow(s: DaySummary & { logs: AttendanceLog[]; plan: DayPlan 
     isEarly: s.isEarly,
     earlyMinutes: s.earlyMinutes,
     workMinutes: s.workMinutes,
+    workDayUnits: s.workDayUnits,
+    leaveDayUnits: s.leaveDayUnits,
     otMinutes: s.otMinutes,
     missingOut: s.missingOut,
     holidayWork: s.holidayWork,

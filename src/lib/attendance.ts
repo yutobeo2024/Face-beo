@@ -19,6 +19,10 @@ export type ShiftDef = {
   breakMinutes: number;
   graceLateMinutes: number;
   graceEarlyMinutes: number;
+  /** "HH:mm" giờ bắt đầu nghỉ; null/undefined => trừ đủ breakMinutes (cách cũ). */
+  breakStart?: string | null;
+  /** Hệ số công chung của ca (mặc định 1). */
+  workDayValue?: number;
 };
 
 export type ScheduleEntry = { shiftId: number | null; isDayOff: boolean };
@@ -31,6 +35,8 @@ export type DayPlan = {
   source: "SCHEDULE" | "DEFAULT" | "PATTERN";
   /** Nhân viên xoay ca, tuần chưa đăng ký lịch => "Chưa có lịch" (không tính trễ/sớm/vắng). */
   unscheduled?: boolean;
+  /** Hệ số công của ngày (đã áp hệ số riêng của phòng ban nếu có); không có => shift.workDayValue ?? 1. */
+  workDayValue?: number;
 };
 
 export type ScheduleType = "FIXED" | "ROTATING";
@@ -375,10 +381,78 @@ export function computeDayLogs(plan: DayPlan, logs: LogLite[], requests: Request
 
 // Theo PRD mục 4: luôn trừ đủ breakMinutes. Quyết định còn mở D1 (docs/OPEN-DECISIONS.md):
 // có thể đổi sang chỉ trừ phần giờ nghỉ giao với khoảng có mặt.
-export function workMinutes(shift: ShiftDef, inTime: Date, outTime: Date): number {
+/** Khung giờ nghỉ của ca trong ngày công (null nếu ca không khai giờ bắt đầu nghỉ). Ca qua đêm: giờ nghỉ trước giờ vào ca thuộc ngày hôm sau. */
+export function breakInterval(workDate: string, shift: ShiftDef): { start: Date; end: Date } | null {
+  if (!shift.breakStart || shift.breakMinutes <= 0) return null;
+  const day = isOvernight(shift) && shift.breakStart < shift.startTime ? addDays(workDate, 1) : workDate;
+  const start = vnDateTime(day, shift.breakStart);
+  return { start, end: new Date(start.getTime() + shift.breakMinutes * MIN) };
+}
+
+/**
+ * Giờ công (phút).
+ *  - Ca có giờ bắt đầu nghỉ: khoảng có mặt kẹp trong ca, chỉ trừ PHẦN giờ nghỉ giao với khoảng có mặt
+ *    (vào 13:00 ra 17:00 ca 08–17 nghỉ 12–13 => 240 phút).
+ *  - Không có: (OUT − IN) − breakMinutes, chặn trên bằng độ dài ca − breakMinutes (PRD mục 4, cách cũ).
+ */
+export function workMinutes(shift: ShiftDef, inTime: Date, outTime: Date, workDate?: string): number {
+  const br = workDate ? breakInterval(workDate, shift) : null;
+  if (workDate && br) {
+    const iv = shiftInterval(workDate, shift);
+    const p0 = Math.max(inTime.getTime(), iv.start.getTime());
+    const p1 = Math.min(outTime.getTime(), iv.end.getTime());
+    if (p1 <= p0) return 0;
+    const ms = p1 - p0 - overlap(p0, p1, br.start.getTime(), br.end.getTime());
+    return Math.max(0, Math.floor(ms / MIN));
+  }
   const raw = diffMinutes(outTime, inTime) - shift.breakMinutes;
   const cap = shiftLengthMinutes(shift) - shift.breakMinutes;
   return Math.max(0, Math.min(raw, cap));
+}
+
+/** Khung nghỉ phải nằm trọn trong ca. */
+export function breakFitsShift(shift: ShiftDef): boolean {
+  const br = breakInterval("2026-01-05", shift);
+  if (!br) return true;
+  const iv = shiftInterval("2026-01-05", shift);
+  return br.start >= iv.start && br.end <= iv.end;
+}
+
+/** Số phút làm việc thực của ca (độ dài ca trừ giờ nghỉ). */
+export function netShiftMinutes(shift: ShiftDef): number {
+  return Math.max(0, shiftLengthMinutes(shift) - shift.breakMinutes);
+}
+
+/** Số phút làm việc thực của ca được đơn NGHỈ PHÉP ĐÃ DUYỆT che (không tính phần rơi vào giờ nghỉ). */
+export function approvedLeaveMinutes(workDate: string, shift: ShiftDef, requests: RequestLite[]): number {
+  const iv = shiftInterval(workDate, shift);
+  const s = iv.start.getTime();
+  const e = iv.end.getTime();
+  const br = breakInterval(workDate, shift);
+  let ms = 0;
+  for (const b of mergeBlocks(approved(requests, "NGHI_PHEP"))) {
+    const a0 = Math.max(b.from, s);
+    const a1 = Math.min(b.to, e);
+    if (a1 <= a0) continue;
+    ms += a1 - a0 - (br ? overlap(a0, a1, br.start.getTime(), br.end.getTime()) : 0);
+  }
+  return Math.floor(ms / MIN);
+}
+
+/**
+ * Ngày công / ngày phép của một ca theo hệ số công:
+ *  - đi làm: 1 × hệ số; nếu đơn nghỉ phép đã duyệt che ≥ một nửa thời gian làm thực => 0.5 công + 0.5 phép (× hệ số).
+ *  - nghỉ phép cả ca: phép = hệ số. Đơn về sớm (VE_SOM) không trừ công.
+ */
+export function dayUnits(status: DayStatus, plan: DayPlan, requests: RequestLite[]): { work: number; leave: number } {
+  const shift = plan.shift;
+  if (!shift) return { work: 0, leave: 0 };
+  const value = plan.workDayValue ?? shift.workDayValue ?? 1;
+  if (status === "ON_LEAVE") return { work: 0, leave: value };
+  if (status !== "ON_TIME" && status !== "LATE") return { work: 0, leave: 0 };
+  const net = netShiftMinutes(shift);
+  if (net > 0 && approvedLeaveMinutes(plan.workDate, shift, requests) * 2 >= net) return { work: value / 2, leave: value / 2 };
+  return { work: value, leave: 0 };
 }
 
 function overlap(a0: number, a1: number, b0: number, b1: number): number {
@@ -448,6 +522,10 @@ export type DaySummary = {
   isEarly: boolean;
   earlyMinutes: number;
   workMinutes: number;
+  /** Ngày công của ngày (theo hệ số công; 0.5 nếu nửa ngày nghỉ phép đã duyệt). */
+  workDayUnits: number;
+  /** Ngày phép của ngày (theo hệ số công). */
+  leaveDayUnits: number;
   otMinutes: number;
   missingOut: boolean;
   holidayWork: boolean;
@@ -482,6 +560,8 @@ export function summarizeDay(args: {
     isEarly: false,
     earlyMinutes: 0,
     workMinutes: 0,
+    workDayUnits: 0,
+    leaveDayUnits: 0,
     otMinutes: 0,
     missingOut: false,
     holidayWork: plan.isHoliday && logs.length > 0,
@@ -533,6 +613,7 @@ export function summarizeDay(args: {
       base.status = "NOT_YET";
     }
     base.relatedRequestIds = [...related];
+    Object.assign(base, units(base.status, plan, requests));
     return base;
   }
 
@@ -548,7 +629,7 @@ export function summarizeDay(args: {
     base.isEarly = last.isEarly;
     base.earlyMinutes = last.isEarly ? last.earlyMinutes : 0;
     if (last.excusedByRequestId) related.add(last.excusedByRequestId);
-    base.workMinutes = workMinutes(shift, base.inTime!, base.outTime!);
+    base.workMinutes = workMinutes(shift, base.inTime!, base.outTime!, plan.workDate);
     const ot = otMinutes({
       workDate: plan.workDate,
       shift,
@@ -563,7 +644,13 @@ export function summarizeDay(args: {
     base.missingOut = true;
   }
   base.relatedRequestIds = [...related];
+  Object.assign(base, units(base.status, plan, requests));
   return base;
+}
+
+function units(status: DayStatus, plan: DayPlan, requests: RequestLite[]) {
+  const u = dayUnits(status, plan, requests);
+  return { workDayUnits: u.work, leaveDayUnits: u.leave };
 }
 
 // ---------------------------------------------------------------------------

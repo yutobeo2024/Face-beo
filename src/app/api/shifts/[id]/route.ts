@@ -3,6 +3,8 @@ import { badRequest, handle, idParam, json, notFound, parseJson } from "@/lib/ap
 import { shiftSchema } from "@/lib/validators";
 import { audit } from "@/lib/audit";
 import { requirePerm } from "@/lib/permissions";
+import { breakFitsShift } from "@/lib/attendance";
+import { announce, onceKey } from "@/lib/announce";
 
 export const PATCH = handle<{ id: string }>(async (req, ctx) => {
   const u = await requirePerm(req, "org.manage");
@@ -13,8 +15,15 @@ export const PATCH = handle<{ id: string }>(async (req, ctx) => {
   const start = body.startTime ?? s.startTime;
   const end = body.endTime ?? s.endTime;
   if (start === end) throw badRequest("Giờ bắt đầu và kết thúc không được trùng nhau");
+  if (!breakFitsShift({ ...s, ...body })) throw badRequest("Giờ nghỉ phải nằm trọn trong ca");
   const updated = await prisma.shift.update({ where: { id }, data: body });
   await audit({ actorId: u.id, action: "SHIFT_UPDATE", entity: "Shift", entityId: id, detail: { before: s, after: updated } });
+  if (body.workDayValue !== undefined && body.workDayValue !== s.workDayValue) {
+    await announce(u, `đã đổi hệ số công chung của ca "${updated.name}": ${s.workDayValue} → ${updated.workDayValue}`, {
+      key: onceKey("shift-weight", id),
+      detail: "Áp dụng cho các tháng chưa chốt công",
+    });
+  }
   return json({ shift: updated });
 });
 

@@ -40,6 +40,8 @@ type Row = {
   isLate: boolean;
   isEarly: boolean;
   otMinutes: number;
+  workDayUnits: number;
+  leaveDayUnits: number;
   workMinutes: number;
   missingOut: boolean;
   holidayWork: boolean;
@@ -69,6 +71,8 @@ function Flags({ r }: { r: Row }) {
       {r.hasManual && <Badge tone="neutral">Sửa tay</Badge>}
       {r.holidayWork && <Badge tone="violet">Làm ngày lễ</Badge>}
       {r.otMinutes > 0 && <Badge tone="brand">OT {fmtMinutes(r.otMinutes)}</Badge>}
+      {r.workDayUnits > 0 && r.workDayUnits !== 1 && <Badge tone="ontime">{r.workDayUnits} công</Badge>}
+      {r.leaveDayUnits > 0 && r.leaveDayUnits !== 1 && <Badge tone="leave">{r.leaveDayUnits} phép</Badge>}
       {r.pendingLeave && <Badge tone="leave">Đơn chờ duyệt</Badge>}
       {r.relatedRequestIds.length > 0 && <Badge tone="leave">Đơn #{r.relatedRequestIds.join(", #")}</Badge>}
       {!r.employee.enrolled && <Badge tone="neutral">Chưa enroll</Badge>}
