@@ -1,6 +1,5 @@
 import { handle, json, parseJson } from "@/lib/api";
-import { getSettings, getStringSetting, saveSettings, saveStringSetting, settingsSchema } from "@/lib/settings";
-import { z } from "zod";
+import { getSettings, getStringSetting, saveSettings, settingsSchema } from "@/lib/settings";
 import { audit } from "@/lib/audit";
 import { isZaloSimulated } from "@/lib/zalo-token";
 import { env } from "@/lib/env";
@@ -20,10 +19,10 @@ export const GET = handle(async (req) => {
 
 export const PUT = handle(async (req) => {
   const u = await requirePerm(req, "settings.system");
-  const { zaloGroupId, ...body } = await parseJson(req, settingsSchema.partial().extend({ zaloGroupId: z.string().trim().max(100).optional() }));
+  // ID nhóm Zalo KHÔNG đổi ở đây — chỉ qua POST /api/settings/zalo/groups (xác minh nhóm enabled trước khi lưu).
+  const body = await parseJson(req, settingsSchema.partial());
   const before = await getSettings();
   await saveSettings(body);
-  if (zaloGroupId !== undefined) await saveStringSetting("zaloGroupId", zaloGroupId);
-  await audit({ actorId: u.id, action: "SETTINGS_UPDATE", entity: "AppSetting", detail: { before, after: body, zaloGroupId } });
+  await audit({ actorId: u.id, action: "SETTINGS_UPDATE", entity: "AppSetting", detail: { before, after: body } });
   return json({ settings: await getSettings() });
 });

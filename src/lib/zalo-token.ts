@@ -8,7 +8,11 @@ const OA_INFO_URL = "https://openapi.zalo.me/v3.0/oa/getoa";
 const LOCK_KEY = "zaloRefreshLock";
 
 /** Đã thấy token trong DB (nạp lúc khởi động hoặc lần đầu dùng) — để công tắc mô phỏng không phụ thuộc token trong .env. */
-let dbTokenKnown = false;
+// Next.js có thể nạp module này nhiều bản (instrumentation, từng route) => lưu trên globalThis để mọi bản thấy cùng giá trị.
+const gz = globalThis as unknown as { __zaloDbTokenKnown?: boolean };
+const setDbTokenKnown = (v: boolean) => {
+  gz.__zaloDbTokenKnown = v;
+};
 
 /**
  * Mô phỏng khi thiếu App ID / Secret, hoặc chưa có token nào (cả .env lẫn DB).
@@ -16,14 +20,14 @@ let dbTokenKnown = false;
  */
 export function isZaloSimulated(): boolean {
   if (!process.env.ZALO_OA_APP_ID || !process.env.ZALO_OA_SECRET) return true;
-  return !process.env.ZALO_OA_REFRESH_TOKEN && !dbTokenKnown;
+  return !process.env.ZALO_OA_REFRESH_TOKEN && !gz.__zaloDbTokenKnown;
 }
 
 /** Gọi lúc khởi động: kiểm tra DB đã có token chưa (bật chế độ thật kể cả khi .env không còn token). */
 export async function primeZaloToken(): Promise<boolean> {
   const t = await prisma.zaloToken.findUnique({ where: { id: 1 } }).catch(() => null);
-  dbTokenKnown = !!t;
-  return dbTokenKnown;
+  setDbTokenKnown(!!t);
+  return !!t;
 }
 
 /** Lỗi API Zalo có mã; `retryable` = nên thử lại (quá tải, hạn mức tạm thời), ngược lại là lỗi cấu hình / dữ liệu. */
@@ -37,11 +41,14 @@ export class ZaloApiError extends Error {
   }
 }
 /** Mã lỗi tạm thời theo tài liệu OA API (quá nhiều request / hệ thống bận). */
-const RETRYABLE_CODES = new Set([-32, -210, -201, -500]);
+// Chỉ -32 (vượt giới hạn tần suất) là tạm thời; -201 (tham số không hợp lệ), -210 (vượt giới hạn tham số)… là lỗi yêu cầu — thử lại vô ích.
+const RETRYABLE_CODES = new Set([-32]);
 
 /** Đọc JSON trả về của OA API và ném lỗi có phân loại. */
 function checkZaloResponse(res: { ok: boolean; status: number }, j: { error?: number; message?: string }, what: string): void {
-  const code = typeof j.error === "number" ? j.error : 0;
+  // Phản hồi không có trường error dạng số (trang HTML của proxy, JSON hỏng…) => KHÔNG coi là thành công.
+  if (typeof j.error !== "number") throw new ZaloApiError(`Zalo ${what}: phản hồi không hợp lệ (HTTP ${res.status})`, res.status, true);
+  const code = j.error;
   if (code && INVALID_TOKEN_CODES.has(code)) throw new TokenInvalidError(j.message ?? "token không hợp lệ");
   if (code !== 0) throw new ZaloApiError(`Zalo ${what} lỗi ${code}: ${j.message ?? ""}`.trim(), code, RETRYABLE_CODES.has(code));
   if (!res.ok) throw new ZaloApiError(`Zalo ${what} HTTP ${res.status}`, res.status, res.status >= 500 || res.status === 429);
@@ -73,7 +80,7 @@ async function seedTokenFromEnv() {
     create: { id: 1, accessToken: at ?? "", refreshToken: rt, expiresAt: at ? new Date(Date.now() + 60 * 60_000) : new Date(0) },
     update: {},
   });
-  dbTokenKnown = true;
+  setDbTokenKnown(true);
   return row;
 }
 
@@ -108,7 +115,7 @@ export function refreshZaloToken(force = false): Promise<string> {
 async function doRefresh(force: boolean): Promise<string> {
   const current = (await prisma.zaloToken.findUnique({ where: { id: 1 } })) ?? (await seedTokenFromEnv());
   if (!current) throw new Error("Chưa có token Zalo trong DB");
-  dbTokenKnown = true;
+  setDbTokenKnown(true);
   if (!force && current.expiresAt.getTime() - Date.now() > 60 * 60_000) return current.accessToken;
 
   if (!(await acquireLock())) {
@@ -169,7 +176,7 @@ async function doRefresh(force: boolean): Promise<string> {
 export async function getAccessToken(): Promise<string> {
   const t = (await prisma.zaloToken.findUnique({ where: { id: 1 } })) ?? (await seedTokenFromEnv());
   if (!t) throw new Error("Chưa có token Zalo");
-  dbTokenKnown = true;
+  setDbTokenKnown(true);
   if (t.expiresAt.getTime() - Date.now() < 60 * 60_000) return refreshZaloToken();
   return t.accessToken;
 }

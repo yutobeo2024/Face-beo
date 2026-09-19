@@ -20,7 +20,8 @@ export const GET = handle(async (req) => {
           const info = await getGroupInfo(at, g.groupId);
           Object.assign(g, await prisma.zaloGroup.update({ where: { groupId: g.groupId }, data: { name: info.name, status: info.status, totalMember: info.totalMember } }));
         } catch (e) {
-          Object.assign(g, await prisma.zaloGroup.update({ where: { groupId: g.groupId }, data: { status: `lỗi: ${(e as Error).message.slice(0, 120)}` } }));
+          // Không ghi đè trạng thái đã lưu (lỗi có thể chỉ là tạm thời) — chỉ báo trong phản hồi.
+          Object.assign(g, { status: g.status ?? null, error: (e as Error).message.slice(0, 160) });
         }
       }
     } catch {

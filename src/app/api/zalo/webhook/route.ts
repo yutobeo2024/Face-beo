@@ -16,9 +16,11 @@ function verify(raw: string, timestamp: string, header: string | null): boolean 
   const appId = process.env.ZALO_OA_APP_ID ?? "";
   if (!secret) return process.env.NODE_ENV === "test" || !!process.env.VITEST; // chỉ cho phép không ký trong bộ test
   if (!header) return false;
-  const expected = "mac=" + createHash("sha256").update(appId + raw + timestamp + secret).digest("hex");
+  // Tài liệu ghi "mac = sha256(...)" — có nơi gửi kèm tiền tố "mac=", có nơi chỉ gửi chuỗi hex: chấp nhận cả hai.
+  const expected = createHash("sha256").update(appId + raw + timestamp + secret).digest("hex");
+  const got = header.trim().replace(/^mac\s*=\s*/i, "").toLowerCase();
   const a = Buffer.from(expected);
-  const b = Buffer.from(header.trim());
+  const b = Buffer.from(got);
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
@@ -50,6 +52,7 @@ export const POST = handle(async (req) => {
   // Nhóm GMF vừa được tạo trong OA Manager: lưu lại để Quản trị chọn nhóm nhận tin minh bạch ngay trên giao diện.
   if (body.event_name === "create_group" && body.group_id) {
     const groupId = String(body.group_id);
+    const isNew = !(await prisma.zaloGroup.findUnique({ where: { groupId }, select: { groupId: true } }));
     await prisma.zaloGroup.upsert({ where: { groupId }, create: { groupId, oaId: body.oa_id ? String(body.oa_id) : null, source: "WEBHOOK" }, update: {} });
     if (!isZaloSimulated()) {
       try {
@@ -59,7 +62,7 @@ export const POST = handle(async (req) => {
         console.warn("[zalo webhook] create_group: không lấy được thông tin nhóm:", (e as Error).message);
       }
     }
-    await audit({ action: "ZALO_GROUP_DISCOVERED", entity: "ZaloGroup", entityId: groupId, detail: { oaId: body.oa_id ?? null } });
+    if (isNew) await audit({ action: "ZALO_GROUP_DISCOVERED", entity: "ZaloGroup", entityId: groupId, detail: { oaId: body.oa_id ?? null } });
     return NextResponse.json({ ok: true, group: groupId });
   }
   if (body.event_name !== "user_send_text" || !body.sender?.id) return NextResponse.json({ ok: true, ignored: true });

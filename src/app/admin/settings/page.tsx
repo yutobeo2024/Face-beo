@@ -48,7 +48,6 @@ export default function SettingsPage() {
   const depts = useDepartments();
   const emps = useApi<{ employees: { id: number; code: string; name: string; departmentId: number }[] }>(org ? "/api/employees" : null);
   const [form, setForm] = useState<Settings | null>(null);
-  const [groupId, setGroupId] = useState("");
   const [shiftForm, setShiftForm] = useState<(Omit<Shift, "id"> & { id?: number }) | null>(null);
   const weights = useApi<{ weights: Weight[] }>(org ? "/api/shift-weights" : null);
   const [weightForm, setWeightForm] = useState<{ departmentId: string; shiftId: string; value: string } | null>(null);
@@ -59,7 +58,6 @@ export default function SettingsPage() {
   useEffect(() => {
     if (s.data) {
       setForm(s.data.settings);
-      setGroupId(s.data.zaloGroupId ?? "");
     }
   }, [s.data]);
 
@@ -104,7 +102,7 @@ export default function SettingsPage() {
             className="grid gap-3 p-4 sm:grid-cols-2 sm:p-5"
             onSubmit={(e) => {
               e.preventDefault();
-              void run(() => api("/api/settings", { method: "PUT", body: { ...form, zaloGroupId: groupId } }), "Đã lưu cấu hình", s.reload);
+              void run(() => api("/api/settings", { method: "PUT", body: form }), "Đã lưu cấu hình", s.reload);
             }}
           >
             {FIELDS.map((f) => (
@@ -120,7 +118,7 @@ export default function SettingsPage() {
           </form>
         </Card>
         )}
-        {sys && <ZaloCard groupId={groupId} setGroupId={setGroupId} busy={busy} run={run} />}
+        {sys && <ZaloCard busy={busy} run={run} />}
 
         {org && (
           <>
@@ -486,12 +484,14 @@ type ZaloStatus = {
 };
 
 /** Cấu hình → Zalo OA: trạng thái kết nối thật, nhóm minh bạch, gửi tin thử, 10 tin nhóm gần nhất. */
-function ZaloCard({ groupId, setGroupId, busy, run }: { groupId: string; setGroupId: (v: string) => void; busy: boolean; run: (fn: () => Promise<unknown>, ok: string, after?: () => void) => Promise<void> }) {
+function ZaloCard({ busy, run }: { busy: boolean; run: (fn: () => Promise<unknown>, ok: string, after?: () => void) => Promise<void> }) {
+  // Ô dán ID nhóm là trạng thái riêng của thẻ — chỉ lưu khi bấm "Kết nối" (server xác minh nhóm trước).
+  const [groupId, setGroupId] = useState("");
   const z = useApi<ZaloStatus>("/api/settings/zalo");
   const groups = useApi<{ connected: string; groups: { groupId: string; name: string | null; status: string | null; totalMember: number | null; source: string }[] }>("/api/settings/zalo/groups");
   const [testResult, setTestResult] = useState<{ status: string; error: string | null } | null>(null);
   const connect = (id: string) =>
-    run(() => api("/api/settings/zalo/groups", { body: { groupId: id } }), "Đã kết nối nhóm — kiểm tra tin xác nhận trong nhóm Zalo", () => (setGroupId(id), z.reload(), groups.reload()));
+    run(() => api("/api/settings/zalo/groups", { body: { groupId: id } }), "Đã kết nối nhóm — kiểm tra tin xác nhận trong nhóm Zalo", () => (setGroupId(""), z.reload(), groups.reload()));
   const d = z.data;
   const tone = (ok: boolean) => (ok ? "ontime" : "late");
   return (

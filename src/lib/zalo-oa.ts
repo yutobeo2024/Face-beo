@@ -80,10 +80,12 @@ export async function sendZaloMessage(args: {
     let lastErr = "";
     let refreshed = false;
     for (let attempt = 0; attempt < 3; attempt++) {
+      let last: unknown;
       try {
         await deliver(await getAccessToken());
         return finish("SENT");
       } catch (e) {
+        last = e;
         lastErr = (e as Error).message;
         if (e instanceof TokenInvalidError && !refreshed) {
           refreshed = true;
@@ -91,12 +93,13 @@ export async function sendZaloMessage(args: {
             await deliver(await refreshZaloToken(true));
             return finish("SENT");
           } catch (e2) {
+            last = e2;
             lastErr = (e2 as Error).message;
           }
         }
         // Lỗi cấu hình / dữ liệu (sai group_id, app chưa được cấp quyền…): thử lại vô ích.
-        if (e instanceof ZaloApiError && !e.retryable) break;
-        if (attempt < 2) await sleep(e instanceof ZaloApiError ? 2000 : 500 * 2 ** attempt);
+        if (last instanceof ZaloApiError && !last.retryable) break;
+        if (attempt < 2) await sleep(last instanceof ZaloApiError ? 2000 : 500 * 2 ** attempt);
       }
     }
     return finish("FAILED", lastErr.slice(0, 500));
