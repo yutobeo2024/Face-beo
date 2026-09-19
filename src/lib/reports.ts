@@ -58,8 +58,12 @@ export type DetailRow = {
 };
 
 export async function buildAttendanceReport(where: object, from: string, to: string, now = new Date()) {
+  // Tháng đã chốt: gồm cả người đã nghỉ việc sau khi chốt (có trong bản chụp).
+  const frozenIds = (await prisma.lockedDay.findMany({ where: { workDate: { gte: from, lte: to } }, select: { employeeId: true }, distinct: ["employeeId"] })).map(
+    (x) => x.employeeId,
+  );
   const emps = await prisma.employee.findMany({
-    where: { ...where, active: true },
+    where: { ...where, OR: [{ active: true }, { id: { in: frozenIds } }] },
     select: { id: true, code: true, name: true, department: { select: { name: true } } },
     orderBy: [{ departmentId: "asc" }, { code: "asc" }],
   });
@@ -96,7 +100,7 @@ export async function buildAttendanceReport(where: object, from: string, to: str
     };
     for (const [k, s] of summaries) {
       if (!k.startsWith(`${e.id}|`)) continue;
-      row.workDays = r2(row.workDays + s.workDayUnits);
+      row.workDays += s.workDayUnits;
       row.workMinutes += s.workMinutes;
       if (s.isLate) {
         row.lateCount++;
@@ -107,7 +111,7 @@ export async function buildAttendanceReport(where: object, from: string, to: str
         row.earlyMinutes += s.earlyMinutes;
       }
       row.otMinutes += s.otMinutes;
-      row.leaveDays = r2(row.leaveDays + s.leaveDayUnits);
+      row.leaveDays += s.leaveDayUnits;
       if (s.status === "ABSENT") row.absentDays++;
       if (s.missingOut) row.missingOutDays++;
 
@@ -133,18 +137,21 @@ export async function buildAttendanceReport(where: object, from: string, to: str
         lateMinutes: s.lateMinutes,
         earlyMinutes: s.earlyMinutes,
         otMinutes: s.otMinutes,
-        workDayUnits: s.workDayUnits,
+        workDayUnits: r2(s.workDayUnits),
         workMinutes: s.workMinutes,
         status: STATUS_LABEL[s.status],
         note: notes.join("; "),
       });
     }
+    // Làm tròn một lần ở cuối (không làm tròn từng bước để tổng không bị lệch).
+    row.workDays = r2(row.workDays);
+    row.leaveDays = r2(row.leaveDays);
     summary.push(row);
   }
   return { summary, detail };
 }
 
-export function reportToXlsx(r: { summary: SummaryRow[]; detail: DetailRow[] }): Buffer {
+export function reportToXlsx(r: { summary: SummaryRow[]; detail: DetailRow[] }, notes: string[] = []): Buffer {
   const wb = XLSX.utils.book_new();
   const s1 = XLSX.utils.json_to_sheet(
     r.summary.map((x) => ({
@@ -186,5 +193,10 @@ export function reportToXlsx(r: { summary: SummaryRow[]; detail: DetailRow[] }):
   s2["!cols"] = [8, 24, 22, 11, 26, 8, 8, 9, 9, 9, 6, 9, 16, 50].map((w) => ({ wch: w }));
   XLSX.utils.book_append_sheet(wb, s1, "Tổng hợp");
   XLSX.utils.book_append_sheet(wb, s2, "Chi tiết");
+  if (notes.length) {
+    const s3 = XLSX.utils.aoa_to_sheet([["Ghi chú"], ...notes.map((n) => [n])]);
+    s3["!cols"] = [{ wch: 100 }];
+    XLSX.utils.book_append_sheet(wb, s3, "Ghi chú");
+  }
   return XLSX.write(wb, { type: "buffer", bookType: "xlsx" }) as Buffer;
 }

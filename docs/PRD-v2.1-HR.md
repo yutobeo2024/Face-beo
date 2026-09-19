@@ -105,3 +105,59 @@ Ngoại lệ: ADMIN chỉ tự duyệt được đơn của mình khi không cò
   - phân quyền, mẫu tuần, phòng ban.
 - **Không gửi:** lần quét chấm công, và thao tác ngang quyền nhân viên (HR tự tạo hay hủy đơn của mình).
 - Endpoint gửi tin nhóm GMF cần được xác minh trước khi chạy thật.
+
+## 8. Ngày công, nửa ngày phép, giờ công (v1.2)
+
+**Hệ số công:**
+- Mỗi ca có `workDayValue` (hệ số chung, mặc định 1).
+- `DepartmentShiftWeight` là hệ số riêng theo phòng, ghi đè hệ số chung. Quản trị cấu hình ở **Cấu hình → Ca**.
+- Hệ số của một ngày lấy theo phòng mà nhân viên thuộc về vào đúng ngày đó.
+
+**Ngày công và ngày phép của một ngày:**
+
+| Trường hợp | Ngày công | Ngày phép |
+| --- | --- | --- |
+| Đi làm (đúng giờ hoặc trễ) | hệ số | 0 |
+| Đi làm + đơn nghỉ phép đã duyệt che nửa ngày | hệ số × 0.5 | hệ số × 0.5 |
+| Nghỉ phép cả ca | 0 | hệ số |
+| Vắng, nhưng có đơn nghỉ phép nửa ngày đã duyệt | 0 | hệ số × 0.5 |
+| Vắng | 0 | 0 |
+| Làm ngày nghỉ hoặc ngày lễ | 0 (OT tính theo đơn) | 0 |
+
+- **"Nửa ngày"** nghĩa là đơn che ≥ ½ thời gian làm thực của ca (độ dài ca trừ giờ nghỉ), hoặc che trọn một buổi trước hay sau giờ nghỉ trưa.
+- Hai đơn sáng và chiều cách nhau đúng giờ nghỉ trưa được coi là nghỉ cả ca.
+- Đơn về sớm (VE_SOM) không trừ công.
+
+**Giờ công (D1):**
+- Khoảng có mặt được kẹp trong ca.
+- Ca có `breakStart` thì chỉ trừ phần giờ nghỉ giao với khoảng có mặt; không có thì trừ đủ `breakMinutes`.
+- Nghỉ phép hết buổi sáng rồi vào ca sau giờ nghỉ trưa thì không bị tính trễ (tương tự cho buổi chiều).
+
+## 9. Chốt công tháng (v1.2)
+
+**Chốt:**
+- Người có quyền `payroll.lock` (mặc định HR và Quản trị) chốt được một tháng đã kết thúc, từ ngày 2 của tháng sau.
+- Hệ thống chụp kết quả từng ngày của mọi nhân viên (`LockedDay`), kể cả người đã nghỉ việc nhưng có log trong tháng.
+- Báo cáo, Excel, dashboard và `/me` của tháng đã chốt đều đọc từ bản chụp. Vì vậy sửa ngày lễ, giờ ca, hệ số hay mẫu tuần sau đó không làm lệch bảng công.
+
+**Bị chặn (409) trong tháng đã chốt:**
+- xếp ca, đăng ký tuần nằm trọn trong tháng;
+- chấm tay, chấm tay theo đơn, xóa log;
+- tạo, duyệt, hủy đơn có thời gian thuộc tháng đó;
+- quét kiosk gửi bù vào ngày công của tháng đó (lớp bảo vệ cuối).
+
+**Mở khóa:**
+- Chỉ Quản trị (`payroll.unlock`, khóa cứng), bắt buộc lý do ≥ 5 ký tự.
+- Mở khóa xóa bản chụp; tháng đó tính lại theo dữ liệu hiện tại.
+- Chốt và mở khóa đều ghi AuditLog và gửi tin nhóm Zalo.
+
+## 10. Nhắc đơn quá hạn (v1.2)
+
+Job `request-overdue` chạy mỗi 30 phút.
+
+- **Đơn chờ duyệt** (tính từ lúc tạo) và **đơn bổ sung công chờ chấm tay** (tính từ lúc duyệt):
+  - quá 24 giờ: nhắc người phải xử lý;
+  - quá 48 giờ: báo mọi Quản trị và nhóm Zalo.
+- Mỗi mốc chỉ gửi một lần. Đơn quá 60 ngày thì bỏ qua.
+- Không bao giờ tự duyệt.
+- Dashboard hiện số đơn quá hạn mà người xem có quyền xử lý.

@@ -8,7 +8,8 @@ import { addDays, startOfWeek, todayVN, vnTime } from "@/lib/attendance";
 import { getZaloRefreshError, isZaloSimulated } from "@/lib/zalo-token";
 import { FACE_MODEL_VERSION } from "@/lib/roles";
 import { can, requirePerm } from "@/lib/permissions";
-import { canDecideRequest } from "@/lib/notify";
+import { canDecideRequest, canExecuteCorrection } from "@/lib/notify";
+import { OVERDUE_REMIND_HOURS } from "@/lib/jobs";
 
 /** Dashboard hôm nay (PRD mục 5): 5 thẻ + danh sách trễ/vắng; MANAGER chỉ thấy phòng mình. */
 export const GET = handle(async (req) => {
@@ -71,22 +72,37 @@ export const GET = handle(async (req) => {
     if (s.shift && e.faceTemplates.length === 0) manual.push({ ...base, status: s.status });
     if (s.status === "NO_SCHEDULE") unscheduled.push(base);
   }
-  const [pendingRequests, suspicious, l2Down] = await Promise.all([
+  const overdueBefore = new Date(Date.now() - OVERDUE_REMIND_HOURS * 3_600_000);
+  const [[pendingRequests, overduePending], overdueExec, suspicious, l2Down] = await Promise.all([
     prisma.leaveRequest
       .findMany({
         where: {
           status: "PENDING",
           employee: employeeScopeWhere(u, q.departmentId),
         },
-        select: { employeeId: true },
+        select: { employeeId: true, createdAt: true },
       })
       .then(async (rows) => {
         const memo = new Map<number, boolean>();
         let n = 0;
+        let overdue = 0;
         for (const r of rows) {
           if (!memo.has(r.employeeId)) memo.set(r.employeeId, await canDecideRequest(u, r));
-          if (memo.get(r.employeeId)) n++;
+          if (!memo.get(r.employeeId)) continue;
+          n++;
+          if (r.createdAt <= overdueBefore) overdue++;
         }
+        return [n, overdue] as const;
+      }),
+    // Đơn bổ sung công đã duyệt, chờ chấm tay quá 24 giờ mà người xem có quyền chấm.
+    prisma.leaveRequest
+      .findMany({
+        where: { type: "BO_SUNG_CONG", status: "APPROVED", executedAt: null, decidedAt: { lte: overdueBefore }, employee: employeeScopeWhere(u, q.departmentId) },
+        select: { employeeId: true },
+      })
+      .then(async (rows) => {
+        let n = 0;
+        for (const r of rows) if (await canExecuteCorrection(u, r)) n++;
         return n;
       }),
     seeSuspicious
@@ -119,6 +135,7 @@ export const GET = handle(async (req) => {
     unscheduled,
     rosterWarnings: await rosterWarnings(emps.map((e) => e.departmentId), today),
     pendingRequests,
+    overdueRequests: overduePending + overdueExec,
     suspicious24h: suspicious,
     l2Error: l2Down ? { at: l2Down.createdAt, detail: l2Down.detail } : null,
     zalo: seeSystem

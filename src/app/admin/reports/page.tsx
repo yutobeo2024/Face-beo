@@ -1,8 +1,9 @@
 "use client";
 import { useState } from "react";
-import { qs, useApi } from "@/lib/client/api";
-import { addDaysStr, fmtDay, fmtMinutes, todayStr } from "@/lib/client/format";
-import { Avatar, Card, EmptyState, ErrorBox, Loading, PageHeader, StatCard } from "@/components/ui";
+import { api, qs, useApi } from "@/lib/client/api";
+import { addDaysStr, fmtDateTime, fmtDay, fmtMinutes, todayStr } from "@/lib/client/format";
+import { Avatar, Badge, Button, Card, CardHeader, EmptyState, ErrorBox, Field, Loading, Modal, PageHeader, StatCard } from "@/components/ui";
+import { useToast } from "@/components/toast";
 import { DeptSelect } from "@/components/dept-select";
 import { Icon } from "@/components/icons";
 
@@ -81,6 +82,8 @@ export default function ReportsPage() {
         </div>
         <DeptSelect value={dept} onChange={setDept} className="sm:col-span-2 lg:col-span-1 lg:w-56" />
       </Card>
+
+      <PayrollLockCard onChanged={reload} />
 
       {error && <ErrorBox message={error} onRetry={reload} />}
       {loading && !data ? (
@@ -173,5 +176,138 @@ export default function ReportsPage() {
         </>
       )}
     </>
+  );
+}
+
+type LockMonth = {
+  month: string;
+  locked: boolean;
+  lockedAt: string | null;
+  lockedBy: string | null;
+  totals: { employees: number; workDays: number; leaveDays: number; otMinutes: number; absentDays: number } | null;
+  canLockFrom: string;
+  lockable: boolean;
+};
+const fmtMonth = (m: string) => `${m.slice(5, 7)}/${m.slice(0, 4)}`;
+
+/** Chốt công tháng: HR/Quản trị chốt tháng đã kết thúc; chỉ Quản trị mở khóa (kèm lý do). */
+function PayrollLockCard({ onChanged }: { onChanged: () => void }) {
+  const toast = useToast();
+  const { data, reload } = useApi<{ months: LockMonth[]; canLock: boolean; canUnlock: boolean }>("/api/payroll-locks");
+  const [confirm, setConfirm] = useState<LockMonth | null>(null);
+  const [unlock, setUnlock] = useState<LockMonth | null>(null);
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(false);
+  if (!data) return null;
+
+  async function run(fn: () => Promise<unknown>, ok: string) {
+    setBusy(true);
+    try {
+      await fn();
+      toast.success(ok);
+      setConfirm(null);
+      setUnlock(null);
+      setReason("");
+      void reload();
+      onChanged();
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Card className="mb-4">
+      <CardHeader title="Chốt công tháng" />
+      <p className="px-4 pt-3 text-xs text-slate-500 sm:px-5">
+        Tháng đã chốt: bảng công được giữ nguyên (không đổi khi sửa ca, ngày lễ, hệ số), không sửa được ca, chấm tay, đơn từ trong tháng đó. Chỉ Quản trị mở khóa.
+      </p>
+      <ul className="divide-y divide-slate-100">
+        {data.months.map((m) => (
+          <li key={m.month} className="flex flex-wrap items-center gap-3 px-4 py-3 sm:px-5">
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold text-slate-800">
+                Tháng {fmtMonth(m.month)}{" "}
+                {m.locked ? (
+                  <Badge tone="ontime" className="ml-1">
+                    <Icon name="lock" className="h-3.5 w-3.5" /> Đã chốt
+                  </Badge>
+                ) : (
+                  <Badge tone="neutral" className="ml-1">
+                    Chưa chốt
+                  </Badge>
+                )}
+              </p>
+              <p className="text-xs text-slate-500">
+                {m.locked
+                  ? `${m.lockedBy ?? "—"} chốt lúc ${m.lockedAt ? fmtDateTime(m.lockedAt) : ""}${m.totals ? ` · ${m.totals.employees} NV · ${m.totals.workDays} công · ${m.totals.leaveDays} phép · ${(m.totals.otMinutes / 60).toFixed(1)} giờ OT` : ""}`
+                  : m.lockable
+                    ? "Có thể chốt"
+                    : `Chốt được từ ${fmtDay(m.canLockFrom)}`}
+              </p>
+            </div>
+            {!m.locked && data.canLock && (
+              <Button size="sm" icon="lock" disabled={!m.lockable} onClick={() => setConfirm(m)}>
+                Chốt công
+              </Button>
+            )}
+            {m.locked && data.canUnlock && (
+              <Button size="sm" variant="secondary" onClick={() => setUnlock(m)}>
+                Mở khóa
+              </Button>
+            )}
+          </li>
+        ))}
+      </ul>
+
+      <Modal
+        open={!!confirm}
+        onClose={() => setConfirm(null)}
+        title={`Chốt công tháng ${confirm ? fmtMonth(confirm.month) : ""}`}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setConfirm(null)}>
+              Hủy
+            </Button>
+            <Button loading={busy} icon="lock" onClick={() => confirm && run(() => api("/api/payroll-locks", { body: { month: confirm.month } }), `Đã chốt công tháng ${fmtMonth(confirm.month)}`)}>
+              Xác nhận chốt
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm text-slate-700">
+          Sau khi chốt, bảng công tháng này được giữ nguyên để tính lương. Mọi thao tác làm thay đổi công trong tháng (xếp ca, chấm tay, xóa log, tạo/duyệt đơn) sẽ bị chặn. Thao
+          tác được gửi vào nhóm Zalo.
+        </p>
+      </Modal>
+
+      <Modal
+        open={!!unlock}
+        onClose={() => (setUnlock(null), setReason(""))}
+        title={`Mở khóa công tháng ${unlock ? fmtMonth(unlock.month) : ""}`}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => (setUnlock(null), setReason(""))}>
+              Hủy
+            </Button>
+            <Button
+              loading={busy}
+              disabled={reason.trim().length < 5}
+              onClick={() =>
+                unlock && run(() => api(`/api/payroll-locks/${unlock.month}`, { method: "DELETE", body: { reason: reason.trim() } }), `Đã mở khóa tháng ${fmtMonth(unlock.month)}`)
+              }
+            >
+              Mở khóa
+            </Button>
+          </>
+        }
+      >
+        <p className="mb-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">Mở khóa sẽ xóa bản chụp; bảng công tháng này được tính lại theo dữ liệu hiện tại. Thao tác được ghi nhật ký và gửi nhóm Zalo.</p>
+        <Field label="Lý do (bắt buộc)">
+          {(id) => <textarea id={id} className="input min-h-16" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="VD: Bổ sung đơn nghỉ phép bị sót của NV012" />}
+        </Field>
+      </Modal>
+    </Card>
   );
 }

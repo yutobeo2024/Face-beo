@@ -273,17 +273,32 @@ function mergeBlocks(reqs: RequestLite[]): Block[] {
   return out;
 }
 
+/** Gộp tiếp các khối mà khoảng hở nằm trọn trong giờ nghỉ (nghỉ phép 08–12 + 13–17, nghỉ trưa 12–13 => cả ca). */
+function mergeAcrossBreak(blocks: Block[], br: { start: Date; end: Date } | null): Block[] {
+  if (!br) return blocks;
+  const out: Block[] = [];
+  for (const b of blocks) {
+    const last = out[out.length - 1];
+    if (last && last.to >= br.start.getTime() && b.from <= br.end.getTime() && last.to <= b.from) {
+      last.to = Math.max(last.to, b.to);
+      last.lastId = b.lastId;
+    } else out.push({ ...b });
+  }
+  return out;
+}
+
 export function effectiveTimes(workDate: string, shift: ShiftDef, requests: RequestLite[]): EffectiveTimes {
   const iv = shiftInterval(workDate, shift);
   const s = iv.start.getTime();
   const e = iv.end.getTime();
+  const br = breakInterval(workDate, shift);
   let start = s;
   let end = e;
   let startExcusedBy: number | null = null;
   let endExcusedBy: number | null = null;
   let fullLeaveRequestId: number | null = null;
 
-  for (const b of mergeBlocks(approved(requests, "NGHI_PHEP"))) {
+  for (const b of mergeAcrossBreak(mergeBlocks(approved(requests, "NGHI_PHEP")), br)) {
     if (b.from <= s && b.to >= e) {
       fullLeaveRequestId = b.firstId;
     } else if (b.from <= s && b.to > s) {
@@ -293,7 +308,7 @@ export function effectiveTimes(workDate: string, shift: ShiftDef, requests: Requ
     }
   }
   if (fullLeaveRequestId == null) {
-    for (const b of mergeBlocks(approved(requests, "VE_SOM", "NGHI_PHEP"))) {
+    for (const b of mergeAcrossBreak(mergeBlocks(approved(requests, "VE_SOM", "NGHI_PHEP")), br)) {
       // Phủ cuối ca: lùi giờ kết thúc hiệu lực về đầu khối.
       if (b.from > s && b.from < e && b.to >= e) {
         end = b.from;
@@ -301,6 +316,9 @@ export function effectiveTimes(workDate: string, shift: ShiftDef, requests: Requ
       }
     }
   }
+  // Nghỉ phép hết buổi sáng (kết thúc trong giờ nghỉ trưa) => giờ vào hiệu lực là cuối giờ nghỉ; tương tự cho buổi chiều.
+  if (br && startExcusedBy != null && start >= br.start.getTime() && start < br.end.getTime()) start = br.end.getTime();
+  if (br && endExcusedBy != null && end > br.start.getTime() && end <= br.end.getTime()) end = br.start.getTime();
   if (end < start) end = start;
   return { start: new Date(start), end: new Date(end), startExcusedBy, endExcusedBy, fullLeaveRequestId };
 }
@@ -393,17 +411,18 @@ export function breakInterval(workDate: string, shift: ShiftDef): { start: Date;
  * Giờ công (phút).
  *  - Ca có giờ bắt đầu nghỉ: khoảng có mặt kẹp trong ca, chỉ trừ PHẦN giờ nghỉ giao với khoảng có mặt
  *    (vào 13:00 ra 17:00 ca 08–17 nghỉ 12–13 => 240 phút).
- *  - Không có: (OUT − IN) − breakMinutes, chặn trên bằng độ dài ca − breakMinutes (PRD mục 4, cách cũ).
+ *  - Không có: khoảng có mặt kẹp trong ca − breakMinutes (trừ đủ, như PRD mục 4).
  */
 export function workMinutes(shift: ShiftDef, inTime: Date, outTime: Date, workDate?: string): number {
-  const br = workDate ? breakInterval(workDate, shift) : null;
-  if (workDate && br) {
+  if (workDate) {
+    // Khoảng có mặt kẹp trong ca; có giờ bắt đầu nghỉ => chỉ trừ phần nghỉ giao với khoảng có mặt, không có => trừ đủ.
+    const br = breakInterval(workDate, shift);
     const iv = shiftInterval(workDate, shift);
     const p0 = Math.max(inTime.getTime(), iv.start.getTime());
     const p1 = Math.min(outTime.getTime(), iv.end.getTime());
     if (p1 <= p0) return 0;
-    const ms = p1 - p0 - overlap(p0, p1, br.start.getTime(), br.end.getTime());
-    return Math.max(0, Math.floor(ms / MIN));
+    const brMs = br ? overlap(p0, p1, br.start.getTime(), br.end.getTime()) : shift.breakMinutes * MIN;
+    return Math.max(0, Math.floor((p1 - p0 - brMs) / MIN));
   }
   const raw = diffMinutes(outTime, inTime) - shift.breakMinutes;
   const cap = shiftLengthMinutes(shift) - shift.breakMinutes;
@@ -449,10 +468,27 @@ export function dayUnits(status: DayStatus, plan: DayPlan, requests: RequestLite
   if (!shift) return { work: 0, leave: 0 };
   const value = plan.workDayValue ?? shift.workDayValue ?? 1;
   if (status === "ON_LEAVE") return { work: 0, leave: value };
-  if (status !== "ON_TIME" && status !== "LATE") return { work: 0, leave: 0 };
+  const half = isHalfDayLeave(plan.workDate, shift, requests);
+  if (status === "ON_TIME" || status === "LATE") return half ? { work: value / 2, leave: value / 2 } : { work: value, leave: 0 };
+  // Nghỉ phép nửa ngày đã duyệt nhưng nửa còn lại không đi làm: vẫn được nửa ngày phép.
+  if (status === "ABSENT") return { work: 0, leave: half ? value / 2 : 0 };
+  return { work: 0, leave: 0 };
+}
+
+/**
+ * Đơn nghỉ phép đã duyệt được tính là "nửa ngày" khi che >= một nửa thời gian làm thực của ca,
+ * hoặc che trọn một buổi (trước / sau giờ nghỉ trưa) — vd. ca 07–17 nghỉ chiều 13–17.
+ */
+export function isHalfDayLeave(workDate: string, shift: ShiftDef, requests: RequestLite[]): boolean {
   const net = netShiftMinutes(shift);
-  if (net > 0 && approvedLeaveMinutes(plan.workDate, shift, requests) * 2 >= net) return { work: value / 2, leave: value / 2 };
-  return { work: value, leave: 0 };
+  if (net <= 0) return false;
+  if (approvedLeaveMinutes(workDate, shift, requests) * 2 >= net) return true;
+  const br = breakInterval(workDate, shift);
+  if (!br) return false;
+  const iv = shiftInterval(workDate, shift);
+  const blocks = mergeBlocks(approved(requests, "NGHI_PHEP"));
+  const covers = (a0: number, a1: number) => a1 > a0 && blocks.reduce((ms, b) => ms + overlap(a0, a1, b.from, b.to), 0) >= a1 - a0;
+  return covers(iv.start.getTime(), br.start.getTime()) || covers(br.end.getTime(), iv.end.getTime());
 }
 
 function overlap(a0: number, a1: number, b0: number, b1: number): number {

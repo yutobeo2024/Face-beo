@@ -89,6 +89,17 @@ Các luật khóa cứng trong code (ma trận không đổi được):
 
 Chỉ ADMIN chấm tay trực tiếp được (không qua đơn), dùng cho trường hợp khẩn cấp.
 
+### Ngày công, nửa ngày phép và chốt công tháng (v1.2)
+
+- **Hệ số công:** mỗi ca có hệ số công chung (mặc định 1). Quản trị đặt hệ số riêng theo phòng ở **Cấu hình → Ca**, ví dụ Hành chính: Sáng thứ Bảy = 0.5.
+- **Nửa ngày phép:** đi làm nửa ngày, nửa còn lại nghỉ phép đã duyệt thì được 0.5 công + 0.5 phép. Đơn về sớm không trừ công.
+- **Giờ bắt đầu nghỉ** của ca: giờ công chỉ trừ phần giờ nghỉ mà nhân viên có mặt. Ví dụ vào 13:00, ra 17:00 được 4 giờ.
+- **Chốt công tháng** ở trang Báo cáo:
+  - HR hoặc Quản trị chốt tháng đã kết thúc. Bảng công tháng đó được giữ nguyên và mọi thao tác làm đổi công bị chặn.
+  - Chỉ Quản trị mở khóa, kèm lý do.
+  - Excel của tháng đã chốt có sheet "Ghi chú".
+- Chi tiết: `docs/PRD-v2.1-HR.md` mục 8–10.
+
 ### Nhóm cố định, xoay ca và đăng ký ca tuần
 
 - **Ca cố định (`scheduleType = FIXED`):** chấm công theo **mẫu tuần** (ca của từng thứ; để trống là ngày nghỉ). Không cần xếp ca hằng tuần. Mẫu tuần do ADMIN quản lý ở Cấu hình.
@@ -191,6 +202,7 @@ curl -X POST -H "x-cron-secret: $CRON_SECRET" https://<máy-chủ>/api/cron/abse
 | `missing-checkout` | 30 phút | Gắn cờ “thiếu giờ ra” (AuditLog) + nhắc nhân viên làm đơn bổ sung công |
 | `roster-reminder` | Thứ Sáu 15:00 | Nhắc quản lý các phòng có nhân viên xoay ca chưa đăng ký ca tuần sau |
 | `roster-report` | Thứ Hai 07:00 | Báo HR và nhóm Zalo các phòng chưa đăng ký ca tuần này |
+| `request-overdue` | 30 phút | Đơn chờ duyệt / chờ chấm tay quá 24h: nhắc người xử lý; quá 48h: báo Quản trị + nhóm Zalo |
 | `zalo-token-refresh` | 6 giờ | Refresh token chủ động |
 | `snapshot-cleanup` | 02:00 | Xóa snapshot quá hạn, mã ghép/mã liên kết hết hạn, template của người đã nghỉ việc |
 | `db-backup` | 03:00 | `VACUUM INTO data/backups/`, giữ 14 bản |

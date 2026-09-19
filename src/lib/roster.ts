@@ -17,6 +17,7 @@ import { audit } from "./audit";
 import { announce } from "./announce";
 import { fmtDate } from "./notify";
 import { withLock } from "./mutex";
+import { assertDatesUnlocked, lockedMonths, monthOf } from "./payroll-lock-state";
 
 export type Cell = { employeeId: number; date: string; shiftId: number | null; isDayOff: boolean; clear?: boolean };
 
@@ -61,6 +62,7 @@ export function applyCells(u: AuthUser, cells: Cell[], reason?: string | null) {
 }
 
 async function applyCellsLocked(u: AuthUser, cells: Cell[], reason?: string | null) {
+  await assertDatesUnlocked(cells.map((c) => c.date));
   const ids = [...new Set(cells.map((c) => c.employeeId))];
   const emps = await prisma.employee.findMany({ where: { id: { in: ids } }, select: { id: true, code: true, name: true, departmentId: true } });
   const empById = new Map(emps.map((e) => [e.id, e]));
@@ -140,6 +142,9 @@ export function registerWeeks(u: AuthUser, departmentIds: number[], weekInput: s
 
 async function registerWeeksLocked(u: AuthUser, departmentIds: number[], weekInput: string) {
   const week = startOfWeek(weekInput);
+  // Tuần nằm trọn trong tháng đã chốt công => chặn (tuần giáp ranh vẫn đăng ký được; ngày đã chốt giữ bản chụp).
+  const locked = await lockedMonths();
+  if (weekDates(week).every((d) => locked.has(monthOf(d)))) await assertDatesUnlocked([week]);
   const privileged = await can(u, "roster.editRegistered");
   const depts = await prisma.department.findMany({ where: { id: { in: departmentIds } }, select: { id: true, name: true } });
   if (depts.length !== new Set(departmentIds).size) throw badRequest("Phòng ban không hợp lệ");

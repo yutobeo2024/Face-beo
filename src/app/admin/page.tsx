@@ -22,6 +22,7 @@ type Dashboard = {
   unscheduled: Person[];
   rosterWarnings: { week: string; departments: string[] }[];
   pendingRequests: number;
+  overdueRequests: number;
   suspicious24h: number;
   l2Error: { at: string; detail: string | null } | null;
   zalo: { simulated: boolean; refreshError: { at: string; msg: string } | null } | null;
@@ -111,8 +112,13 @@ function Dashboard() {
             )}
       </div>
 
-      {data && (data.pendingRequests > 0 || data.suspicious24h > 0 || data.zalo?.simulated) && (
+      {data && (data.pendingRequests > 0 || data.overdueRequests > 0 || data.suspicious24h > 0 || data.zalo?.simulated) && (
         <div className="mt-4 flex flex-wrap gap-2">
+          {data.overdueRequests > 0 && (
+            <Link href="/admin/requests" className="inline-flex items-center gap-2 rounded-full bg-rose-100 px-3 py-1.5 text-sm font-semibold text-rose-800 hover:bg-rose-200">
+              <Icon name="clock" className="size-4" /> {data.overdueRequests} đơn quá hạn (&gt; 24 giờ)
+            </Link>
+          )}
           {data.pendingRequests > 0 && (
             <Link href="/admin/requests?status=PENDING" className="inline-flex items-center gap-2 rounded-full bg-amber-100 px-3 py-1.5 text-sm font-semibold text-amber-900 hover:bg-amber-200">
               <Icon name="inbox" className="size-4" /> {data.pendingRequests} đơn chờ duyệt

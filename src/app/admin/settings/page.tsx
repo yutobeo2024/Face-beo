@@ -460,7 +460,7 @@ export default function SettingsPage() {
             </Field>
             <Field label="Hệ số công" hint="1 = một công; 0.5 = nửa công">
               {(id) => (
-                <input id={id} type="number" step="0.25" min="0" max="3" className="input" value={shiftForm.workDayValue} onChange={(e) => setShiftForm({ ...shiftForm, workDayValue: Number(e.target.value) })} />
+                <input id={id} type="number" step="0.25" min="0" max="3" className="input" value={shiftForm.workDayValue} onChange={(e) => setShiftForm({ ...shiftForm, workDayValue: e.target.value === "" ? ("" as unknown as number) : Number(e.target.value) })} />
               )}
             </Field>
             <Field label="Ân hạn trễ (phút)">

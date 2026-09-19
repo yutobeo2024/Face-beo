@@ -12,7 +12,9 @@ export type MessageType =
   | "CORRECTION_DONE"
   | "MISSING_OUT_NUDGE"
   | "ROSTER_REMINDER"
-  | "ROSTER_UNREGISTERED";
+  | "ROSTER_UNREGISTERED"
+  | "REQUEST_OVERDUE"
+  | "REQUEST_ESCALATED";
 
 const link = (path: string) => `${env.appBaseUrl.replace(/\/$/, "")}${path}`;
 
@@ -82,6 +84,19 @@ export const zaloTemplates: Record<MessageType, (d: Data) => string> = {
       s(d.list),
       `Nhân viên xoay ca của các phòng này đang ở trạng thái "Chưa có lịch" (không tính trễ/vắng).`,
       `Đăng ký tại: ${link(`/admin/roster?week=${s(d.week)}`)}`,
+    ].join("\n"),
+  REQUEST_OVERDUE: (d) =>
+    [
+      `⏰ Đơn #${s(d.requestId)} đang chờ bạn ${s(d.stage)} đã quá ${s(d.hours)} giờ`,
+      `${s(d.employeeName)} (${s(d.employeeCode)}) — ${s(d.typeLabel)}: ${s(d.timeText)}`,
+      `Xử lý tại: ${link(d.stage === "chấm tay" ? "/admin/requests?view=execute" : "/admin/requests?status=PENDING")}`,
+    ].join("\n"),
+  REQUEST_ESCALATED: (d) =>
+    [
+      `🚨 Đơn #${s(d.requestId)} chờ ${s(d.stage)} đã quá ${s(d.hours)} giờ — cần Quản trị xem xét`,
+      `${s(d.employeeName)} (${s(d.employeeCode)}) — ${s(d.typeLabel)}: ${s(d.timeText)}`,
+      `Người phải xử lý: ${s(d.handlers) || "(không có)"}`,
+      `Xem tại: ${link("/admin/requests")}`,
     ].join("\n"),
   // Tin minh bạch gửi vào nhóm Zalo OA: ai làm gì, cho ai, lý do.
   GROUP_EVENT: (d) =>

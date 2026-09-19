@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { prisma } from "@/lib/db";
+import { assertDatesUnlocked } from "@/lib/payroll-lock-state";
 import { forbidden, handle, idParam, json, notFound, parseJson } from "@/lib/api";
 import { assertDept } from "@/lib/auth";
 import { recomputeDay } from "@/lib/attendance-service";
@@ -15,6 +16,7 @@ export const DELETE = handle<{ id: string }>(async (req, ctx) => {
   if (!log) throw notFound();
   assertDept(u, log.employee.departmentId);
   if (log.employeeId === u.id && u.role !== "ADMIN") throw forbidden("Không thể tự xóa log chấm công của chính mình");
+  await assertDatesUnlocked([log.workDate]);
   await prisma.attendanceLog.delete({ where: { id } });
   if (log.sourceRequestId) {
     await prisma.leaveRequest.updateMany({

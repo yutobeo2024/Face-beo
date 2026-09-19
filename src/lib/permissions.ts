@@ -26,6 +26,7 @@ export const CAPABILITIES = [
   { key: "snapshots.view", group: "Chấm công", label: "Xem ảnh snapshot" },
   { key: "suspicious.view", group: "Chấm công", label: "Xem lần quét đáng ngờ" },
   { key: "reports.view", group: "Báo cáo", label: "Xem bảng công, xuất Excel" },
+  { key: "payroll.lock", group: "Báo cáo", label: "Chốt công tháng (khóa số liệu để tính lương)" },
   { key: "employees.view", group: "Nhân viên", label: "Xem danh sách nhân viên" },
   { key: "employees.manage", group: "Nhân viên", label: "Thêm / sửa / cho nghỉ việc, đặt lại mật khẩu" },
   { key: "faces.enroll", group: "Nhân viên", label: "Enroll / xóa khuôn mặt" },
@@ -34,6 +35,7 @@ export const CAPABILITIES = [
   { key: "devices.manage", group: "Hệ thống", label: "Ghép / thu hồi thiết bị kiosk", locked: true },
   { key: "permissions.manage", group: "Hệ thống", label: "Sửa ma trận phân quyền", locked: true },
   { key: "roles.assignPrivileged", group: "Hệ thống", label: "Gán vai trò Nhân sự / Quản trị", locked: true },
+  { key: "payroll.unlock", group: "Hệ thống", label: "Mở khóa tháng đã chốt công", locked: true },
 ] as const;
 
 export type Capability = (typeof CAPABILITIES)[number]["key"];
@@ -55,6 +57,7 @@ export const DEFAULT_MATRIX: Record<EditableRole, Capability[]> = {
     "attendance.executeCorrection",
     "snapshots.view",
     "reports.view",
+    "payroll.lock",
     "employees.view",
     "employees.manage",
     "faces.enroll",

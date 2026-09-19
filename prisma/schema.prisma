@@ -268,3 +268,22 @@ model DepartmentShiftWeight {
 
   @@id([departmentId, shiftId])
 }
+
+// Chốt công tháng: tháng đã chốt => kết quả công từng ngày lấy từ bản chụp (LockedDay), mọi thao tác ghi làm đổi công bị chặn.
+model PayrollLock {
+  month      String   @id // "YYYY-MM"
+  lockedById Int
+  lockedAt   DateTime @default(now())
+  totals     String? // JSON tổng hợp lúc chốt (số người, tổng công, giờ OT...)
+}
+
+// Bản chụp kết quả công của một nhân viên trong một ngày thuộc tháng đã chốt (JSON DaySummary + plan + logs).
+model LockedDay {
+  employeeId Int
+  workDate   String
+  month      String
+  data       String
+
+  @@id([employeeId, workDate])
+  @@index([month])
+}

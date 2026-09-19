@@ -356,3 +356,34 @@ describe("giờ công theo giờ nghỉ thực tế (D1) & ngày công theo hệ
     expect(sum(plan(SUN, null), ["08:00", "12:00"], [], SUN)).toMatchObject({ workDayUnits: 0, leaveDayUnits: 0 });
   });
 });
+
+describe("nửa ngày phép quanh giờ nghỉ trưa (sửa lỗi review v1.2 A)", () => {
+  const HCB: ShiftDef = { ...HC, breakStart: "12:00" };
+  const SANGB: ShiftDef = { ...SANG, breakStart: "12:00" };
+  const sum = (p: DayPlan, times: string[], reqs: RequestLite[] = []) => summarizeDay({ plan: p, logs: logsAt(MON, ...times), requests: reqs, now: at(MON, "23:00") });
+
+  it("nghỉ phép sáng 08–12 + chiều 13–17 (2 đơn, cách nhau giờ nghỉ) = nghỉ cả ca, 1 phép", () => {
+    const reqs = [req(101, "NGHI_PHEP", at(MON, "08:00"), at(MON, "12:00")), req(102, "NGHI_PHEP", at(MON, "13:00"), at(MON, "17:00"))];
+    expect(sum(plan(MON, HCB), [], reqs)).toMatchObject({ status: "ON_LEAVE", workDayUnits: 0, leaveDayUnits: 1 });
+  });
+
+  it("nghỉ phép sáng đã duyệt, chiều không đi làm = vắng nửa ngày nhưng vẫn 0.5 phép", () => {
+    const s = sum(plan(MON, HCB), [], [req(103, "NGHI_PHEP", at(MON, "08:00"), at(MON, "12:00"))]);
+    expect(s).toMatchObject({ status: "ABSENT", workDayUnits: 0, leaveDayUnits: 0.5 });
+  });
+
+  it("ca 07–17 (lệch buổi): nghỉ trọn buổi chiều 13–17 = 0.5 công + 0.5 phép", () => {
+    expect(sum(plan(MON, SANGB), ["06:55", "12:01"], [req(104, "NGHI_PHEP", at(MON, "13:00"), at(MON, "17:00"))])).toMatchObject({ workDayUnits: 0.5, leaveDayUnits: 0.5 });
+  });
+
+  it("nghỉ phép sáng đến 12:00, vào lúc 13:00 (sau giờ nghỉ trưa) => không tính trễ", () => {
+    const s = sum(plan(MON, HCB), ["13:00", "17:02"], [req(105, "NGHI_PHEP", at(MON, "08:00"), at(MON, "12:00"))]);
+    expect(s.isLate).toBe(false);
+    expect(s).toMatchObject({ status: "ON_TIME", workDayUnits: 0.5, leaveDayUnits: 0.5 });
+  });
+
+  it("nghỉ phép chiều từ 13:00, ra về lúc 12:00 => không tính về sớm", () => {
+    const s = sum(plan(MON, HCB), ["07:58", "12:00"], [req(106, "NGHI_PHEP", at(MON, "13:00"), at(MON, "17:00"))]);
+    expect(s.isEarly).toBe(false);
+  });
+});

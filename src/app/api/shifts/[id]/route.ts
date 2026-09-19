@@ -40,7 +40,7 @@ export const DELETE = handle<{ id: string }>(async (req, ctx) => {
     prisma.scheduleAssignment.count({ where: { OR: [{ defaultShiftId: id }, ...dayRefs] } }),
   ]);
   if (emps + scheds + logs + patterns + assignments > 0) throw badRequest("Ca đang được dùng (nhân viên, mẫu tuần, lịch hoặc log chấm công), không thể xóa");
-  await prisma.shift.delete({ where: { id } });
+  await prisma.$transaction([prisma.departmentShiftWeight.deleteMany({ where: { shiftId: id } }), prisma.shift.delete({ where: { id } })]);
   await audit({ actorId: u.id, action: "SHIFT_UPDATE", entity: "Shift", entityId: id, detail: { deleted: true } });
   return json({ ok: true });
 });

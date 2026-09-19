@@ -8,7 +8,8 @@ import { buildPlanner, loadRequests } from "./attendance-service";
 import { getSettings } from "./settings";
 import { sendZaloMessage } from "./zalo-oa";
 import { isZaloSimulated, refreshZaloToken } from "./zalo-token";
-import { approversFor, fmtDate } from "./notify";
+import { approversFor, correctionText, executorsFor, fmtDate, fmtDT } from "./notify";
+import { REQUEST_TYPE_LABEL, type RequestTypeT } from "./roles";
 import { audit } from "./audit";
 import { dataDir, snapshotDir } from "./storage";
 import { FACE_MODEL_VERSION } from "./roles";
@@ -17,7 +18,7 @@ import { announceSystem } from "./announce";
 import { can } from "./permissions";
 import { startOfWeek } from "./attendance";
 
-export const JOBS = ["absence-check", "missing-checkout", "zalo-token-refresh", "snapshot-cleanup", "db-backup", "roster-reminder", "roster-report"] as const;
+export const JOBS = ["absence-check", "missing-checkout", "zalo-token-refresh", "snapshot-cleanup", "db-backup", "roster-reminder", "roster-report", "request-overdue"] as const;
 export type JobName = (typeof JOBS)[number];
 
 type DigestItem = { name: string; code: string; note?: string };
@@ -241,8 +242,70 @@ export async function rosterReport(now = new Date()) {
   return { week, pending: pending.length };
 }
 
+const HOUR = 3_600_000;
+export const OVERDUE_REMIND_HOURS = 24;
+export const OVERDUE_ESCALATE_HOURS = 48;
+
+/**
+ * D3 — đơn chờ quá lâu (không bao giờ tự duyệt):
+ *  - chờ duyệt (PENDING, tính từ lúc tạo) / chờ chấm tay (bổ sung công đã duyệt, tính từ lúc duyệt)
+ *  - quá 24h: nhắc lại người phải xử lý; quá 48h: báo mọi Quản trị + nhóm Zalo. Mỗi mốc gửi một lần.
+ */
+export async function requestOverdue(now = new Date()) {
+  const remindBefore = new Date(now.getTime() - OVERDUE_REMIND_HOURS * HOUR);
+  const since = new Date(now.getTime() - 60 * 24 * HOUR); // bỏ qua đơn quá cũ (> 60 ngày)
+  const [pending, awaitingExec] = await Promise.all([
+    prisma.leaveRequest.findMany({ where: { status: "PENDING", createdAt: { lte: remindBefore, gte: since } }, include: { employee: { select: { name: true, code: true } } } }),
+    prisma.leaveRequest.findMany({
+      where: { type: "BO_SUNG_CONG", status: "APPROVED", executedAt: null, decidedAt: { lte: remindBefore, gte: since } },
+      include: { employee: { select: { name: true, code: true } } },
+    }),
+  ]);
+  const admins = (await prisma.employee.findMany({ where: { role: "ADMIN", active: true }, select: { id: true } })).map((a) => a.id);
+  const names = async (ids: number[]) =>
+    (await prisma.employee.findMany({ where: { id: { in: ids } }, select: { name: true } })).map((e) => e.name).join(", ");
+  let reminded = 0;
+  let escalated = 0;
+  const items = [
+    ...pending.map((r) => ({ r, stage: "duyệt", since: r.createdAt, key: "req", handlers: () => approversFor(r.employeeId) })),
+    ...awaitingExec.map((r) => ({ r, stage: "chấm tay", since: r.decidedAt!, key: "corr", handlers: () => executorsFor(r.employeeId) })),
+  ];
+  for (const it of items) {
+    const { r } = it;
+    const hours = Math.floor((now.getTime() - it.since.getTime()) / HOUR);
+    const handlers = (await it.handlers()).filter((id) => id !== r.employeeId);
+    const data = {
+      requestId: r.id,
+      stage: it.stage,
+      hours,
+      employeeName: r.employee.name,
+      employeeCode: r.employee.code,
+      typeLabel: REQUEST_TYPE_LABEL[r.type as RequestTypeT] ?? r.type,
+      timeText: r.type === "BO_SUNG_CONG" ? correctionText(r) : `${fmtDT(r.fromTime)} → ${fmtDT(r.toTime)}`,
+    };
+    for (const to of handlers) {
+      const x = await sendZaloMessage({ toEmployeeId: to, messageType: "REQUEST_OVERDUE", dedupeKey: `${it.key}-overdue24:${r.id}:${to}`, data });
+      if (x.status !== "DUPLICATE") reminded++;
+    }
+    if (hours >= OVERDUE_ESCALATE_HOURS) {
+      const handlerNames = await names(handlers);
+      for (const to of admins.filter((id) => id !== r.employeeId)) {
+        const x = await sendZaloMessage({ toEmployeeId: to, messageType: "REQUEST_ESCALATED", dedupeKey: `${it.key}-overdue48:${r.id}:${to}`, data: { ...data, handlers: handlerNames } });
+        if (x.status !== "DUPLICATE") escalated++;
+      }
+      await announceSystem(`báo: đơn #${r.id} của ${r.employee.name} chờ ${it.stage} đã quá ${OVERDUE_ESCALATE_HOURS} giờ`, {
+        key: `${it.key}-overdue48:${r.id}`,
+        detail: `${data.typeLabel}: ${data.timeText}\nNgười phải xử lý: ${handlerNames || "(không có)"}`,
+      });
+    }
+  }
+  return { pending: pending.length, awaitingExecution: awaitingExec.length, reminded, escalated };
+}
+
 export async function runJob(name: JobName, now = new Date()) {
   switch (name) {
+    case "request-overdue":
+      return requestOverdue(now);
     case "roster-reminder":
       return rosterReminder(now);
     case "roster-report":

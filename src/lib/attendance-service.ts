@@ -20,6 +20,7 @@ import {
   startOfWeek,
 } from "./attendance";
 import { getSettings } from "./settings";
+import { assertDatesUnlocked, lockedMonths, monthOf, reviveSnapshot } from "./payroll-lock-state";
 
 type Db = Prisma.TransactionClient | typeof prisma;
 
@@ -136,11 +137,16 @@ export async function recomputeDay(employeeId: number, workDate: string, db: Db 
     where: { employeeId, workDate: { gte: lo, lte: hi } },
     orderBy: { checkTime: "asc" },
   });
+  // Tháng đã chốt công: không gán lại / tính lại log thuộc các ngày đó (ngày đầu tháng mới vẫn tính bình thường).
+  const locked = await lockedMonths(db);
+  const isLocked = (d: string) => locked.has(monthOf(d));
 
   // 1) Gán lại ca cho từng log.
-  const affected = new Set<string>([workDate]);
+  const affected = new Set<string>(isLocked(workDate) ? [] : [workDate]);
   for (const l of logs) {
+    if (isLocked(l.workDate)) continue;
     const a = assignScan(l.checkTime, (d) => planner.planFor(employeeId, d));
+    if (isLocked(a.workDate)) continue;
     const shiftId = a.plan?.shift?.id ?? null;
     affected.add(l.workDate);
     if (l.workDate !== a.workDate || l.shiftId !== shiftId) {
@@ -172,6 +178,7 @@ export async function recomputeDay(employeeId: number, workDate: string, db: Db 
     }
   };
   for (const d of affected) {
+    if (isLocked(d)) continue;
     const plan = planner.planFor(employeeId, d);
     const dayLogs = logs.filter((l) => l.workDate === d);
     const inShift = dayLogs.filter((l) => l.shiftId != null);
@@ -227,6 +234,7 @@ export async function recordScan(input: ScanInput, db?: Prisma.TransactionClient
     const day = vnDate(input.checkTime);
     const planner = await buildPlanner([input.employeeId], day, day, tx);
     const a = assignScan(input.checkTime, (d) => planner.planFor(input.employeeId, d));
+    await assertDatesUnlocked([a.workDate], tx);
     const created = await tx.attendanceLog.create({
       data: {
         employeeId: input.employeeId,
@@ -254,8 +262,22 @@ export async function recordScan(input: ScanInput, db?: Prisma.TransactionClient
 }
 
 /** Tổng hợp ngày công cho nhiều nhân viên trong khoảng [from, to] (ngày VN). Key: `${employeeId}|${date}`. */
+export type DayResult = DaySummary & { logs: AttendanceLog[]; plan: DayPlan };
+
+/** Kết quả ngày công đã chụp khi chốt tháng: (employeeId|workDate) → kết quả. */
+export async function loadLockedDays(employeeIds: number[], from: string, to: string) {
+  const locked = await lockedMonths();
+  const months = [...locked].filter((m) => m >= monthOf(from) && m <= monthOf(to));
+  if (!months.length) return { isLocked: (() => false) as (d: string) => boolean, snap: new Map<string, DayResult>() };
+  const rows = await prisma.lockedDay.findMany({ where: { employeeId: { in: employeeIds }, month: { in: months }, workDate: { gte: from, lte: to } } });
+  return {
+    isLocked: (d: string) => locked.has(monthOf(d)),
+    snap: new Map(rows.map((r) => [`${r.employeeId}|${r.workDate}`, reviveSnapshot<DayResult>(r.data)])),
+  };
+}
+
 export async function summarizeRange(employeeIds: number[], from: string, to: string, now = new Date()) {
-  const [planner, settings] = await Promise.all([buildPlanner(employeeIds, from, to), getSettings()]);
+  const [planner, settings, frozen] = await Promise.all([buildPlanner(employeeIds, from, to), getSettings(), loadLockedDays(employeeIds, from, to)]);
   const r = rangeUtc(from, to);
   const [logs, requests] = await Promise.all([
     prisma.attendanceLog.findMany({
@@ -275,9 +297,16 @@ export async function summarizeRange(employeeIds: number[], from: string, to: st
     if (!reqBy.has(q.employeeId)) reqBy.set(q.employeeId, []);
     reqBy.get(q.employeeId)!.push(q);
   }
-  const out = new Map<string, DaySummary & { logs: AttendanceLog[]; plan: DayPlan }>();
+  const out = new Map<string, DayResult>();
   for (const id of employeeIds) {
     for (let d = from; d <= to; d = addDays(d, 1)) {
+      if (frozen.isLocked(d)) {
+        // Tháng đã chốt: dùng bản chụp; nhân viên không có trong bản chụp (vd. vào làm sau) => coi như không có ca.
+        const snap = frozen.snap.get(`${id}|${d}`);
+        const empty: DayPlan = { workDate: d, shift: null, isDayOff: true, isHoliday: false, source: "DEFAULT" };
+        out.set(`${id}|${d}`, snap ?? { ...summarizeDay({ plan: empty, logs: [], requests: [], now, settings }), logs: [], plan: empty });
+        continue;
+      }
       const plan = planner.planFor(id, d);
       const all = logsBy.get(`${id}|${d}`) ?? [];
       const shiftLogs = plan.shift ? all.filter((l) => l.shiftId != null) : all;
