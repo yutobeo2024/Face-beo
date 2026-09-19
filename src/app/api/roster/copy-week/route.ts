@@ -1,13 +1,14 @@
 import { prisma } from "@/lib/db";
 import { badRequest, handle, json, parseJson } from "@/lib/api";
-import { employeeScopeWhere, requireUser } from "@/lib/auth";
+import { employeeScopeWhere } from "@/lib/auth";
 import { copyWeekSchema } from "@/lib/validators";
 import { addDays, startOfWeek } from "@/lib/attendance";
 import { applyCells } from "@/lib/roster";
+import { requirePerm } from "@/lib/permissions";
 
 /** Sao chép lịch (WorkSchedule) của tuần nguồn sang tuần đích cho nhân viên trong phạm vi. */
 export const POST = handle(async (req) => {
-  const u = await requireUser(req, ["ADMIN", "MANAGER"]);
+  const u = await requirePerm(req, "roster.edit");
   const body = await parseJson(req, copyWeekSchema);
   const from = startOfWeek(body.fromWeek);
   const to = startOfWeek(body.toWeek);

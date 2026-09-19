@@ -1,15 +1,16 @@
 /**
  * Dịch vụ Zalo OA (PRD mục 7). Xuất duy nhất `sendZaloMessage`, KHÔNG BAO GIỜ ném lỗi ra ngoài.
+ * Người nhận: một nhân viên (`toEmployeeId`, tra `zaloUserId`) hoặc một nhóm GMF của OA (`toGroupId`).
  * Thiếu bất kỳ biến ZALO_* nào => chế độ mô phỏng (in console + NotificationLog SIMULATED).
  */
 import { Prisma } from "@prisma/client";
 import { prisma } from "./db";
 import { renderMessage, type MessageType } from "./zalo-templates";
-import { TokenInvalidError, getAccessToken, isZaloSimulated, refreshZaloToken, sleep, transport } from "./zalo-token";
+import { TokenInvalidError, getAccessToken, groupTransport, isZaloSimulated, refreshZaloToken, sleep, transport } from "./zalo-token";
 
 type SendResult = { status: "SENT" | "SIMULATED" | "FAILED" | "SKIPPED_NO_ZALO" | "DUPLICATE" | "ERROR"; id?: number };
 
-function printSimulated(to: { name: string; code: string; zaloUserId: string | null }, type: string, text: string) {
+function printSimulated(to: string, type: string, text: string) {
   const c = { cyan: "\x1b[36m", yellow: "\x1b[33m", dim: "\x1b[2m", reset: "\x1b[0m", bold: "\x1b[1m" };
   const lines = text.split("\n");
   const w = Math.min(90, Math.max(40, ...lines.map((l) => l.length + 2)));
@@ -18,7 +19,7 @@ function printSimulated(to: { name: string; code: string; zaloUserId: string | n
     [
       `${c.cyan}┌${bar}┐${c.reset}`,
       `${c.cyan}│${c.reset} ${c.bold}[ZALO MÔ PHỎNG]${c.reset} ${c.yellow}${type}${c.reset}`,
-      `${c.cyan}│${c.reset} ${c.dim}Tới:${c.reset} ${to.name} (${to.code}) ${c.dim}zalo=${to.zaloUserId ?? "chưa liên kết"}${c.reset}`,
+      `${c.cyan}│${c.reset} ${c.dim}Tới:${c.reset} ${to}`,
       `${c.cyan}├${bar}┤${c.reset}`,
       ...lines.map((l) => `${c.cyan}│${c.reset} ${l}`),
       `${c.cyan}└${bar}┘${c.reset}`,
@@ -27,24 +28,26 @@ function printSimulated(to: { name: string; code: string; zaloUserId: string | n
 }
 
 export async function sendZaloMessage(args: {
-  toEmployeeId: number;
+  toEmployeeId?: number;
+  toGroupId?: string;
   messageType: MessageType;
   data: Record<string, unknown>;
   dedupeKey: string;
 }): Promise<SendResult> {
   try {
-    const emp = await prisma.employee.findUnique({
-      where: { id: args.toEmployeeId },
-      select: { id: true, name: true, code: true, zaloUserId: true },
-    });
-    if (!emp) return { status: "ERROR" };
+    const isGroup = !args.toEmployeeId && !!args.toGroupId;
+    const emp = args.toEmployeeId
+      ? await prisma.employee.findUnique({ where: { id: args.toEmployeeId }, select: { id: true, name: true, code: true, zaloUserId: true } })
+      : null;
+    if (!emp && !isGroup) return { status: "ERROR" };
     const text = renderMessage(args.messageType, args.data);
     let logId: number;
     try {
       const row = await prisma.notificationLog.create({
         data: {
           dedupeKey: args.dedupeKey,
-          toEmployeeId: emp.id,
+          toEmployeeId: emp?.id ?? null,
+          toGroupId: isGroup ? args.toGroupId! : null,
           messageType: args.messageType,
           payload: JSON.stringify({ ...args.data, text }),
           status: "PENDING",
@@ -60,26 +63,28 @@ export async function sendZaloMessage(args: {
       return { status, id: logId };
     };
 
+    const target = isGroup ? `nhóm ${args.toGroupId}` : `${emp!.name} (${emp!.code}) zalo=${emp!.zaloUserId ?? "chưa liên kết"}`;
     if (isZaloSimulated()) {
-      printSimulated(emp, args.messageType, text);
-      return finish(emp.zaloUserId ? "SIMULATED" : "SKIPPED_NO_ZALO");
+      printSimulated(target, args.messageType, text);
+      return finish(isGroup || emp!.zaloUserId ? "SIMULATED" : "SKIPPED_NO_ZALO");
     }
-    if (!emp.zaloUserId) return finish("SKIPPED_NO_ZALO");
+    if (!isGroup && !emp!.zaloUserId) return finish("SKIPPED_NO_ZALO");
+
+    const deliver = (accessToken: string) =>
+      isGroup ? groupTransport({ groupId: args.toGroupId!, text, accessToken }) : transport({ zaloUserId: emp!.zaloUserId!, text, accessToken });
 
     let lastErr = "";
     let refreshed = false;
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
-        const accessToken = await getAccessToken();
-        await transport({ zaloUserId: emp.zaloUserId, text, accessToken });
+        await deliver(await getAccessToken());
         return finish("SENT");
       } catch (e) {
         lastErr = (e as Error).message;
         if (e instanceof TokenInvalidError && !refreshed) {
           refreshed = true;
           try {
-            const accessToken = await refreshZaloToken(true);
-            await transport({ zaloUserId: emp.zaloUserId, text, accessToken });
+            await deliver(await refreshZaloToken(true));
             return finish("SENT");
           } catch (e2) {
             lastErr = (e2 as Error).message;

@@ -64,9 +64,9 @@ export async function requireUser(
   return u;
 }
 
-/** Phạm vi phòng ban: null = toàn công ty (ADMIN); mảng = các phòng MANAGER quản lý; EMPLOYEE = []. */
+/** Phạm vi phòng ban (gắn theo vai trò, không theo ma trận quyền): null = toàn công ty (ADMIN, HR); mảng = các phòng MANAGER quản lý; EMPLOYEE = []. */
 export function deptScope(u: AuthUser): number[] | null {
-  if (u.role === "ADMIN") return null;
+  if (u.role === "ADMIN" || u.role === "HR") return null;
   if (u.role === "MANAGER") return u.managedDeptIds;
   return [];
 }
@@ -101,10 +101,9 @@ export async function getPageUser(): Promise<AuthUser | null> {
   return s ? loadUser(s.sub) : null;
 }
 
-export async function requirePageUser(roles?: Role[]): Promise<AuthUser> {
+export async function requirePageUser(): Promise<AuthUser> {
   const u = await getPageUser();
   if (!u) redirect("/login");
   if (u.mustChangePassword) redirect("/login?change=1");
-  if (roles && !roles.includes(u.role)) redirect(u.role === "EMPLOYEE" ? "/me" : "/admin");
   return u;
 }

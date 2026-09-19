@@ -1,8 +1,9 @@
-export const ROLES = ["ADMIN", "MANAGER", "EMPLOYEE"] as const;
+export const ROLES = ["ADMIN", "HR", "MANAGER", "EMPLOYEE"] as const;
 export type Role = (typeof ROLES)[number];
 
 export const ROLE_LABEL: Record<Role, string> = {
   ADMIN: "Quản trị",
+  HR: "Nhân sự",
   MANAGER: "Quản lý",
   EMPLOYEE: "Nhân viên",
 };
@@ -29,3 +30,6 @@ export const KIOSK_COOKIE = "fb_kiosk";
 
 /** Phiên bản mô hình embedding khuôn mặt. Đổi mô hình => tăng số, template cũ bị bỏ qua. */
 export const FACE_MODEL_VERSION = "human-3.3-faceres-v1";
+
+/** Vai trò đặc quyền: chỉ người có quyền `roles.assignPrivileged` (ADMIN) mới gán hoặc sửa tài khoản mang vai trò này. */
+export const PRIVILEGED_ROLES: readonly Role[] = ["ADMIN", "HR"];

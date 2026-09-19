@@ -1,14 +1,14 @@
 import { prisma } from "@/lib/db";
 import { handle, json, parseJson } from "@/lib/api";
-import { requireUser } from "@/lib/auth";
 import { deviceCreateSchema } from "@/lib/validators";
 import { randomDigits } from "@/lib/crypto";
 import { audit } from "@/lib/audit";
+import { requirePerm } from "@/lib/permissions";
 
 const PAIR_TTL_MS = 10 * 60_000;
 
 export const GET = handle(async (req) => {
-  await requireUser(req, ["ADMIN"]);
+  await requirePerm(req, "devices.manage");
   const devices = await prisma.kioskDevice.findMany({
     orderBy: { id: "asc" },
     select: { id: true, name: true, location: true, active: true, lastSeenAt: true, pairCode: true, pairExpiresAt: true, tokenHash: true },
@@ -24,7 +24,7 @@ export const GET = handle(async (req) => {
 });
 
 export const POST = handle(async (req) => {
-  const u = await requireUser(req, ["ADMIN"]);
+  const u = await requirePerm(req, "devices.manage");
   const body = await parseJson(req, deviceCreateSchema);
   const d = await prisma.kioskDevice.create({
     data: { name: body.name, location: body.location || null, pairCode: randomDigits(6), pairExpiresAt: new Date(Date.now() + PAIR_TTL_MS) },

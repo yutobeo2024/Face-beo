@@ -1,6 +1,7 @@
 import { prisma } from "./db";
 import { forbidden } from "./api";
 import { assertDept, type AuthUser } from "./auth";
+import { can } from "./permissions";
 import { recomputeDay } from "./attendance-service";
 import { todayVN } from "./attendance";
 
@@ -30,13 +31,14 @@ export async function applyCells(
     assertDept(u, d);
   }
   const locked = await lockedCells(ids, [...new Set(cells.map((c) => c.date))]);
+  const overrideLock = await can(u, "roster.editRegistered");
   const today = todayVN();
   let saved = 0;
   let skipped = 0;
   const recompute = new Set<string>();
   for (const c of cells) {
     const k = `${c.employeeId}|${c.date}`;
-    if (locked.has(k) && u.role !== "ADMIN") {
+    if (locked.has(k) && !overrideLock) {
       skipped++;
       continue;
     }

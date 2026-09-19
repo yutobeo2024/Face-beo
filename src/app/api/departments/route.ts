@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { badRequest, handle, json, parseJson } from "@/lib/api";
 import { deptScope, requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
+import { requirePerm } from "@/lib/permissions";
 
 export const GET = handle(async (req) => {
   const u = await requireUser(req);
@@ -16,7 +17,7 @@ export const GET = handle(async (req) => {
 });
 
 export const POST = handle(async (req) => {
-  const u = await requireUser(req, ["ADMIN"]);
+  const u = await requirePerm(req, "org.manage");
   const { name } = await parseJson(req, z.object({ name: z.string().trim().min(2).max(80) }));
   if (await prisma.department.findUnique({ where: { name } })) throw badRequest("Tên phòng ban đã tồn tại");
   const d = await prisma.department.create({ data: { name } });

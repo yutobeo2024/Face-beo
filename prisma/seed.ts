@@ -7,6 +7,7 @@ import { addDays, startOfWeek, todayVN, vnDateTime, weekday } from "../src/lib/a
 import { recordScan } from "../src/lib/attendance-service";
 import { DEFAULT_APP_SETTINGS } from "../src/lib/settings";
 import { randomDigits } from "../src/lib/crypto";
+import { ensureDefaultPermissions } from "../src/lib/permissions";
 
 const prisma = new PrismaClient();
 
@@ -34,6 +35,7 @@ async function wipe() {
     prisma.holiday.deleteMany(),
     prisma.auditLog.deleteMany(),
     prisma.appSetting.deleteMany(),
+    prisma.rolePermission.deleteMany(),
   ]);
 }
 
@@ -70,6 +72,7 @@ async function main() {
     { name: "Mai Anh Tuấn", role: "EMPLOYEE", dept: 4, shift: hc.id, rotating: true },
     { name: "Trịnh Thảo Vy", role: "EMPLOYEE", dept: 4, shift: hc.id, rotating: true },
     { name: "Phan Gia Huy", role: "EMPLOYEE", dept: 1, shift: hc.id, rotating: true },
+    { name: "Lê Thị Nhân Sự", role: "HR", dept: 0, shift: hc.id },
   ];
   const emps = [];
   for (let i = 0; i < people.length; i++) {
@@ -113,6 +116,8 @@ async function main() {
       { date: "2027-01-01", name: "Tết Dương lịch" },
     ],
   });
+
+  await ensureDefaultPermissions();
 
   for (const [key, value] of Object.entries(DEFAULT_APP_SETTINGS)) {
     await prisma.appSetting.create({ data: { key, value: String(value) } });

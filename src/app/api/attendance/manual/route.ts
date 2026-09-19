@@ -1,13 +1,13 @@
 import { prisma } from "@/lib/db";
 import { badRequest, handle, json, notFound, parseJson } from "@/lib/api";
-import { requireUser } from "@/lib/auth";
 import { manualLogSchema } from "@/lib/validators";
 import { recordScan } from "@/lib/attendance-service";
 import { audit } from "@/lib/audit";
+import { requirePerm } from "@/lib/permissions";
 
 /** ADMIN bổ sung log MANUAL kèm lý do (vd. thiếu giờ ra, nhân viên chưa enroll). */
 export const POST = handle(async (req) => {
-  const u = await requireUser(req, ["ADMIN"]);
+  const u = await requirePerm(req, "attendance.manualDirect");
   const body = await parseJson(req, manualLogSchema);
   const e = await prisma.employee.findUnique({ where: { id: body.employeeId } });
   if (!e) throw notFound("Không tìm thấy nhân viên");

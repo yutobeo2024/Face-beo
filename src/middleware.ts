@@ -24,7 +24,7 @@ export async function middleware(req: NextRequest) {
   if (pathname.startsWith("/admin")) {
     if (!session) return toLogin();
     if (session.mcp) return NextResponse.redirect(new URL("/login?change=1", req.url));
-    if (session.role !== "ADMIN" && session.role !== "MANAGER") return NextResponse.redirect(new URL("/me", req.url));
+    // Quyền vào /admin phụ thuộc ma trận phân quyền (trong DB) — kiểm tra ở src/app/admin/layout.tsx.
     return NextResponse.next();
   }
   if (pathname.startsWith("/me")) {

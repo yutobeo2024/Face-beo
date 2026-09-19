@@ -1,22 +1,25 @@
 import { prisma } from "@/lib/db";
 import { badRequest, forbidden, handle, HttpError, idParam, json, notFound, parseJson } from "@/lib/api";
-import { requireUser } from "@/lib/auth";
 import { enrollSchema } from "@/lib/validators";
 import { encryptDescriptor } from "@/lib/crypto";
 import { getTemplates, invalidateFaceCache, matchAgainst } from "@/lib/face-matcher";
 import { getSettings } from "@/lib/settings";
 import { audit } from "@/lib/audit";
 import { FACE_MODEL_VERSION } from "@/lib/roles";
+import { requirePerm } from "@/lib/permissions";
+import { assertDept } from "@/lib/auth";
+import { announce, onceKey } from "@/lib/announce";
 
 const MIN_ENROLL_FACE_PX = 200;
 
 /** Enroll 5 mẫu. Không lưu ảnh, chỉ lưu embedding mã hóa AES-256-GCM. */
 export const POST = handle<{ id: string }>(async (req, ctx) => {
-  const u = await requireUser(req, ["ADMIN"]);
+  const u = await requirePerm(req, "faces.enroll");
   const id = await idParam(ctx);
   const body = await parseJson(req, enrollSchema);
   const e = await prisma.employee.findUnique({ where: { id } });
   if (!e || !e.active) throw notFound();
+  assertDept(u, e.departmentId);
   if (!e.biometricConsentAt) throw forbidden("Nhân viên chưa đồng ý xử lý dữ liệu sinh trắc học");
 
   const poses = new Set(body.samples.map((s) => s.pose));
@@ -62,15 +65,23 @@ export const POST = handle<{ id: string }>(async (req, ctx) => {
   ]);
   invalidateFaceCache();
   await audit({ actorId: u.id, action: "FACE_ENROLL", entity: "Employee", entityId: id, detail: { samples: 5, modelVersion: FACE_MODEL_VERSION } });
+  await announce(u, `đã enroll khuôn mặt cho ${e.code} — ${e.name}`, {
+    key: onceKey("face-enroll", id),
+    detail: worst ? "⚠️ Có cảnh báo trùng khuôn mặt với nhân viên khác (đã xác nhận vẫn lưu)" : "5 mẫu",
+  });
   return json({ ok: true, count: 5, duplicateWarning: worst ? true : false });
 });
 
 /** Xóa mẫu khuôn mặt (nhân viên yêu cầu xóa). */
 export const DELETE = handle<{ id: string }>(async (req, ctx) => {
-  const u = await requireUser(req, ["ADMIN"]);
+  const u = await requirePerm(req, "faces.enroll");
   const id = await idParam(ctx);
+  const e = await prisma.employee.findUnique({ where: { id }, select: { code: true, name: true, departmentId: true } });
+  if (!e) throw notFound();
+  assertDept(u, e.departmentId);
   const del = await prisma.faceTemplate.deleteMany({ where: { employeeId: id } });
   invalidateFaceCache();
   await audit({ actorId: u.id, action: "FACE_DELETE", entity: "Employee", entityId: id, detail: { count: del.count } });
+  if (del.count) await announce(u, `đã xóa dữ liệu khuôn mặt của ${e.code} — ${e.name}`, { key: onceKey("face-delete", id) });
   return json({ ok: true, deleted: del.count });
 });

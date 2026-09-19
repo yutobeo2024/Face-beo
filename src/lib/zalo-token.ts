@@ -166,3 +166,27 @@ export const transport: Transport = (a) => transportImpl(a);
 export function setZaloTransport(t: Transport) {
   transportImpl = t;
 }
+
+// ---- Tin nhắn nhóm GMF (nhóm chat do OA quản lý — cần OA Doanh nghiệp) ----
+// Tài liệu: https://developers.zalo.me/docs/official-account/nhom-chat-gmf/tin-nhan/condition
+// Cần xác minh endpoint/payload với tài liệu Zalo hiện hành trước khi chạy thật.
+const GROUP_SEND_URL = "https://openapi.zalo.me/v3.0/oa/group/message";
+
+export type GroupTransport = (args: { groupId: string; text: string; accessToken: string }) => Promise<void>;
+
+export const gmfTransport: GroupTransport = async ({ groupId, text, accessToken }) => {
+  const res = await fetchImpl(GROUP_SEND_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", access_token: accessToken },
+    body: JSON.stringify({ recipient: { group_id: groupId }, message: { text } }),
+  });
+  const j = (await res.json().catch(() => ({}))) as { error?: number; message?: string };
+  if (j.error && INVALID_TOKEN_CODES.has(j.error)) throw new TokenInvalidError(j.message ?? "token không hợp lệ");
+  if (!res.ok || (j.error && j.error !== 0)) throw new Error(`Zalo nhóm lỗi ${j.error ?? res.status}: ${j.message ?? ""}`);
+};
+
+let groupTransportImpl: GroupTransport = gmfTransport;
+export const groupTransport: GroupTransport = (a) => groupTransportImpl(a);
+export function setZaloGroupTransport(t: GroupTransport) {
+  groupTransportImpl = t;
+}

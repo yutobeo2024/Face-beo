@@ -6,6 +6,10 @@ import { employeeUpdateSchema } from "@/lib/validators";
 import { audit } from "@/lib/audit";
 import { invalidateFaceCache } from "@/lib/face-matcher";
 import { FACE_MODEL_VERSION } from "@/lib/roles";
+import { requirePerm } from "@/lib/permissions";
+import { assertCanModify } from "@/lib/employee-guards";
+import { announce, onceKey } from "@/lib/announce";
+import { ROLE_LABEL, type Role } from "@/lib/roles";
 
 export const GET = handle<{ id: string }>(async (req, ctx) => {
   const u = await requireUser(req);
@@ -40,14 +44,12 @@ export const GET = handle<{ id: string }>(async (req, ctx) => {
 });
 
 export const PATCH = handle<{ id: string }>(async (req, ctx) => {
-  const u = await requireUser(req, ["ADMIN"]);
+  const u = await requirePerm(req, "employees.manage");
   const id = await idParam(ctx);
   const body = await parseJson(req, employeeUpdateSchema);
   const e = await prisma.employee.findUnique({ where: { id } });
   if (!e) throw notFound();
-  if (id === u.id && (body.active === false || (body.role && body.role !== "ADMIN"))) {
-    throw badRequest("Không thể tự hạ quyền hoặc khóa chính mình");
-  }
+  await assertCanModify(u, e, { role: body.role, active: body.active, departmentId: body.departmentId });
   if (body.phone && body.phone !== e.phone && (await prisma.employee.findUnique({ where: { phone: body.phone } }))) {
     throw badRequest("Số điện thoại đã tồn tại");
   }
@@ -84,5 +86,18 @@ export const PATCH = handle<{ id: string }>(async (req, ctx) => {
     entityId: id,
     detail: { ...fields, resetPassword: !!resetPassword, unlinkZalo: !!unlinkZalo },
   });
+  const changes: string[] = [];
+  if (fields.role && fields.role !== e.role) changes.push(`vai trò ${ROLE_LABEL[e.role as Role] ?? e.role} → ${ROLE_LABEL[fields.role as Role]}`);
+  if (fields.departmentId && fields.departmentId !== e.departmentId) changes.push("đổi phòng ban");
+  if (fields.defaultShiftId && fields.defaultShiftId !== e.defaultShiftId) changes.push("đổi ca mặc định");
+  if (fields.name && fields.name !== e.name) changes.push("đổi họ tên");
+  if (fields.phone && fields.phone !== e.phone) changes.push("đổi số điện thoại");
+  if (fields.active === false && e.active) changes.push("CHO NGHỈ VIỆC (đã xóa dữ liệu khuôn mặt)");
+  if (fields.active === true && !e.active) changes.push("kích hoạt lại tài khoản");
+  if (resetPassword) changes.push("đặt lại mật khẩu");
+  if (unlinkZalo) changes.push("hủy liên kết Zalo");
+  if (changes.length) {
+    await announce(u, `đã sửa hồ sơ ${e.code} — ${e.name}`, { key: onceKey("emp-update", id), detail: changes.join("; ") });
+  }
   return json({ ok: true });
 });

@@ -5,7 +5,7 @@ import { fmtDay, weekdayOf, WEEKDAY_LONG } from "@/lib/client/format";
 import { Badge, Button, Card, CardHeader, ErrorBox, Field, IconButton, Loading, Modal, PageHeader, Select } from "@/components/ui";
 import { useDepartments } from "@/components/dept-select";
 import { useToast } from "@/components/toast";
-import { useAdminUser } from "../admin-nav";
+import { useCan } from "../admin-nav";
 
 type Settings = { matchThreshold: number; matchMargin: number; livenessThreshold: number; livenessServerThreshold: number; absentAfterMinutes: number; snapshotRetentionDays: number; otRoundMinutes: number };
 type Shift = { id: number; name: string; startTime: string; endTime: string; breakMinutes: number; graceLateMinutes: number; graceEarlyMinutes: number };
@@ -22,21 +22,27 @@ const FIELDS: { key: keyof Settings; label: string; hint: string; step: number }
 ];
 
 export default function SettingsPage() {
-  const user = useAdminUser();
+  const can = useCan();
+  const sys = can("settings.system");
+  const org = can("org.manage");
   const toast = useToast();
-  const s = useApi<{ settings: Settings; system: { zaloSimulated: boolean; livenessServer: boolean; l2: { modelPath: string; modelExists: boolean; error: string | null }; faceModelVersion: string } }>(user.role === "ADMIN" ? "/api/settings" : null);
+  const s = useApi<{ settings: Settings; zaloGroupId: string; system: { zaloSimulated: boolean; livenessServer: boolean; l2: { modelPath: string; modelExists: boolean; error: string | null }; faceModelVersion: string } }>(sys ? "/api/settings" : null);
   const shifts = useApi<{ shifts: Shift[] }>("/api/shifts");
   const holidays = useApi<{ holidays: Holiday[] }>("/api/holidays");
   const depts = useDepartments();
-  const emps = useApi<{ employees: { id: number; code: string; name: string; departmentId: number }[] }>(user.role === "ADMIN" ? "/api/employees" : null);
+  const emps = useApi<{ employees: { id: number; code: string; name: string; departmentId: number }[] }>(org ? "/api/employees" : null);
   const [form, setForm] = useState<Settings | null>(null);
+  const [groupId, setGroupId] = useState("");
   const [shiftForm, setShiftForm] = useState<(Omit<Shift, "id"> & { id?: number }) | null>(null);
   const [holiday, setHoliday] = useState<Holiday>({ date: "", name: "" });
   const [newDept, setNewDept] = useState("");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (s.data) setForm(s.data.settings);
+    if (s.data) {
+      setForm(s.data.settings);
+      setGroupId(s.data.zaloGroupId ?? "");
+    }
   }, [s.data]);
 
   async function run(fn: () => Promise<unknown>, msg: string, after?: () => void) {
@@ -52,29 +58,33 @@ export default function SettingsPage() {
     }
   }
 
-  if (user.role !== "ADMIN") return <ErrorBox message="Chỉ ADMIN thay đổi cấu hình." />;
-  if (s.error) return <ErrorBox message={s.error} onRetry={s.reload} />;
-  if (!form || !s.data) return <Loading />;
+  if (!sys && !org) return <ErrorBox message="Bạn không có quyền vào trang cấu hình." />;
+  if (sys && s.error) return <ErrorBox message={s.error} onRetry={s.reload} />;
+  if (sys && (!form || !s.data)) return <Loading />;
 
   return (
     <>
       <PageHeader title="Cấu hình" subtitle="Ca làm việc, ngày lễ, phòng ban, ngưỡng nhận diện và thời hạn lưu ảnh." />
+      {sys && s.data && (
       <div className="mb-4 flex flex-wrap gap-2">
         <Badge tone={s.data.system.zaloSimulated ? "late" : "ontime"}>Zalo OA: {s.data.system.zaloSimulated ? "mô phỏng" : "đang gửi thật"}</Badge>
         <Badge tone={!s.data.system.livenessServer ? "neutral" : s.data.system.l2.modelExists && !s.data.system.l2.error ? "ontime" : "absent"}>
           Liveness L2 server: {!s.data.system.livenessServer ? "tắt" : !s.data.system.l2.modelExists ? "bật nhưng thiếu mô hình" : s.data.system.l2.error ? "lỗi" : "bật (MiniFASNetV2)"}
         </Badge>
         <Badge tone="neutral">Mô hình: {s.data.system.faceModelVersion}</Badge>
+        <Badge tone={s.data.zaloGroupId ? "ontime" : "late"}>Nhóm Zalo minh bạch: {s.data.zaloGroupId ? "đã cấu hình" : "chưa cấu hình"}</Badge>
       </div>
+      )}
 
       <div className="grid gap-4 xl:grid-cols-2">
+        {sys && form && (
         <Card>
           <CardHeader title="Ngưỡng & thời hạn" />
           <form
             className="grid gap-3 p-4 sm:grid-cols-2 sm:p-5"
             onSubmit={(e) => {
               e.preventDefault();
-              void run(() => api("/api/settings", { method: "PUT", body: form }), "Đã lưu cấu hình", s.reload);
+              void run(() => api("/api/settings", { method: "PUT", body: { ...form, zaloGroupId: groupId } }), "Đã lưu cấu hình", s.reload);
             }}
           >
             {FIELDS.map((f) => (
@@ -82,6 +92,13 @@ export default function SettingsPage() {
                 {(id) => <input id={id} type="number" step={f.step} className="input tabular-nums" value={form[f.key]} onChange={(e) => setForm({ ...form, [f.key]: Number(e.target.value) })} />}
               </Field>
             ))}
+            <Field
+              className="sm:col-span-2"
+              label="ID nhóm Zalo OA (GMF) nhận tin minh bạch"
+              hint="Mọi thao tác duyệt/sửa của Nhân sự và Quản trị được gửi vào nhóm này. Nhóm phải do OA Doanh nghiệp tạo và quản lý."
+            >
+              {(id) => <input id={id} className="input font-mono" value={groupId} onChange={(e) => setGroupId(e.target.value)} placeholder="VD: 1234567890123456789" />}
+            </Field>
             <div className="sm:col-span-2">
               <Button type="submit" loading={busy}>
                 Lưu cấu hình
@@ -89,7 +106,10 @@ export default function SettingsPage() {
             </div>
           </form>
         </Card>
+        )}
 
+        {org && (
+          <>
         <Card>
           <CardHeader
             title="Ca làm việc"
@@ -185,6 +205,8 @@ export default function SettingsPage() {
             </Button>
           </form>
         </Card>
+          </>
+        )}
       </div>
 
       <Modal

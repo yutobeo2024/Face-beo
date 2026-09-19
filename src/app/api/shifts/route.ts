@@ -3,6 +3,7 @@ import { badRequest, handle, json, parseJson } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
 import { shiftSchema } from "@/lib/validators";
 import { audit } from "@/lib/audit";
+import { requirePerm } from "@/lib/permissions";
 
 export const GET = handle(async (req) => {
   await requireUser(req);
@@ -11,7 +12,7 @@ export const GET = handle(async (req) => {
 });
 
 export const POST = handle(async (req) => {
-  const u = await requireUser(req, ["ADMIN"]);
+  const u = await requirePerm(req, "org.manage");
   const body = await parseJson(req, shiftSchema);
   if (body.startTime === body.endTime) throw badRequest("Giờ bắt đầu và kết thúc không được trùng nhau");
   if (await prisma.shift.findUnique({ where: { name: body.name } })) throw badRequest("Tên ca đã tồn tại");

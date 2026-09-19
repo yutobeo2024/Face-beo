@@ -1,7 +1,7 @@
 /** Mẫu nội dung tin Zalo OA (PRD mục 7). Mỗi loại một hàm nhận data, trả chuỗi tiếng Việt kèm link. */
 import { env } from "./env";
 
-export type MessageType = "REQUEST_CREATED" | "REQUEST_DECIDED" | "LATE_REMINDER" | "ABSENT_WARNING" | "ABSENT_DIGEST";
+export type MessageType = "REQUEST_CREATED" | "REQUEST_DECIDED" | "LATE_REMINDER" | "ABSENT_WARNING" | "ABSENT_DIGEST" | "GROUP_EVENT";
 
 const link = (path: string) => `${env.appBaseUrl.replace(/\/$/, "")}${path}`;
 
@@ -39,6 +39,16 @@ export const zaloTemplates: Record<MessageType, (d: Data) => string> = {
       `Ca ${s(d.shiftName)} ngày ${s(d.dateText)} bắt đầu lúc ${s(d.startText)} nhưng hệ thống chưa thấy bạn chấm vào.`,
       `Nếu bạn nghỉ, vui lòng tạo đơn: ${link("/me/requests?new=1")}`,
     ].join("\n"),
+  // Tin minh bạch gửi vào nhóm Zalo OA: ai làm gì, cho ai, lý do.
+  GROUP_EVENT: (d) =>
+    [
+      `🔔 ${s(d.actorRole)} ${s(d.actorName)} ${s(d.action)}`,
+      d.detail ? s(d.detail) : "",
+      d.reason ? `Lý do: ${s(d.reason)}` : "",
+      `🕒 ${s(d.atText)}`,
+    ]
+      .filter(Boolean)
+      .join("\n"),
   ABSENT_DIGEST: (d) => {
     const rows = (d.items as { name: string; code: string; note?: string }[]) ?? [];
     return [

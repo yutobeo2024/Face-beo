@@ -13,10 +13,10 @@ const NAV: NavItem[] = [
   { href: "/me/zalo", label: "Zalo", icon: "zalo", mobile: true },
 ];
 
-export function MeNav({ user, children }: { user: MeUser; children: React.ReactNode }) {
+export function MeNav({ user, adminAccess, children }: { user: MeUser; adminAccess: boolean; children: React.ReactNode }) {
   return (
     <Ctx.Provider value={user}>
-      <AppShell user={user} nav={NAV} brandSub="Nhân viên" extraLinks={user.role !== "EMPLOYEE" ? [{ href: "/admin", label: "Trang quản trị", icon: "dashboard" }] : undefined}>
+      <AppShell user={user} nav={NAV} brandSub="Nhân viên" extraLinks={adminAccess ? [{ href: "/admin", label: "Trang quản trị", icon: "dashboard" }] : undefined}>
         <div className="mx-auto max-w-3xl">{children}</div>
       </AppShell>
     </Ctx.Provider>

@@ -4,8 +4,9 @@ import { badRequest, handle, json, parseJson, parseQuery } from "@/lib/api";
 import { employeeScopeWhere, requireUser } from "@/lib/auth";
 import { optId, requestCreateSchema } from "@/lib/validators";
 import { addDays, todayVN, vnDate } from "@/lib/attendance";
-import { approversFor, notifyRequestCreated } from "@/lib/notify";
+import { canDecideRequest, notifyRequestCreated } from "@/lib/notify";
 import { REQUEST_STATUSES, REQUEST_TYPES } from "@/lib/roles";
+import { can } from "@/lib/permissions";
 
 const listQuery = z.object({
   scope: z.enum(["mine", "team"]).default("mine"),
@@ -18,7 +19,7 @@ export const GET = handle(async (req) => {
   const u = await requireUser(req);
   const q = parseQuery(req, listQuery);
   const filters = { ...(q.status ? { status: q.status } : {}), ...(q.type ? { type: q.type } : {}) };
-  if (q.scope === "mine" || u.role === "EMPLOYEE") {
+  if (q.scope === "mine" || !(await can(u, "requests.decide"))) {
     const rows = await prisma.leaveRequest.findMany({
       where: { employeeId: u.id, ...filters },
       orderBy: { createdAt: "desc" },
@@ -36,14 +37,14 @@ export const GET = handle(async (req) => {
       approver: { select: { name: true } },
     },
   });
-  // Đơn của chính MANAGER chuyển cho ADMIN; ADMIN duyệt được mọi đơn trừ đơn của chính mình.
-  const routed = new Map<number, number[]>();
+  // Quyền duyệt theo tuyến duyệt (notify.approversFor); ghi nhớ theo người tạo đơn để tránh truy vấn lặp.
+  const memo = new Map<number, boolean>();
   const out = [];
   for (const r of rows) {
-    let canDecide = r.status === "PENDING" && r.employeeId !== u.id;
-    if (canDecide && u.role === "MANAGER") {
-      if (!routed.has(r.employeeId)) routed.set(r.employeeId, await approversFor(r.employeeId));
-      canDecide = routed.get(r.employeeId)!.includes(u.id);
+    let canDecide = false;
+    if (r.status === "PENDING") {
+      if (!memo.has(r.employeeId)) memo.set(r.employeeId, await canDecideRequest(u, r));
+      canDecide = memo.get(r.employeeId)!;
     }
     out.push({ ...r, canDecide, canCancel: false });
   }

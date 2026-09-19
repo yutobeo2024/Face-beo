@@ -4,30 +4,59 @@ import { prisma } from "./db";
 import { sendZaloMessage } from "./zalo-oa";
 import { toVN, shouldSendLateReminder, vnTime, type DayPlan, type RequestLite } from "./attendance";
 import { REQUEST_TYPE_LABEL, type RequestTypeT } from "./roles";
+import { can } from "./permissions";
 
 export const fmtDT = (d: Date) => toVN(d).toFormat("HH:mm dd/MM/yyyy");
 export const fmtDate = (s: string) => s.split("-").reverse().join("/");
 
-/** Người duyệt đơn: quản lý phòng; không có hoặc chính là người tạo đơn => tất cả ADMIN. */
+async function activeIdsByRole(role: string, exclude: number): Promise<number[]> {
+  const rows = await prisma.employee.findMany({ where: { role, active: true, NOT: { id: exclude } }, select: { id: true } });
+  return rows.map((r) => r.id);
+}
+
+/**
+ * Tuyến duyệt đơn theo vai trò người tạo (không ai tự duyệt đơn của mình):
+ *  - Nhân viên → quản lý phòng; phòng chưa có quản lý → Nhân sự; không có Nhân sự → Quản trị.
+ *  - Quản lý → Nhân sự; không có → Quản trị.
+ *  - Nhân sự → Quản trị.
+ *  - Quản trị → Quản trị khác; không có → Nhân sự.
+ */
 export async function approversFor(employeeId: number): Promise<number[]> {
   const emp = await prisma.employee.findUnique({
     where: { id: employeeId },
-    select: { department: { select: { managerId: true } } },
+    select: { role: true, department: { select: { managerId: true } } },
   });
-  const managerId = emp?.department.managerId;
-  if (managerId && managerId !== employeeId) {
-    const m = await prisma.employee.findUnique({ where: { id: managerId }, select: { active: true } });
-    if (m?.active) return [managerId];
+  const chain = async (...roles: string[]) => {
+    for (const r of roles) {
+      const ids = await activeIdsByRole(r, employeeId);
+      if (ids.length) return ids;
+    }
+    return [];
+  };
+  if (!emp) return chain("ADMIN");
+  switch (emp.role) {
+    case "ADMIN":
+      return chain("ADMIN", "HR");
+    case "HR":
+      return chain("ADMIN");
+    case "MANAGER":
+      return chain("HR", "ADMIN");
+    default: {
+      const managerId = emp.department.managerId;
+      if (managerId && managerId !== employeeId) {
+        const m = await prisma.employee.findUnique({ where: { id: managerId }, select: { active: true } });
+        if (m?.active) return [managerId];
+      }
+      return chain("HR", "ADMIN");
+    }
   }
-  const admins = await prisma.employee.findMany({ where: { role: "ADMIN", active: true }, select: { id: true } });
-  return admins.map((a) => a.id).filter((id) => id !== employeeId);
 }
 
-/** Người được quyền duyệt đơn này không. */
+/** Người dùng có được duyệt đơn này không: có quyền `requests.decide`, không phải đơn của mình, và nằm trong tuyến duyệt (Quản trị luôn được). */
 export async function canDecideRequest(user: { id: number; role: string }, req: { employeeId: number }): Promise<boolean> {
   if (req.employeeId === user.id) return false;
+  if (!(await can(user, "requests.decide"))) return false;
   if (user.role === "ADMIN") return true;
-  if (user.role !== "MANAGER") return false;
   return (await approversFor(req.employeeId)).includes(user.id);
 }
 

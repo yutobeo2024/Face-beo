@@ -22,7 +22,7 @@ model Employee {
   phone              String            @unique
   passwordHash       String
   mustChangePassword Boolean           @default(true)
-  role               String            @default("EMPLOYEE") // ADMIN | MANAGER | EMPLOYEE
+  role               String            @default("EMPLOYEE") // ADMIN | HR | MANAGER | EMPLOYEE
   zaloUserId         String?           @unique
   zaloLinkedAt       DateTime?
   departmentId       Int
@@ -150,8 +150,9 @@ model LeaveRequest {
 model NotificationLog {
   id           Int      @id @default(autoincrement())
   dedupeKey    String   @unique
-  toEmployeeId Int
-  toEmployee   Employee @relation(fields: [toEmployeeId], references: [id])
+  toEmployeeId Int?
+  toEmployee   Employee? @relation(fields: [toEmployeeId], references: [id])
+  toGroupId    String? // nhóm Zalo OA (GMF) — tin minh bạch cho quản trị
   messageType  String
   payload      String   // JSON
   status       String   // SENT | SIMULATED | FAILED | SKIPPED_NO_ZALO
@@ -186,4 +187,12 @@ model AuditLog {
 model AppSetting {
   key   String @id
   value String
+}
+
+// Ma trận phân quyền chỉnh được trên web (ADMIN luôn có mọi quyền, không lưu ở đây).
+model RolePermission {
+  role       String
+  capability String
+
+  @@id([role, capability])
 }

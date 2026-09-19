@@ -1,14 +1,14 @@
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { handle, json, parseQuery } from "@/lib/api";
-import { requireUser } from "@/lib/auth";
 import { getSettings } from "@/lib/settings";
+import { requirePerm } from "@/lib/permissions";
 
 /**
  * "Lần quét đáng ngờ" + phân bố matchScore để hiệu chỉnh ngưỡng trong pilot (PRD mục 6). Chỉ ADMIN.
  */
 export const GET = handle(async (req) => {
-  await requireUser(req, ["ADMIN"]);
+  await requirePerm(req, "suspicious.view");
   const { days } = parseQuery(req, z.object({ days: z.coerce.number().int().min(1).max(90).default(14) }));
   const since = new Date(Date.now() - days * 86_400_000);
   const settings = await getSettings();

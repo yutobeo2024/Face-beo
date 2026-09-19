@@ -1,12 +1,12 @@
 import { prisma } from "@/lib/db";
 import { handle, idParam, json, notFound } from "@/lib/api";
-import { requireUser } from "@/lib/auth";
 import { randomDigits } from "@/lib/crypto";
 import { audit } from "@/lib/audit";
+import { requirePerm } from "@/lib/permissions";
 
 /** Sinh mã ghép mới (hạn 10 phút). Ghép lại sẽ thay token cũ. */
 export const POST = handle<{ id: string }>(async (req, ctx) => {
-  const u = await requireUser(req, ["ADMIN"]);
+  const u = await requirePerm(req, "devices.manage");
   const id = await idParam(ctx);
   const d = await prisma.kioskDevice.findUnique({ where: { id } });
   if (!d) throw notFound();

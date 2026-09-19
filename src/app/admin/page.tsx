@@ -7,6 +7,7 @@ import { Avatar, Badge, Card, CardHeader, EmptyState, ErrorBox, IconButton, Page
 import { DeptSelect } from "@/components/dept-select";
 import { DayStatusBadge } from "@/components/status";
 import { Icon } from "@/components/icons";
+import { useCan } from "./admin-nav";
 
 type Person = { id: number; code: string; name: string; department: string; shift: string | null };
 type Dashboard = {
@@ -25,6 +26,20 @@ type Dashboard = {
 };
 
 export default function DashboardPage() {
+  const can = useCan();
+  if (!can("dashboard.view")) {
+    return (
+      <Card>
+        <EmptyState icon="dashboard" title="Chọn chức năng ở menu">
+          Tài khoản của bạn không có quyền xem dashboard tổng quan.
+        </EmptyState>
+      </Card>
+    );
+  }
+  return <Dashboard />;
+}
+
+function Dashboard() {
   const [dept, setDept] = useState("");
   const [tab, setTab] = useState<"late" | "absent" | "manual">("late");
   const { data, error, loading, reload } = useApi<Dashboard>(`/api/dashboard${qs({ departmentId: dept })}`, { refreshMs: 60_000 });

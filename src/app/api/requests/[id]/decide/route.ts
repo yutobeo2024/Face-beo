@@ -1,15 +1,18 @@
 import { prisma } from "@/lib/db";
 import { badRequest, forbidden, handle, idParam, json, notFound, parseJson } from "@/lib/api";
-import { requireUser } from "@/lib/auth";
 import { decideSchema } from "@/lib/validators";
 import { canDecideRequest, notifyRequestDecided } from "@/lib/notify";
 import { addDays, vnDate } from "@/lib/attendance";
 import { recomputeDay } from "@/lib/attendance-service";
 import { audit } from "@/lib/audit";
+import { requirePerm } from "@/lib/permissions";
+import { announce } from "@/lib/announce";
+import { fmtDT } from "@/lib/notify";
+import { REQUEST_TYPE_LABEL, type RequestTypeT } from "@/lib/roles";
 
 /** Duyệt / từ chối đơn. Duyệt đơn thuộc ngày đã có log => tính lại trễ/sớm của ngày đó. */
 export const POST = handle<{ id: string }>(async (req, ctx) => {
-  const u = await requireUser(req, ["ADMIN", "MANAGER"]);
+  const u = await requirePerm(req, "requests.decide");
   const id = await idParam(ctx);
   const body = await parseJson(req, decideSchema);
   const r = await prisma.leaveRequest.findUnique({ where: { id } });
@@ -43,5 +46,11 @@ export const POST = handle<{ id: string }>(async (req, ctx) => {
     detail: { employeeId: r.employeeId, type: r.type, note: body.note ?? null, recomputedDays: recomputed },
   });
   await notifyRequestDecided(decided);
+  const who = await prisma.employee.findUnique({ where: { id: r.employeeId }, select: { code: true, name: true } });
+  await announce(
+    u,
+    `đã ${status === "APPROVED" ? "DUYỆT" : "TỪ CHỐI"} đơn ${REQUEST_TYPE_LABEL[r.type as RequestTypeT] ?? r.type} #${r.id} của ${who?.code} — ${who?.name}`,
+    { key: `req-decided:${r.id}`, detail: `${fmtDT(r.fromTime)} → ${fmtDT(r.toTime)}`, reason: body.note },
+  );
   return json({ request: decided, recomputedDays: recomputed });
 });

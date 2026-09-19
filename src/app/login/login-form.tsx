@@ -7,12 +7,10 @@ import { Icon } from "@/components/icons";
 
 type LoginRes = { role: string; mustChangePassword: boolean; name: string };
 
-function destination(role: string, next: string | null) {
-  if (next && next.startsWith("/") && !next.startsWith("//")) {
-    if (next.startsWith("/admin") && role === "EMPLOYEE") return "/me";
-    return next;
-  }
-  return role === "EMPLOYEE" ? "/me" : "/admin";
+// Không có "next" thì về "/" để server chọn /admin hoặc /me theo ma trận phân quyền.
+function destination(_role: string, next: string | null) {
+  if (next && next.startsWith("/") && !next.startsWith("//")) return next;
+  return "/";
 }
 
 export default function LoginForm() {

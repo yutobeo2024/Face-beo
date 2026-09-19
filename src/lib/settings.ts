@@ -30,6 +30,19 @@ export async function getSettings(): Promise<AppSettings> {
   return parsed.success ? parsed.data : DEFAULT_APP_SETTINGS;
 }
 
+/** Cấu hình dạng chuỗi (không thuộc bộ ngưỡng số). */
+export const STRING_SETTINGS = ["zaloGroupId"] as const;
+export type StringSettingKey = (typeof STRING_SETTINGS)[number];
+
+export async function getStringSetting(key: StringSettingKey): Promise<string> {
+  const r = await prisma.appSetting.findUnique({ where: { key } });
+  return r?.value ?? "";
+}
+
+export async function saveStringSetting(key: StringSettingKey, value: string) {
+  await prisma.appSetting.upsert({ where: { key }, create: { key, value }, update: { value } });
+}
+
 export async function saveSettings(s: Partial<AppSettings>) {
   await prisma.$transaction(
     Object.entries(s).map(([key, value]) =>

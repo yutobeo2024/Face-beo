@@ -5,7 +5,7 @@ import { fmtDateTime, relTime } from "@/lib/client/format";
 import { Badge, Button, Card, EmptyState, ErrorBox, Field, Loading, Modal, PageHeader } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { useToast } from "@/components/toast";
-import { useAdminUser } from "../admin-nav";
+import { useCan } from "../admin-nav";
 
 type Device = { id: number; name: string; location: string | null; active: boolean; lastSeenAt: string | null; paired: boolean; pairCode: string | null; pairExpiresAt: string | null };
 
@@ -20,9 +20,9 @@ function Countdown({ until }: { until: string }) {
 }
 
 export default function DevicesPage() {
-  const user = useAdminUser();
+  const can = useCan();
   const toast = useToast();
-  const { data, error, loading, reload } = useApi<{ devices: Device[] }>(user.role === "ADMIN" ? "/api/devices" : null, { refreshMs: 15_000 });
+  const { data, error, loading, reload } = useApi<{ devices: Device[] }>(can("devices.manage") ? "/api/devices" : null, { refreshMs: 15_000 });
   const [form, setForm] = useState<{ name: string; location: string } | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -51,7 +51,7 @@ export default function DevicesPage() {
     }
   }
 
-  if (user.role !== "ADMIN") return <ErrorBox message="Chỉ ADMIN quản lý thiết bị." />;
+  if (!can("devices.manage")) return <ErrorBox message="Chỉ Quản trị quản lý thiết bị." />;
   return (
     <>
       <PageHeader

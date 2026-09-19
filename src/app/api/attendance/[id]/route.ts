@@ -1,13 +1,13 @@
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { handle, idParam, json, notFound, parseJson } from "@/lib/api";
-import { requireUser } from "@/lib/auth";
 import { recomputeDay } from "@/lib/attendance-service";
 import { audit } from "@/lib/audit";
+import { requirePerm } from "@/lib/permissions";
 
 /** ADMIN xóa một log sai (kèm lý do), rồi tính lại ngày công. */
 export const DELETE = handle<{ id: string }>(async (req, ctx) => {
-  const u = await requireUser(req, ["ADMIN"]);
+  const u = await requirePerm(req, "attendance.delete");
   const id = await idParam(ctx);
   const { reason } = await parseJson(req, z.object({ reason: z.string().trim().min(5).max(300) }));
   const log = await prisma.attendanceLog.findUnique({ where: { id } });

@@ -7,7 +7,7 @@ import { checkGate, loadEngine, openCamera, stopCamera, beep } from "@/lib/face/
 import { Badge, Button, Card, cx, ErrorBox, Loading, Modal, PageHeader } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { useToast } from "@/components/toast";
-import { useAdminUser } from "../../../admin-nav";
+import { useCan } from "../../../admin-nav";
 
 type Pose = "FRONT" | "LEFT" | "RIGHT" | "UP" | "DOWN";
 const POSES: { pose: Pose; label: string; hint: string }[] = [
@@ -23,7 +23,7 @@ type Emp = { employee: { id: number; code: string; name: string; biometricConsen
 const CONSENT_TEXT = [
   "Mục đích: dữ liệu khuôn mặt chỉ dùng để chấm công tại kiosk của công ty.",
   "Loại dữ liệu: vector đặc trưng khuôn mặt (embedding) được mã hóa AES-256-GCM. Hệ thống KHÔNG lưu ảnh enroll.",
-  "Ảnh chụp lúc chấm công (snapshot) được lưu tối đa 90 ngày để đối soát, chỉ quản trị và quản lý trực tiếp xem được.",
+  "Ảnh chụp lúc chấm công (snapshot) được lưu tối đa 90 ngày để đối soát, chỉ quản trị, bộ phận nhân sự và quản lý trực tiếp xem được.",
   "Thời hạn lưu: trong thời gian làm việc; xóa trong vòng 30 ngày khi nghỉ việc.",
   "Quyền của bạn: có thể rút lại đồng ý bất cứ lúc nào — dữ liệu khuôn mặt bị xóa ngay và bạn chuyển sang chấm công thủ công.",
 ];
@@ -47,7 +47,7 @@ function poseOk(pose: Pose, yaw: number, pitch: number, taken: Sample[]): boolea
 
 export default function EnrollPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const user = useAdminUser();
+  const can = useCan();
   const toast = useToast();
   const { data, error, loading, reload } = useApi<Emp>(`/api/employees/${id}`);
   const [agree, setAgree] = useState(false);
@@ -175,7 +175,7 @@ export default function EnrollPage({ params }: { params: Promise<{ id: string }>
     }
   }
 
-  if (user.role !== "ADMIN") return <ErrorBox message="Chỉ ADMIN được enroll khuôn mặt." />;
+  if (!can("faces.enroll")) return <ErrorBox message="Bạn không có quyền enroll khuôn mặt." />;
   if (error) return <ErrorBox message={error} onRetry={reload} />;
   if (loading || !emp) return <Loading />;
 

@@ -1,16 +1,17 @@
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { handle, json, parseJson, parseQuery } from "@/lib/api";
-import { employeeScopeWhere, requireUser } from "@/lib/auth";
+import { employeeScopeWhere } from "@/lib/auth";
 import { dateStr, optId, rosterUpdateSchema } from "@/lib/validators";
 import { buildPlanner } from "@/lib/attendance-service";
 import { applyCells, lockedCells } from "@/lib/roster";
 import { startOfWeek, todayVN, weekDates } from "@/lib/attendance";
+import { can, requirePerm } from "@/lib/permissions";
 
 const query = z.object({ week: dateStr.optional(), departmentId: optId, rotatingOnly: z.enum(["0", "1"]).optional() });
 
 export const GET = handle(async (req) => {
-  const u = await requireUser(req, ["ADMIN", "MANAGER"]);
+  const u = await requirePerm(req, "roster.view");
   const q = parseQuery(req, query);
   const monday = startOfWeek(q.week ?? todayVN());
   const dates = weekDates(monday);
@@ -36,6 +37,7 @@ export const GET = handle(async (req) => {
     prisma.shift.findMany({ orderBy: { startTime: "asc" } }),
   ]);
   const sched = new Set(schedules.map((s) => `${s.employeeId}|${s.date}`));
+  const overrideLock = await can(u, "roster.editRegistered");
   return json({
     week: monday,
     dates,
@@ -55,7 +57,7 @@ export const GET = handle(async (req) => {
               shiftId: p.shift?.id ?? null,
               isDayOff: p.isDayOff,
               source: sched.has(k) ? "SCHEDULE" : "DEFAULT",
-              locked: u.role !== "ADMIN" && locked.has(k),
+              locked: !overrideLock && locked.has(k),
             },
           ];
         }),
@@ -65,7 +67,7 @@ export const GET = handle(async (req) => {
 });
 
 export const PUT = handle(async (req) => {
-  const u = await requireUser(req, ["ADMIN", "MANAGER"]);
+  const u = await requirePerm(req, "roster.edit");
   const { cells } = await parseJson(req, rosterUpdateSchema);
   return json(await applyCells(u, cells));
 });

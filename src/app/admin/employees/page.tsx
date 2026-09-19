@@ -6,6 +6,7 @@ import { Avatar, Badge, Button, Card, EmptyState, ErrorBox, Field, Loading, Moda
 import { DeptSelect, useDepartments } from "@/components/dept-select";
 import { Icon } from "@/components/icons";
 import { useToast } from "@/components/toast";
+import { useAdminUser, useCan } from "../admin-nav";
 
 type Emp = {
   id: number;
@@ -29,7 +30,8 @@ type Emp = {
 type Shift = { id: number; name: string; startTime: string; endTime: string };
 type Form = { id?: number; code: string; name: string; phone: string; role: string; departmentId: string; defaultShiftId: string; active: boolean };
 
-const ROLE: Record<string, string> = { ADMIN: "Quản trị", MANAGER: "Quản lý", EMPLOYEE: "Nhân viên" };
+const ROLE: Record<string, string> = { ADMIN: "Quản trị", HR: "Nhân sự", MANAGER: "Quản lý", EMPLOYEE: "Nhân viên" };
+const PRIVILEGED = ["ADMIN", "HR"];
 
 function FaceBadge({ e }: { e: Emp }) {
   if (e.faceStatus === "ENROLLED") return <Badge tone="ontime">Đã có khuôn mặt</Badge>;
@@ -39,6 +41,14 @@ function FaceBadge({ e }: { e: Emp }) {
 
 export default function EmployeesPage() {
   const toast = useToast();
+  const can = useCan();
+  const me = useAdminUser();
+  const manage = can("employees.manage");
+  const enroll = can("faces.enroll");
+  const privileged = can("roles.assignPrivileged");
+  // Chỉ Quản trị sửa được tài khoản Nhân sự / Quản trị (luật chống leo thang quyền, server cũng kiểm tra lại).
+  const canEdit = (e: { id: number; role: string }) => manage && (privileged || !PRIVILEGED.includes(e.role) || e.id === me.id);
+  const roleOptions = Object.entries(ROLE).filter(([v]) => privileged || !PRIVILEGED.includes(v));
   const [q, setQ] = useState("");
   const [dept, setDept] = useState("");
   const [inactive, setInactive] = useState(false);
@@ -106,9 +116,11 @@ export default function EmployeesPage() {
         title="Nhân viên"
         subtitle={data ? `${list.length} nhân viên · ${list.filter((e) => e.faceStatus === "ENROLLED").length} đã enroll · ${list.filter((e) => e.zaloLinked).length} đã liên kết Zalo` : undefined}
         actions={
-          <Button icon="plus" onClick={openCreate}>
-            Thêm nhân viên
-          </Button>
+          manage && (
+            <Button icon="plus" onClick={openCreate}>
+              Thêm nhân viên
+            </Button>
+          )
         }
       />
       <Card className="mb-3 grid gap-2 p-3 sm:grid-cols-[1fr_auto_auto] sm:items-center">
@@ -154,11 +166,12 @@ export default function EmployeesPage() {
                 {e.lockedUntil && new Date(e.lockedUntil) > new Date() && <Badge tone="absent">Đang khóa đăng nhập</Badge>}
               </div>
               <div className="mt-auto flex gap-2 pt-3">
-                {e.active && (
+                {e.active && enroll && (
                   <Link href={`/admin/employees/${e.id}/enroll`} className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-xl bg-brand-50 text-sm font-semibold text-brand-800 ring-1 ring-brand-200 hover:bg-brand-100">
                     <Icon name="face" className="size-4" /> {e.faceStatus === "ENROLLED" ? "Enroll lại" : "Enroll khuôn mặt"}
                   </Link>
                 )}
+                {canEdit(e) && (
                 <Button
                   size="sm"
                   variant="secondary"
@@ -169,6 +182,7 @@ export default function EmployeesPage() {
                 >
                   Sửa
                 </Button>
+                )}
               </div>
             </Card>
           ))}
@@ -204,8 +218,8 @@ export default function EmployeesPage() {
             <Field label="Số điện thoại">{(id) => <input id={id} className="input" inputMode="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />}</Field>
             <Field label="Vai trò">
               {(id) => (
-                <Select id={id} value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
-                  {Object.entries(ROLE).map(([v, l]) => (
+                <Select id={id} value={form.role} disabled={form.id === me.id} onChange={(e) => setForm({ ...form, role: e.target.value })}>
+                  {(roleOptions.some(([v]) => v === form.role) ? roleOptions : [...roleOptions, [form.role, ROLE[form.role] ?? form.role]]).map(([v, l]) => (
                     <option key={v} value={v}>
                       {l}
                     </option>
@@ -250,7 +264,7 @@ export default function EmployeesPage() {
                       Hủy liên kết Zalo
                     </Button>
                   )}
-                  {current.faceCount > 0 && (
+                  {current.faceCount > 0 && enroll && (
                     <Button size="sm" variant="secondary" icon="trash" className="text-rose-700" onClick={() => deleteFaces(current.id)}>
                       Xóa mẫu khuôn mặt
                     </Button>

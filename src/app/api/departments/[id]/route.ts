@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { badRequest, handle, idParam, json, notFound, parseJson } from "@/lib/api";
-import { requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
+import { requirePerm } from "@/lib/permissions";
 
 const schema = z.object({
   name: z.string().trim().min(2).max(80).optional(),
@@ -11,7 +11,7 @@ const schema = z.object({
 
 /** Đổi tên hoặc gán quản lý phòng ban. Người được gán tự lên vai trò MANAGER nếu đang là EMPLOYEE. */
 export const PATCH = handle<{ id: string }>(async (req, ctx) => {
-  const u = await requireUser(req, ["ADMIN"]);
+  const u = await requirePerm(req, "org.manage");
   const id = await idParam(ctx);
   const body = await parseJson(req, schema);
   const d = await prisma.department.findUnique({ where: { id } });

@@ -1,12 +1,13 @@
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { badRequest, handle, json, parseQuery } from "@/lib/api";
-import { employeeScopeWhere, requireUser } from "@/lib/auth";
+import { employeeScopeWhere } from "@/lib/auth";
 import { dateStr, optId } from "@/lib/validators";
 import { summarizeRange } from "@/lib/attendance-service";
 import { toDayRow } from "@/lib/day-rows";
 import { todayVN } from "@/lib/attendance";
 import { FACE_MODEL_VERSION } from "@/lib/roles";
+import { requirePerm } from "@/lib/permissions";
 
 const query = z.object({
   from: dateStr.optional(),
@@ -18,7 +19,7 @@ const query = z.object({
 
 /** Bảng log theo ngày: mỗi (nhân viên, ngày) một dòng kèm các log, cờ bất thường. */
 export const GET = handle(async (req) => {
-  const u = await requireUser(req, ["ADMIN", "MANAGER"]);
+  const u = await requirePerm(req, "attendance.view");
   const q = parseQuery(req, query);
   const from = q.from ?? todayVN();
   const to = q.to ?? from;

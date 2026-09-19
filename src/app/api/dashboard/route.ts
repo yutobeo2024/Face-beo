@@ -1,17 +1,19 @@
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { handle, json, parseQuery } from "@/lib/api";
-import { employeeScopeWhere, requireUser } from "@/lib/auth";
+import { employeeScopeWhere } from "@/lib/auth";
 import { optId } from "@/lib/validators";
 import { summarizeRange } from "@/lib/attendance-service";
 import { todayVN, vnTime } from "@/lib/attendance";
 import { getZaloRefreshError, isZaloSimulated } from "@/lib/zalo-token";
 import { FACE_MODEL_VERSION } from "@/lib/roles";
+import { can, requirePerm } from "@/lib/permissions";
 
 /** Dashboard hôm nay (PRD mục 5): 5 thẻ + danh sách trễ/vắng; MANAGER chỉ thấy phòng mình. */
 export const GET = handle(async (req) => {
-  const u = await requireUser(req, ["ADMIN", "MANAGER"]);
+  const u = await requirePerm(req, "dashboard.view");
   const q = parseQuery(req, z.object({ departmentId: optId }));
+  const [seeSuspicious, seeSystem] = await Promise.all([can(u, "suspicious.view"), can(u, "settings.system")]);
   const today = todayVN();
   const emps = await prisma.employee.findMany({
     where: { ...employeeScopeWhere(u, q.departmentId), active: true },
@@ -43,10 +45,10 @@ export const GET = handle(async (req) => {
   }
   const [pendingRequests, suspicious, l2Down] = await Promise.all([
     prisma.leaveRequest.count({ where: { status: "PENDING", employee: employeeScopeWhere(u, q.departmentId), employeeId: { not: u.id } } }),
-    u.role === "ADMIN"
+    seeSuspicious
       ? prisma.auditLog.count({ where: { action: "SCAN_SPOOF_REJECTED", createdAt: { gte: new Date(now.getTime() - 86_400_000) } } })
       : Promise.resolve(0),
-    u.role === "ADMIN"
+    seeSystem
       ? prisma.auditLog.findFirst({ where: { action: "LIVENESS_L2_UNAVAILABLE", createdAt: { gte: new Date(now.getTime() - 3600_000) } }, orderBy: { createdAt: "desc" } })
       : Promise.resolve(null),
   ]);
@@ -62,6 +64,6 @@ export const GET = handle(async (req) => {
     pendingRequests,
     suspicious24h: suspicious,
     l2Error: l2Down ? { at: l2Down.createdAt, detail: l2Down.detail } : null,
-    zalo: u.role === "ADMIN" ? { simulated: isZaloSimulated(), refreshError: await getZaloRefreshError() } : null,
+    zalo: seeSystem ? { simulated: isZaloSimulated(), refreshError: await getZaloRefreshError() } : null,
   });
 });

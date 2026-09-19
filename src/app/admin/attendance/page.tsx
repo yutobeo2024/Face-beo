@@ -8,7 +8,7 @@ import { DeptSelect } from "@/components/dept-select";
 import { DayStatusBadge } from "@/components/status";
 import { Icon } from "@/components/icons";
 import { useToast } from "@/components/toast";
-import { useAdminUser } from "../admin-nav";
+import { useCan } from "../admin-nav";
 
 type Log = {
   id: number;
@@ -76,7 +76,7 @@ function Flags({ r }: { r: Row }) {
   );
 }
 
-function DayTable({ isAdmin }: { isAdmin: boolean }) {
+function DayTable({ canManual, canDelete }: { canManual: boolean; canDelete: boolean }) {
   const toast = useToast();
   const [date, setDate] = useState(todayStr());
   const [dept, setDept] = useState("");
@@ -87,7 +87,7 @@ function DayTable({ isAdmin }: { isAdmin: boolean }) {
   const [busy, setBusy] = useState(false);
   const [photo, setPhoto] = useState<string | null>(null);
   const { data, error, loading, reload } = useApi<{ rows: Row[] }>(`/api/attendance${qs({ from: date, to: date, departmentId: dept, flag })}`);
-  const emps = useApi<{ employees: { id: number; code: string; name: string }[] }>(isAdmin ? "/api/employees" : null);
+  const emps = useApi<{ employees: { id: number; code: string; name: string }[] }>(canManual ? "/api/employees" : null);
 
   async function saveManual() {
     if (!manual) return;
@@ -124,7 +124,7 @@ function DayTable({ isAdmin }: { isAdmin: boolean }) {
       <Card className="mb-3 grid gap-2 p-3 sm:grid-cols-[auto_1fr_auto] sm:items-center">
         <input type="date" className="input sm:w-44" value={date} max={todayStr()} onChange={(e) => e.target.value && setDate(e.target.value)} aria-label="Ngày công" />
         <DeptSelect value={dept} onChange={setDept} className="sm:w-56" />
-        {isAdmin && (
+        {canManual && (
           <Button icon="plus" onClick={() => setManual({ employeeId: "", checkTime: toLocalInput(new Date().toISOString()), reason: "" })}>
             Thêm log thủ công
           </Button>
@@ -174,7 +174,7 @@ function DayTable({ isAdmin }: { isAdmin: boolean }) {
                 {data.rows.map((r) => {
                   const k = `${r.employee.id}|${r.date}`;
                   return (
-                    <RowFragment key={k} r={r} open={open === k} onToggle={() => setOpen(open === k ? null : k)} isAdmin={isAdmin} onPhoto={setPhoto} onDelete={(log) => setDel({ log, reason: "" })} />
+                    <RowFragment key={k} r={r} open={open === k} onToggle={() => setOpen(open === k ? null : k)} isAdmin={canDelete} onPhoto={setPhoto} onDelete={(log) => setDel({ log, reason: "" })} />
                   );
                 })}
               </tbody>
@@ -205,7 +205,7 @@ function DayTable({ isAdmin }: { isAdmin: boolean }) {
                       </div>
                     </div>
                   </button>
-                  {open === k && <LogList logs={r.logs} isAdmin={isAdmin} onPhoto={setPhoto} onDelete={(log) => setDel({ log, reason: "" })} />}
+                  {open === k && <LogList logs={r.logs} isAdmin={canDelete} onPhoto={setPhoto} onDelete={(log) => setDel({ log, reason: "" })} />}
                 </li>
               );
             })}
@@ -452,17 +452,17 @@ function SuspiciousTab() {
 }
 
 function AttendanceInner() {
-  const user = useAdminUser();
+  const can = useCan();
   const sp = useSearchParams();
-  const isAdmin = user.role === "ADMIN";
-  const [tab, setTab] = useState<"day" | "suspicious">(sp.get("tab") === "suspicious" && isAdmin ? "suspicious" : "day");
+  const seeSuspicious = can("suspicious.view");
+  const [tab, setTab] = useState<"day" | "suspicious">(sp.get("tab") === "suspicious" && seeSuspicious ? "suspicious" : "day");
   return (
     <>
       <PageHeader
         title="Chấm công"
         subtitle="Log chấm công, ảnh snapshot và các cờ bất thường."
         actions={
-          isAdmin && (
+          seeSuspicious && (
             <Segmented
               value={tab}
               onChange={setTab}
@@ -474,7 +474,7 @@ function AttendanceInner() {
           )
         }
       />
-      {tab === "day" ? <DayTable isAdmin={isAdmin} /> : <SuspiciousTab />}
+      {tab === "day" ? <DayTable canManual={can("attendance.manualDirect")} canDelete={can("attendance.delete")} /> : <SuspiciousTab />}
     </>
   );
 }
