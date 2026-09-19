@@ -1,0 +1,823 @@
+<title>Cẩm nang Face Beo</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap&subset=vietnamese" rel="stylesheet">
+<style>
+:root{
+  --bg:#f7f8fa; --surface:#ffffff; --surface-2:#f1f4f8; --text:#1c2430; --muted:#5b6778; --line:#e2e7ee;
+  --brand:#0f766e; --brand-soft:#e6f4f2; --accent:#b45309; --accent-soft:#fdf3e6;
+  --ok:#15803d; --ok-soft:#e8f6ec; --warn:#b45309; --warn-soft:#fdf3e6; --bad:#b91c1c; --bad-soft:#fdecec;
+  --info:#1d4ed8; --info-soft:#eaf0fd; --code:#eef2f6;
+  --shadow:0 1px 2px rgba(16,24,40,.05),0 1px 3px rgba(16,24,40,.06);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1419; --surface:#161d25; --surface-2:#1c2530; --text:#e3e8ee; --muted:#9aa7b6; --line:#2a3542;
+    --brand:#2dd4bf; --brand-soft:#123330; --accent:#f59e0b; --accent-soft:#3a2a10;
+    --ok:#4ade80; --ok-soft:#10301c; --warn:#fbbf24; --warn-soft:#382a0c; --bad:#f87171; --bad-soft:#3a1616;
+    --info:#93b4ff; --info-soft:#17243f; --code:#1f2a36; --shadow:none;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1419; --surface:#161d25; --surface-2:#1c2530; --text:#e3e8ee; --muted:#9aa7b6; --line:#2a3542;
+  --brand:#2dd4bf; --brand-soft:#123330; --accent:#f59e0b; --accent-soft:#3a2a10;
+  --ok:#4ade80; --ok-soft:#10301c; --warn:#fbbf24; --warn-soft:#382a0c; --bad:#f87171; --bad-soft:#3a1616;
+  --info:#93b4ff; --info-soft:#17243f; --code:#1f2a36; --shadow:none;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:16px}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.65 "Be Vietnam Pro",system-ui,sans-serif;-webkit-text-size-adjust:100%}
+a{color:var(--brand)}
+code,kbd{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:.86em;background:var(--code);padding:.1em .35em;border-radius:4px}
+kbd{border:1px solid var(--line);border-bottom-width:2px}
+.layout{display:grid;grid-template-columns:270px minmax(0,1fr);max-width:1280px;margin:0 auto}
+nav.toc{position:sticky;top:0;height:100vh;overflow:auto;padding:24px 16px 40px;border-right:1px solid var(--line)}
+nav.toc .brand{font-weight:700;font-size:1.1rem;margin-bottom:4px}
+nav.toc .sub{color:var(--muted);font-size:.85rem;margin-bottom:18px}
+nav.toc ol{list-style:none;margin:0;padding:0;counter-reset:t}
+nav.toc li a{display:block;padding:5px 10px;border-radius:6px;text-decoration:none;color:var(--text);font-size:.92rem}
+nav.toc li a:hover{background:var(--surface-2)}
+nav.toc li a.active{background:var(--brand-soft);color:var(--brand);font-weight:600}
+nav.toc .grp{margin:14px 10px 4px;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+main{padding:32px 40px 80px;min-width:0}
+header.hero{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:28px 28px 22px;box-shadow:var(--shadow);margin-bottom:28px}
+header.hero h1{margin:0 0 6px;font-size:1.9rem;line-height:1.25}
+header.hero p{margin:6px 0;color:var(--muted)}
+.theme-btn{float:right;border:1px solid var(--line);background:var(--surface-2);color:var(--text);border-radius:8px;padding:6px 10px;font:inherit;font-size:.85rem;cursor:pointer}
+section{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:26px 28px;margin-bottom:24px;box-shadow:var(--shadow)}
+section>h2{margin:0 0 4px;font-size:1.45rem;line-height:1.3}
+section>h2 .num{color:var(--brand);margin-right:8px}
+.lead{color:var(--muted);margin:0 0 16px}
+h3{font-size:1.1rem;margin:26px 0 8px}
+h4{font-size:1rem;margin:18px 0 6px}
+table{width:100%;border-collapse:collapse;font-size:.92rem;margin:10px 0 16px}
+th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+th{background:var(--surface-2);font-weight:600}
+.tw{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.tw table{min-width:560px}
+.callout{border-left:4px solid var(--info);background:var(--info-soft);padding:12px 16px;border-radius:0 10px 10px 0;margin:14px 0}
+.callout.ok{border-color:var(--ok);background:var(--ok-soft)}
+.callout.warn{border-color:var(--warn);background:var(--warn-soft)}
+.callout.bad{border-color:var(--bad);background:var(--bad-soft)}
+.callout b:first-child{display:block;margin-bottom:2px}
+.callout p{margin:4px 0}
+.steps{counter-reset:s;list-style:none;padding:0;margin:10px 0 16px}
+.steps>li{position:relative;padding:4px 0 10px 44px}
+.steps>li::before{counter-increment:s;content:counter(s);position:absolute;left:0;top:2px;width:30px;height:30px;border-radius:50%;background:var(--brand);color:#fff;display:grid;place-items:center;font-weight:700;font-size:.9rem}
+:root[data-theme="dark"] .steps>li::before{color:#062a27}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .steps>li::before{color:#062a27}}
+.grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));margin:14px 0}
+.card{border:1px solid var(--line);border-radius:12px;padding:14px 16px;background:var(--surface-2)}
+.card h4{margin:0 0 6px}
+.card p,.card ul{margin:4px 0;font-size:.93rem}
+.card ul{padding-left:18px}
+.pill{display:inline-block;padding:1px 9px;border-radius:999px;font-size:.78rem;font-weight:600;background:var(--brand-soft);color:var(--brand);margin-right:4px}
+.pill.a{background:var(--bad-soft);color:var(--bad)}.pill.h{background:var(--accent-soft);color:var(--accent)}.pill.m{background:var(--info-soft);color:var(--info)}.pill.e{background:var(--ok-soft);color:var(--ok)}
+.y{color:var(--ok);font-weight:700}.n{color:var(--muted)}
+.diagram{border:1px solid var(--line);border-radius:12px;background:var(--surface);padding:14px;margin:14px 0;overflow-x:auto}
+.diagram .cap{font-size:.82rem;color:var(--muted);margin-top:6px}
+pre.mermaid{margin:0;background:transparent;text-align:center;font-family:inherit;white-space:pre}
+.ex{border:1px dashed var(--line);border-radius:12px;padding:14px 16px;margin:12px 0;background:var(--surface-2)}
+.ex .t{font-weight:700;color:var(--accent);font-size:.85rem;text-transform:uppercase;letter-spacing:.04em}
+.formula{font-family:"JetBrains Mono",monospace;background:var(--code);border-radius:10px;padding:12px 14px;font-size:.9rem;overflow-x:auto;white-space:pre}
+details{border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin:8px 0;background:var(--surface-2)}
+details summary{cursor:pointer;font-weight:600}
+details[open] summary{margin-bottom:6px}
+.check li{list-style:none;position:relative;padding-left:26px;margin:4px 0}
+.check{padding-left:0}
+.check li::before{content:"☐";position:absolute;left:0;color:var(--brand)}
+.menu-mobile{display:none}
+footer{color:var(--muted);font-size:.85rem;text-align:center;padding:10px}
+@media (max-width:900px){
+  .layout{display:block}
+  nav.toc{position:static;height:auto;border-right:0;padding:16px}
+  nav.toc ol{display:none}
+  nav.toc.open ol{display:block}
+  .menu-mobile{display:inline-block;border:1px solid var(--line);background:var(--surface);color:var(--text);border-radius:8px;padding:6px 12px;font:inherit;font-size:.9rem;cursor:pointer}
+  main{padding:0 16px 60px}
+  section{padding:18px 16px}
+  header.hero{padding:20px 16px}
+  header.hero h1{font-size:1.5rem}
+}
+</style>
+
+<div class="layout">
+<nav class="toc" id="toc">
+  <div class="brand">📘 Cẩm nang Face Beo</div>
+  <div class="sub">Hướng dẫn sử dụng · bản v1.4</div>
+  <button class="menu-mobile" onclick="document.getElementById('toc').classList.toggle('open')">☰ Mục lục</button>
+  <ol>
+    <li class="grp">Bắt đầu</li>
+    <li><a href="#tong-quan">1. Tổng quan &amp; vai trò</a></li>
+    <li><a href="#bat-dau-nhanh">2. Bắt đầu nhanh theo vai trò</a></li>
+    <li><a href="#phan-quyen">3. Phân quyền</a></li>
+    <li class="grp">Thiết lập (Quản trị)</li>
+    <li><a href="#cau-hinh-ca">4. Cấu hình ca &amp; hệ số công</a></li>
+    <li><a href="#mau-tuan">5. Mẫu tuần, phòng ban, ngày lễ</a></li>
+    <li><a href="#nhan-vien">6. Nhân viên &amp; khuôn mặt</a></li>
+    <li><a href="#kiosk">7. Máy chấm công (kiosk)</a></li>
+    <li class="grp">Vận hành hằng ngày</li>
+    <li><a href="#xep-ca">8. Xếp ca &amp; đăng ký tuần</a></li>
+    <li><a href="#don-tu">9. Đơn từ &amp; tuyến duyệt</a></li>
+    <li><a href="#bo-sung-cong">10. Bổ sung công (quên chấm)</a></li>
+    <li><a href="#cham-cong">11. Theo dõi chấm công</a></li>
+    <li class="grp">Công &amp; lương</li>
+    <li><a href="#tinh-cong">12. Cách tính công, trễ, OT</a></li>
+    <li><a href="#bao-cao">13. Báo cáo &amp; tính lương</a></li>
+    <li><a href="#chot-cong">14. Chốt công tháng</a></li>
+    <li class="grp">Khác</li>
+    <li><a href="#zalo">15. Zalo &amp; thông báo</a></li>
+    <li><a href="#nhan-vien-tu-phuc-vu">16. Trang cá nhân nhân viên</a></li>
+    <li><a href="#lich-thang">17. Lịch làm việc hằng tháng</a></li>
+    <li><a href="#hoi-dap">18. Hỏi đáp &amp; xử lý sự cố</a></li>
+  </ol>
+</nav>
+
+<main>
+<header class="hero">
+  <button class="theme-btn" id="themeBtn" type="button">🌓 Giao diện</button>
+  <h1>Cẩm nang sử dụng Face Beo</h1>
+  <p>Chấm công bằng khuôn mặt, xếp ca, đơn từ, tính công và chốt công tháng. Tài liệu viết cho <b>mọi vai trò</b>, chi tiết nhất ở phần của <b>Nhân sự (HR)</b> và <b>Quản trị (Admin)</b>.</p>
+  <p>Mỗi mục đi theo thứ tự làm việc thật: <b>thiết lập một lần</b> → <b>vận hành hằng ngày</b> → <b>cuối tháng tính lương</b>. Có ví dụ bằng số cụ thể.</p>
+  <p><span class="pill a">Quản trị</span><span class="pill h">Nhân sự</span><span class="pill m">Quản lý</span><span class="pill e">Nhân viên</span> — nhãn màu ở đầu mỗi mục cho biết mục đó dành cho ai.</p>
+</header>
+
+<!-- 1 -->
+<section id="tong-quan">
+  <h2><span class="num">1.</span>Tổng quan &amp; vai trò</h2>
+  <p class="lead">Face Beo gồm bốn phần: máy chấm công (kiosk), khu quản trị <code>/admin</code>, trang cá nhân <code>/me</code>, và nhóm Zalo minh bạch.</p>
+
+  <div class="diagram">
+<pre class="mermaid">
+flowchart LR
+  NV["👤 Nhân viên"] -->|"Quét mặt"| K["📱 Kiosk chấm công"]
+  K -->|"Giờ vào / ra"| S[("🗄️ Máy chủ Face Beo")]
+  NV -->|"Xem công, gửi đơn"| ME["🏠 Trang cá nhân /me"]
+  ME --> S
+  QL["🧑‍💼 Quản lý"] -->|"Xếp ca, duyệt đơn phòng mình"| AD["🖥️ Khu quản trị /admin"]
+  HR["🗂️ Nhân sự"] -->|"Duyệt, chấm tay, báo cáo, chốt công"| AD
+  QT["🔑 Quản trị"] -->|"Cấu hình ca, phân quyền, thiết bị"| AD
+  AD --> S
+  S -->|"Mọi thao tác duyệt/sửa"| Z["💬 Nhóm Zalo minh bạch"]
+</pre>
+    <div class="cap">Hình 1. Các thành phần và ai dùng phần nào.</div>
+  </div>
+
+  <div class="grid">
+    <div class="card"><h4><span class="pill a">Quản trị</span></h4><p>Toàn quyền. Thiết lập ca, hệ số công, mẫu tuần, phòng ban, ngày lễ, ngưỡng nhận diện, thiết bị kiosk, phân quyền, Zalo. Là người duy nhất <b>mở khóa</b> tháng đã chốt và <b>chấm tay trực tiếp</b> không cần đơn.</p></div>
+    <div class="card"><h4><span class="pill h">Nhân sự</span></h4><p>Vận hành hằng ngày trên toàn công ty: quản lý nhân viên, enroll khuôn mặt, xếp/sửa ca, duyệt đơn, chấm tay theo đơn bổ sung công, báo cáo, xuất Excel, <b>chốt công tháng</b>.</p></div>
+    <div class="card"><h4><span class="pill m">Quản lý</span></h4><p>Chỉ thấy <b>các phòng mình quản lý</b>. Xếp ca và đăng ký tuần cho phòng, duyệt đơn của nhân viên trong phòng, xem công và báo cáo phòng.</p></div>
+    <div class="card"><h4><span class="pill e">Nhân viên</span></h4><p>Quét mặt ở kiosk. Vào <code>/me</code> xem giờ vào/ra, ngày công, trễ/sớm; gửi đơn nghỉ phép, về sớm, tăng ca, bổ sung công.</p></div>
+  </div>
+
+  <h3>Thuật ngữ dùng trong tài liệu</h3>
+  <div class="tw"><table>
+    <tr><th>Từ</th><th>Nghĩa</th></tr>
+    <tr><td>Ca</td><td>Khung giờ làm, ví dụ "Hành chính 08:00–17:00, nghỉ trưa 12:00, 60 phút".</td></tr>
+    <tr><td>Ngày công</td><td>Ngày mà ca đó thuộc về. Ca đêm 22:00–06:00 bắt đầu tối thứ Hai thì cả ca tính cho <b>thứ Hai</b>.</td></tr>
+    <tr><td>Hệ số công</td><td>Một ca được tính bao nhiêu công: 1 = một công, 0.5 = nửa công.</td></tr>
+    <tr><td>Nhóm cố định (FIXED)</td><td>Nhân viên làm theo <b>mẫu tuần</b> lặp lại, không cần xếp ca mỗi tuần.</td></tr>
+    <tr><td>Nhóm xoay ca (ROTATING)</td><td>Nhân viên làm theo <b>lịch tuần</b> do quản lý xếp và đăng ký.</td></tr>
+    <tr><td>Ân hạn</td><td>Số phút đi trễ / về sớm được bỏ qua, không tính là vi phạm.</td></tr>
+    <tr><td>Enroll</td><td>Đăng ký khuôn mặt cho nhân viên (chụp 5 góc).</td></tr>
+    <tr><td>Chốt công</td><td>Khóa số liệu một tháng để tính lương; sau khi chốt không ai sửa được, trừ khi Quản trị mở khóa.</td></tr>
+  </table></div>
+</section>
+
+<!-- 2 -->
+<section id="bat-dau-nhanh">
+  <h2><span class="num">2.</span>Bắt đầu nhanh theo vai trò</h2>
+  <p class="lead">Danh sách việc cần làm. Mỗi dòng dẫn tới mục chi tiết.</p>
+
+  <h3><span class="pill a">Quản trị</span> Thiết lập lần đầu (làm theo đúng thứ tự)</h3>
+  <ol class="steps">
+    <li><b>Ca làm việc</b>: tạo đủ các ca công ty đang dùng, đặt hệ số công. <a href="#cau-hinh-ca">→ Mục 4</a></li>
+    <li><b>Hệ số riêng theo phòng</b>, nếu có phòng tính công khác (ví dụ Kho làm sáng thứ Bảy vẫn tính 1 công). <a href="#he-so-phong">→ 4.3</a></li>
+    <li><b>Phòng ban &amp; quản lý</b>, <b>mẫu tuần</b>, <b>ngày lễ</b> trong năm. <a href="#mau-tuan">→ Mục 5</a></li>
+    <li><b>Phân quyền</b>: rà ma trận mặc định, chỉnh nếu cần. <a href="#phan-quyen">→ Mục 3</a></li>
+    <li><b>Ghép tablet kiosk</b>. <a href="#kiosk">→ Mục 7</a></li>
+    <li><b>Kết nối nhóm Zalo</b> minh bạch, gửi tin thử. <a href="#zalo">→ Mục 15</a></li>
+    <li>Tạo tài khoản <b>Nhân sự</b> đầu tiên. Từ đây HR làm tiếp phần nhân viên.</li>
+  </ol>
+
+  <h3><span class="pill h">Nhân sự</span> Khi nhận bàn giao</h3>
+  <ul class="check">
+    <li>Thêm nhân viên: mã, tên, phòng, vai trò, loại lịch (cố định / xoay ca), mẫu tuần hoặc ca mặc định. <a href="#nhan-vien">→ 6</a></li>
+    <li>Enroll khuôn mặt cho từng người (có đồng ý của nhân viên). <a href="#enroll">→ 6.3</a></li>
+    <li>Kiểm tra bảng <b>Xếp ca</b> tuần này và tuần sau, nhất là các phòng xoay ca. <a href="#xep-ca">→ 8</a></li>
+    <li>Mỗi sáng: xem <b>Tổng quan</b> (vắng, trễ, "chưa có lịch", đơn quá hạn), xử lý hàng đợi <b>Đơn từ</b>.</li>
+    <li>Đầu tháng (từ ngày 2): rà bảng công tháng trước, xuất Excel, <b>chốt công</b>. <a href="#chot-cong">→ 14</a></li>
+  </ul>
+
+  <h3><span class="pill m">Quản lý</span> Mỗi tuần</h3>
+  <ul class="check">
+    <li>Trước <b>00:00 thứ Hai</b>: xếp ca tuần tới cho phòng và bấm <b>Đăng ký</b> (hệ thống nhắc lúc 15:00 thứ Sáu).</li>
+    <li>Duyệt đơn của nhân viên trong phòng trong ngày; quá 24 giờ hệ thống sẽ nhắc.</li>
+  </ul>
+
+  <h3><span class="pill e">Nhân viên</span></h3>
+  <ul class="check">
+    <li>Đứng trước kiosk, nhìn thẳng vào camera khi vào ca và khi tan ca.</li>
+    <li>Quên chấm? Gửi đơn <b>Bổ sung công</b> trong vòng 3 ngày. Nghỉ / về sớm / tăng ca: gửi đơn <b>trước</b>.</li>
+  </ul>
+</section>
+
+<!-- 3 -->
+<section id="phan-quyen">
+  <h2><span class="num">3.</span>Phân quyền</h2>
+  <p class="lead"><span class="pill a">Quản trị</span> Menu <b>Phân quyền</b>. Quyền gán theo vai trò. Lưu thay đổi phải ghi lý do; thay đổi được gửi vào nhóm Zalo.</p>
+
+  <h3>Ma trận mặc định</h3>
+  <div class="tw"><table>
+    <tr><th>Quyền</th><th>Quản trị</th><th>Nhân sự</th><th>Quản lý</th><th>Nhân viên</th></tr>
+    <tr><td>Xem dashboard hôm nay</td><td class="y">✔</td><td class="y">✔</td><td class="y">✔</td><td class="n">–</td></tr>
+    <tr><td>Xem bảng xếp ca</td><td class="y">✔</td><td class="y">✔</td><td class="y">✔</td><td class="n">–</td></tr>
+    <tr><td>Xếp ca / đăng ký tuần (tuần chưa khóa)</td><td class="y">✔</td><td class="y">✔</td><td class="y">✔</td><td class="n">–</td></tr>
+    <tr><td>Sửa ca đã đăng ký, sửa sau hạn (kèm lý do)</td><td class="y">✔</td><td class="y">✔</td><td class="n">–</td><td class="n">–</td></tr>
+    <tr><td>Duyệt / từ chối đơn (theo tuyến duyệt)</td><td class="y">✔</td><td class="y">✔</td><td class="y">✔</td><td class="n">–</td></tr>
+    <tr><td>Xem log chấm công, ảnh snapshot</td><td class="y">✔</td><td class="y">✔</td><td class="y">✔</td><td class="n">–</td></tr>
+    <tr><td>Chấm tay theo đơn bổ sung công đã duyệt</td><td class="y">✔</td><td class="y">✔</td><td class="n">–</td><td class="n">–</td></tr>
+    <tr><td>Chấm tay trực tiếp (không cần đơn), xóa log</td><td class="y">✔</td><td class="n">–</td><td class="n">–</td><td class="n">–</td></tr>
+    <tr><td>Xem bảng công, xuất Excel</td><td class="y">✔</td><td class="y">✔</td><td class="y">✔</td><td class="n">–</td></tr>
+    <tr><td>Chốt công tháng</td><td class="y">✔</td><td class="y">✔</td><td class="n">–</td><td class="n">–</td></tr>
+    <tr><td>Xem / quản lý nhân viên, enroll khuôn mặt</td><td class="y">✔</td><td class="y">✔</td><td>chỉ xem</td><td class="n">–</td></tr>
+    <tr><td>Phòng ban, ngày lễ, định nghĩa ca, mẫu tuần</td><td class="y">✔</td><td class="n">–</td><td class="n">–</td><td class="n">–</td></tr>
+    <tr><td>🔒 Cấu hình hệ thống, thiết bị, phân quyền, gán vai trò HR/QT, <b>mở khóa tháng</b></td><td class="y">✔</td><td colspan="3">Luôn chỉ Quản trị, không chỉnh được</td></tr>
+  </table></div>
+
+  <div class="callout warn"><b>Các luật không thể tắt</b>
+    <p>• Không ai tự duyệt, tự chấm tay đơn của chính mình. • Không tự đổi vai trò, không tự cho mình nghỉ việc.
+    • Nhân sự không sửa được tài khoản và khuôn mặt của Nhân sự/Quản trị khác. • Quản lý chỉ thấy dữ liệu các phòng mình quản lý; nhân viên chỉ thấy dữ liệu của mình.</p>
+  </div>
+</section>
+
+<!-- 4 -->
+<section id="cau-hinh-ca">
+  <h2><span class="num">4.</span>Cấu hình ca &amp; hệ số công</h2>
+  <p class="lead"><span class="pill a">Quản trị</span> Menu <b>Cấu hình</b> → thẻ <b>Ca làm việc</b>. Ca là nền tảng của mọi phép tính: trễ, sớm, giờ công, ngày công, OT.</p>
+
+  <h3>4.1 Các trường của một ca</h3>
+  <div class="tw"><table>
+    <tr><th>Trường</th><th>Ý nghĩa</th><th>Ví dụ</th></tr>
+    <tr><td>Tên ca</td><td>Tên hiển thị trên bảng xếp ca, báo cáo</td><td>Hành chính</td></tr>
+    <tr><td>Bắt đầu / Kết thúc</td><td>Giờ ca. Kết thúc nhỏ hơn bắt đầu thì là <b>ca qua đêm</b></td><td>08:00 / 17:00; ca đêm 22:00 / 06:00</td></tr>
+    <tr><td>Nghỉ giữa ca (phút)</td><td>Tổng thời gian nghỉ trưa/giữa ca</td><td>60</td></tr>
+    <tr><td>Giờ bắt đầu nghỉ</td><td>Có điền: chỉ trừ phần nghỉ mà nhân viên thực sự có mặt. Để trống: luôn trừ đủ số phút nghỉ</td><td>12:00</td></tr>
+    <tr><td>Hệ số công</td><td>Ca này bằng bao nhiêu công (bội số 0.25, 0–3)</td><td>1; ca Sáng thứ Bảy = 0.5</td></tr>
+    <tr><td>Ân hạn trễ (phút)</td><td>Vào muộn không quá số phút này thì không tính trễ</td><td>5</td></tr>
+    <tr><td>Ân hạn về sớm (phút)</td><td>Ra sớm không quá số phút này thì không tính về sớm</td><td>0</td></tr>
+  </table></div>
+
+  <div class="callout"><b>Nên điền "Giờ bắt đầu nghỉ"</b>
+    <p>Nhân viên nghỉ phép buổi sáng, vào làm từ 13:00 đến 17:00 ca 08:00–17:00 (nghỉ 12:00–13:00):</p>
+    <p>• <b>Có</b> giờ bắt đầu nghỉ: giờ công = 13:00→17:00 = <b>4 giờ</b> (người này không có mặt giờ nghỉ trưa nên không bị trừ).<br>
+    • <b>Không</b> điền: giờ công = 4 giờ − 60 phút = <b>3 giờ</b> (bị trừ oan).</p>
+  </div>
+
+  <h3>4.2 Cửa sổ chấm công của một ca</h3>
+  <p>Kiosk chỉ gắn lần quét vào ca nếu quét trong khoảng <b>2 giờ trước giờ bắt đầu</b> đến <b>4 giờ sau giờ kết thúc</b>. Ngoài khoảng này lần quét vẫn được lưu nhưng mang cờ <b>"Ngoài ca"</b> để quản lý xem xét.</p>
+  <div class="diagram">
+<pre class="mermaid">
+gantt
+  dateFormat HH:mm
+  axisFormat %H:%M
+  title Ca Hành chính 08:00–17:00
+  section Cửa sổ quét
+  Quét được, gắn vào ca     :active, w, 06:00, 21:00
+  section Ca
+  Làm buổi sáng              :s1, 08:00, 12:00
+  Nghỉ trưa                  :crit, b, 12:00, 13:00
+  Làm buổi chiều             :s2, 13:00, 17:00
+</pre>
+    <div class="cap">Hình 2. Cửa sổ quét 06:00–21:00 bao quanh ca 08:00–17:00.</div>
+  </div>
+
+  <h3 id="he-so-phong">4.3 Hệ số công theo phòng</h3>
+  <p>Thẻ <b>Hệ số công theo phòng</b> (ngay dưới thẻ Ca làm việc) dùng khi cùng một ca nhưng mỗi phòng tính công khác nhau. Hệ số riêng của phòng <b>ghi đè</b> hệ số chung của ca. Xóa hệ số riêng thì phòng quay về hệ số chung.</p>
+  <div class="ex"><div class="t">Ví dụ</div>
+    <p>Ca "Sáng thứ Bảy" 08:00–12:00, hệ số chung <b>0.5</b>.</p>
+    <p>• Phòng Hành chính: không đặt riêng → đi làm sáng thứ Bảy được <b>0.5 công</b>.<br>
+    • Phòng Kho: đặt riêng <b>1</b> → đi làm sáng thứ Bảy được <b>1 công</b>.</p>
+    <p>Nhân viên chuyển phòng giữa tháng: mỗi ngày lấy hệ số của phòng mà người đó thuộc về <b>vào đúng ngày đó</b>.</p>
+  </div>
+
+  <div class="callout warn"><b>Sửa ca đang dùng</b>
+    <p>Đổi giờ ca, ân hạn hoặc hệ số sẽ ảnh hưởng tới cách tính các ngày <b>chưa chốt</b>. Muốn đổi quy định từ một ngày nhất định, nên <b>tạo ca mới</b> rồi gán cho nhân viên / mẫu tuần từ hôm nay. Tháng đã chốt thì không bị ảnh hưởng (đọc từ bản chụp).</p>
+  </div>
+</section>
+
+<!-- 5 -->
+<section id="mau-tuan">
+  <h2><span class="num">5.</span>Mẫu tuần, phòng ban, ngày lễ</h2>
+  <p class="lead"><span class="pill a">Quản trị</span> Menu <b>Cấu hình</b>.</p>
+
+  <h3>5.1 Mẫu tuần làm việc (cho nhóm ca cố định)</h3>
+  <p>Mẫu tuần gán một ca cho từng thứ, để trống là nghỉ. Nhân viên cố định gắn một mẫu thì không cần xếp ca hằng tuần.</p>
+  <div class="tw"><table>
+    <tr><th>Mẫu</th><th>T2</th><th>T3</th><th>T4</th><th>T5</th><th>T6</th><th>T7</th><th>CN</th></tr>
+    <tr><td>HC T2–T6 + T7 sáng</td><td>HC</td><td>HC</td><td>HC</td><td>HC</td><td>HC</td><td>Sáng T7</td><td>nghỉ</td></tr>
+    <tr><td>HC T2–T7</td><td>HC</td><td>HC</td><td>HC</td><td>HC</td><td>HC</td><td>HC</td><td>nghỉ</td></tr>
+    <tr><td>Sáng sớm T2–T7</td><td>SS</td><td>SS</td><td>SS</td><td>SS</td><td>SS</td><td>SS</td><td>nghỉ</td></tr>
+  </table></div>
+  <p>Sửa mẫu tuần chỉ có hiệu lực <b>từ hôm nay</b>. Công những ngày đã qua giữ nguyên.</p>
+
+  <h3>5.2 Phòng ban &amp; quản lý</h3>
+  <p>Tạo phòng ban và chọn một hoặc nhiều quản lý. Quản lý chỉ thấy và duyệt đơn của nhân viên trong các phòng mình quản lý. Nhân viên thường gửi đơn thì <b>quản lý phòng</b> là người duyệt đầu tiên.</p>
+
+  <h3>5.3 Ngày lễ</h3>
+  <p>Nhập các ngày lễ trong năm. Ngày lễ: nhân viên cố định được nghỉ, không bị báo vắng. Ai đi làm ngày lễ phải có <b>đơn tăng ca đã duyệt</b> mới được tính OT; ngày công ngày lễ = 0.</p>
+  <div class="callout"><b>Riêng nhân viên xoay ca</b><p>Lịch tuần đã đăng ký có ca vào ngày lễ thì người đó <b>làm ngày lễ theo lịch</b> (tính như ngày làm bình thường).</p></div>
+
+  <h3>5.4 Hệ thống xác định ca của một ngày như thế nào</h3>
+  <div class="diagram">
+<pre class="mermaid">
+flowchart TD
+  A["Ngày D của nhân viên X"] --> B{"Có lịch tuần<br/>đã đăng ký cho ngày D?"}
+  B -- Có --> R1["Dùng ca theo lịch<br/>(kể cả ngày lễ)"]
+  B -- Không --> C{"D là ngày lễ?"}
+  C -- Có --> R2["Nghỉ lễ"]
+  C -- Không --> D{"X thuộc nhóm<br/>xoay ca?"}
+  D -- "Có, tuần chưa đăng ký" --> R3["⚠️ Chưa có lịch<br/>không báo vắng, không tính trễ"]
+  D -- "Không (cố định)" --> E{"Có mẫu tuần?"}
+  E -- Có --> R4["Ca theo mẫu tuần<br/>(ô trống = nghỉ)"]
+  E -- Không --> R5["Ca mặc định,<br/>nghỉ Chủ nhật"]
+</pre>
+    <div class="cap">Hình 3. Thứ tự ưu tiên khi xác định ca. Bản nháp lịch tuần không bao giờ được tính.</div>
+  </div>
+</section>
+
+<!-- 6 -->
+<section id="nhan-vien">
+  <h2><span class="num">6.</span>Nhân viên &amp; khuôn mặt</h2>
+  <p class="lead"><span class="pill h">Nhân sự</span> <span class="pill a">Quản trị</span> Menu <b>Nhân viên</b>.</p>
+
+  <h3>6.1 Thêm / sửa nhân viên</h3>
+  <ol class="steps">
+    <li>Bấm <b>Thêm nhân viên</b>, nhập mã, họ tên, phòng ban, vai trò (Nhân sự không gán được vai trò Nhân sự/Quản trị).</li>
+    <li>Chọn <b>loại lịch</b>: <b>Cố định</b> (chọn mẫu tuần hoặc ca mặc định) hoặc <b>Xoay ca</b> (theo lịch tuần quản lý xếp).</li>
+    <li>Tạo mật khẩu đăng nhập ban đầu và đưa cho nhân viên. Có thể <b>đặt lại mật khẩu</b> sau này.</li>
+    <li>Enroll khuôn mặt (6.3).</li>
+  </ol>
+  <div class="callout"><b>Thay đổi có hiệu lực theo ngày</b>
+    <p>Đổi phòng ban, loại lịch, mẫu tuần, ca mặc định chỉ áp dụng <b>từ hôm nay</b>; công đã qua không bị tính lại. Chuyển phòng thì lịch tương lai do phòng cũ xếp bị hủy — phòng mới cần xếp lại.</p>
+  </div>
+
+  <h3>6.2 Cho nghỉ việc</h3>
+  <p>Đặt ngày nghỉ việc. Từ ngày đó nhân viên không còn được tính công, không bị báo vắng. Dữ liệu cũ vẫn giữ để báo cáo. Nếu người nghỉ việc có log trong tháng thì vẫn có trong bảng công và bản chụp khi chốt tháng.</p>
+
+  <h3 id="enroll">6.3 Enroll khuôn mặt</h3>
+  <ol class="steps">
+    <li>Mở hồ sơ nhân viên → <b>Enroll khuôn mặt</b>. Xác nhận nhân viên <b>đồng ý</b> cho dùng dữ liệu khuôn mặt.</li>
+    <li>Chụp đủ <b>5 góc</b>: Nhìn thẳng · Hơi trái · Hơi phải · Hơi ngẩng · Hơi cúi. Nên chụp tại chính chỗ đặt kiosk, cùng ánh sáng.</li>
+    <li>Hệ thống kiểm tra 5 mẫu là cùng một người. Nếu khuôn mặt <b>giống một nhân viên khác</b>, hệ thống cảnh báo; giống rất cao (≥ 0.65) thì chỉ Quản trị mới được ghi đè.</li>
+    <li>Lưu. Ảnh enroll <b>không được lưu</b>, chỉ lưu mã đặc trưng đã mã hóa.</li>
+  </ol>
+  <div class="callout ok"><b>Mẹo để nhận diện chính xác</b>
+    <p>• Bỏ khẩu trang, mũ; kính thường được nhưng nên enroll đúng như khi đi làm. • Người có nét giống nhau (anh chị em) vẫn phân biệt được, nhưng enroll kỹ cả 5 góc. • Danh sách nhân viên hiện <b>"Enroll lại"</b> khi mẫu cũ không còn dùng được sau khi nâng cấp mô hình.</p>
+  </div>
+</section>
+
+<!-- 7 -->
+<section id="kiosk">
+  <h2><span class="num">7.</span>Máy chấm công (kiosk)</h2>
+  <p class="lead"><span class="pill a">Quản trị</span> ghép thiết bị · <span class="pill e">Nhân viên</span> quét mặt</p>
+
+  <h3>7.1 Ghép tablet</h3>
+  <ol class="steps">
+    <li>Menu <b>Thiết bị kiosk</b> → <b>Thêm thiết bị kiosk</b>, đặt tên và vị trí. Màn hình hiện <b>mã ghép</b>.</li>
+    <li>Trên tablet mở trang <code>/kiosk</code> của máy chủ, nhập mã ghép. Cho phép dùng camera.</li>
+    <li>Thiết bị đã ghép hiện thời điểm hoạt động gần nhất. Mất máy thì bấm <b>thu hồi</b>.</li>
+  </ol>
+
+  <h3>7.2 Một lần quét diễn ra như thế nào</h3>
+  <div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  actor NV as Nhân viên
+  participant K as Kiosk
+  participant S as Máy chủ
+  NV->>K: Đứng trước camera
+  K->>K: Tìm mặt + kiểm tra người thật (chống ảnh/video)
+  K->>S: Gửi ảnh + điểm mốc khuôn mặt
+  S->>S: Kiểm tra người thật lần 2, so khớp với mọi mẫu đã enroll
+  alt Khớp đủ ngưỡng và cách xa người giống thứ hai
+    S->>S: Xác định ca, ngày công, VÀO hay RA
+    S-->>K: ✅ Tên + giờ + đúng giờ / trễ / về sớm
+  else Quét lại trong 120 giây
+    S-->>K: ℹ️ "Bạn đã chấm lúc ..."
+  else Nghi ảnh giả
+    S-->>K: ⛔ Không xác minh được
+  else Không khớp ai
+    S-->>K: ❌ Không nhận ra, thử lại
+  end
+</pre>
+    <div class="cap">Hình 4. Luồng một lần quét.</div>
+  </div>
+
+  <h3>7.3 Vào hay Ra?</h3>
+  <p>Nhân viên <b>không cần chọn</b>. Trong một ngày công, lần quét <b>sớm nhất là VÀO</b>, các lần sau là <b>RA</b>; lần ra muộn nhất được dùng để tính. Quét nhiều lần trong ngày (ra ăn trưa rồi vào lại) không làm sai giờ vào.</p>
+  <div class="tw"><table>
+    <tr><th>Kiosk hiện</th><th>Ý nghĩa</th><th>Nhân viên làm gì</th></tr>
+    <tr><td>✅ "Đúng giờ — chúc một ngày tốt lành!"</td><td>Đã ghi giờ vào</td><td>Không cần làm gì</td></tr>
+    <tr><td>🟡 "Trễ 12 phút" / "Về sớm 20 phút"</td><td>Đã ghi, có vi phạm</td><td>Có lý do chính đáng thì gửi đơn (về sớm / nghỉ phép)</td></tr>
+    <tr><td>🟡 "Ngoài ca — quản lý sẽ xem xét"</td><td>Quét ngoài cửa sổ ca hoặc ngày không có ca</td><td>Làm thêm thì cần đơn tăng ca</td></tr>
+    <tr><td>ℹ️ "Bạn đã chấm lúc ..."</td><td>Quét lại trong 2 phút, bỏ qua</td><td>Không cần làm gì</td></tr>
+    <tr><td>❌ "Không nhận ra" / ⛔ "Không xác minh được"</td><td>Không ghi</td><td>Nhìn thẳng, bỏ khẩu trang, thử lại; vẫn lỗi thì báo HR</td></tr>
+  </table></div>
+  <div class="callout"><b>Mất mạng?</b><p>Kiosk giữ lần quét trong hàng đợi và gửi bù khi có mạng lại, giờ quét là giờ thật lúc đứng trước máy.</p></div>
+</section>
+
+<!-- 8 -->
+<section id="xep-ca">
+  <h2><span class="num">8.</span>Xếp ca &amp; đăng ký tuần</h2>
+  <p class="lead"><span class="pill m">Quản lý</span> <span class="pill h">Nhân sự</span> Menu <b>Xếp ca</b>. Chủ yếu dành cho các phòng có nhân viên <b>xoay ca</b>.</p>
+
+  <h3>8.1 Vòng đời một tuần lịch</h3>
+  <div class="diagram">
+<pre class="mermaid">
+stateDiagram-v2
+  [*] --> Nhap: Quản lý xếp ca
+  Nhap: Bản nháp (chưa tính công)
+  Nhap --> Nhap: Sửa thoải mái
+  Nhap --> DaDangKy: Bấm Đăng ký (quản lý: trước 00:00 thứ Hai)
+  DaDangKy: Đã đăng ký (tính công)
+  DaDangKy --> DaDangKy: Nhân sự/Quản trị sửa, bắt buộc lý do, báo nhóm Zalo
+  DaDangKy --> Khoa: Tháng được chốt công
+  Khoa: Bị khóa (không sửa được)
+</pre>
+    <div class="cap">Hình 5. Bản nháp không bao giờ được tính công; chỉ lịch đã đăng ký mới được dùng.</div>
+  </div>
+
+  <h3>8.2 Lịch trong tuần</h3>
+  <div class="diagram">
+<pre class="mermaid">
+flowchart LR
+  A["Thứ Hai → thứ Năm<br/>Quản lý xếp nháp tuần sau"] --> B["Thứ Sáu 15:00<br/>🔔 Nhắc quản lý phòng chưa đăng ký"]
+  B --> C["Trước 00:00 thứ Hai<br/>Quản lý bấm Đăng ký"]
+  C --> D["Thứ Hai 07:00<br/>📣 Báo HR + nhóm Zalo phòng còn thiếu"]
+  D --> E["HR đăng ký thay / sửa<br/>(công tự tính lại)"]
+</pre>
+    <div class="cap">Hình 6. Mốc thời gian mỗi tuần.</div>
+  </div>
+
+  <h3>8.3 Thao tác</h3>
+  <ol class="steps">
+    <li>Chọn phòng và tuần. Mỗi dòng là một nhân viên, mỗi cột là một ngày. Bấm vào ô để chọn ca hoặc "Nghỉ".</li>
+    <li><b>Sao chép tuần trước</b> để đỡ nhập lại khi lịch lặp.</li>
+    <li>Kiểm tra lại, bấm <b>Đăng ký</b>. Quản lý chỉ đăng ký được khi tuần <b>chưa bắt đầu</b>.</li>
+    <li>Cần đổi ca sau khi đã đăng ký: nhờ <b>Nhân sự</b>. HR sửa phải ghi lý do; hệ thống lưu trước/sau, gửi tin vào nhóm Zalo và <b>tự tính lại</b> các ngày đã qua.</li>
+    <li>Tab <b>Lịch sử đăng ký &amp; sửa ca</b>: xem ai đã sửa gì, khi nào, lý do gì.</li>
+  </ol>
+
+  <div class="callout warn"><b>Vì sao không cho quản lý sửa lịch đã đăng ký?</b>
+    <p>Để chặn kiểu "sửa ca hôm nay thành ca muộn cho khỏi bị trễ rồi sửa lại". Mọi thay đổi sau khi đăng ký đều qua Nhân sự, có lý do, và cả nhóm Zalo đều thấy.</p>
+  </div>
+  <div class="callout"><b>"Chưa có lịch" là gì?</b>
+    <p>Nhân viên xoay ca mà tuần chưa được đăng ký. Hệ thống <b>vẫn lưu</b> mọi lần quét nhưng không báo vắng, không tính trễ; HR được báo và Tổng quan có danh sách riêng. Khi tuần được đăng ký (kể cả muộn), công tự tính lại.</p>
+  </div>
+</section>
+
+<!-- 9 -->
+<section id="don-tu">
+  <h2><span class="num">9.</span>Đơn từ &amp; tuyến duyệt</h2>
+  <p class="lead"><span class="pill e">Nhân viên</span> gửi đơn ở <code>/me</code> → Đơn từ · <span class="pill m">Quản lý</span> <span class="pill h">Nhân sự</span> duyệt ở menu <b>Đơn từ</b></p>
+
+  <h3>9.1 Bốn loại đơn</h3>
+  <div class="tw"><table>
+    <tr><th>Loại</th><th>Dùng khi</th><th>Tác động khi được duyệt</th></tr>
+    <tr><td>🏖️ Nghỉ phép</td><td>Nghỉ cả ca hoặc một buổi</td><td>Giờ đơn che không bị tính trễ/sớm/vắng. Che ≥ nửa ca → 0.5 công + 0.5 phép; che cả ca → 1 phép (× hệ số)</td></tr>
+    <tr><td>🚪 Về sớm</td><td>Rời ca trước giờ kết thúc</td><td>Không tính "về sớm". <b>Không trừ công</b></td></tr>
+    <tr><td>⏱️ Tăng ca (OT)</td><td>Làm thêm ngoài giờ ca, ngày nghỉ, ngày lễ</td><td>Chỉ phần thời gian <b>vừa có đơn vừa có mặt</b> mới được tính OT</td></tr>
+    <tr><td>📝 Bổ sung công</td><td>Quên chấm vào hoặc ra</td><td>Hai bước: duyệt rồi HR chấm tay (mục 10)</td></tr>
+  </table></div>
+  <p>Quy định chung: lý do tối thiểu <b>10 ký tự</b>; một đơn tối đa <b>31 ngày</b>; không tạo đơn cho ngày đã qua quá <b>3 ngày</b>. Người gửi được <b>hủy</b> đơn còn chờ duyệt.</p>
+
+  <h3>9.2 Ai duyệt đơn của ai</h3>
+  <div class="diagram">
+<pre class="mermaid">
+flowchart LR
+  E["Nhân viên"] -->|"duyệt"| M["Quản lý phòng"]
+  M -.->|"dự phòng"| H1["Nhân sự"] -.-> A1["Quản trị"]
+  MG["Quản lý"] -->|"duyệt"| H2["Nhân sự"]
+  H2 -.->|"dự phòng"| A2["Quản trị"]
+  HR["Nhân sự"] -->|"duyệt"| A3["Quản trị"]
+  AD["Quản trị"] -->|"duyệt"| A4["Quản trị khác"]
+  A4 -.->|"dự phòng"| H3["Nhân sự"]
+</pre>
+    <div class="cap">Hình 7. Tuyến duyệt. Nét đứt = người dự phòng khi người duyệt chính không có. Quản trị chỉ tự duyệt được đơn của mình khi không còn ai khác.</div>
+  </div>
+
+  <h3>9.3 Duyệt đơn</h3>
+  <ol class="steps">
+    <li>Menu <b>Đơn từ</b> hiện các đơn bạn có quyền xử lý. Mở đơn: xem loại, thời gian, lý do, ca của ngày đó.</li>
+    <li>Bấm <b>Duyệt</b> hoặc <b>Từ chối</b> (nên ghi lý do). Công của những ngày liên quan được tính lại ngay.</li>
+    <li>Nhân sự/Quản trị duyệt thì thao tác được báo vào nhóm Zalo minh bạch.</li>
+  </ol>
+
+  <h3>9.4 Nhắc đơn quá hạn</h3>
+  <div class="diagram">
+<pre class="mermaid">
+flowchart LR
+  T0["Đơn được tạo<br/>(hoặc bổ sung công được duyệt)"] --> T24["Sau 24 giờ chưa xử lý<br/>🔔 Nhắc người phải xử lý"]
+  T24 --> T48["Sau 48 giờ<br/>📣 Báo mọi Quản trị + nhóm Zalo"]
+</pre>
+    <div class="cap">Hình 8. Mỗi mốc chỉ nhắc một lần. Hệ thống <b>không bao giờ tự duyệt</b>. Đơn quá 60 ngày thì thôi nhắc.</div>
+  </div>
+</section>
+
+<!-- 10 -->
+<section id="bo-sung-cong">
+  <h2><span class="num">10.</span>Bổ sung công (quên chấm)</h2>
+  <p class="lead">Quy trình hai bước, tách người duyệt và người chấm tay để tránh gian lận.</p>
+  <div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  actor NV as Nhân viên
+  participant QL as Quản lý
+  participant HR as Nhân sự
+  participant Z as Nhóm Zalo
+  NV->>QL: Đơn bổ sung công: quên chấm RA, 17:05, lý do
+  Note over HR: HR luôn được báo khi có đơn mới
+  QL->>QL: Bước 1: Duyệt
+  QL-->>HR: Đơn chuyển sang "chờ chấm tay"
+  HR->>HR: Bước 2: Chấm tay theo đơn (chỉnh giờ tối đa ±60 phút, kèm ghi chú)
+  HR-->>Z: 📣 "HR đã chấm tay theo đơn #..."
+  Note over NV: Công ngày đó được tính lại
+</pre>
+    <div class="cap">Hình 9. Đơn của Nhân sự thì Quản trị chấm tay. Người chấm tay không được là người tạo đơn.</div>
+  </div>
+  <div class="tw"><table>
+    <tr><th>Quy tắc</th><th>Chi tiết</th></tr>
+    <tr><td>Tạo đơn</td><td>Chọn quên chấm <b>Vào</b> hay <b>Ra</b>, giờ thực tế (không sau hiện tại, trong vòng 3 ngày), lý do ≥ 10 ký tự. Không trùng (±15 phút) với đơn cùng loại khác.</td></tr>
+    <tr><td>Chấm tay</td><td>Đơn đã duyệt, chưa chấm tay, giờ bổ sung còn trong vòng 7 ngày. Chỉnh giờ tối đa 60 phút, trong cùng ngày công.</td></tr>
+    <tr><td>Trước khi chấm tay</td><td>Đơn đã duyệt nhưng <b>chưa chấm tay thì chưa có tác dụng</b>: vẫn tính trễ, vẫn báo vắng.</td></tr>
+    <tr><td>Xóa log chấm tay</td><td>Đơn quay về trạng thái "chờ chấm tay".</td></tr>
+    <tr><td>Báo cáo</td><td>Cột <b>"Số lần bổ sung công"</b> để phát hiện người hay quên chấm.</td></tr>
+  </table></div>
+  <div class="callout"><b>Chấm tay trực tiếp</b><p>Chấm tay không cần đơn (ví dụ kiosk hỏng cả buổi) chỉ Quản trị làm được, ở menu Chấm công, bắt buộc lý do, ghi nhật ký kiểm toán.</p></div>
+</section>
+
+<!-- 11 -->
+<section id="cham-cong">
+  <h2><span class="num">11.</span>Theo dõi chấm công hằng ngày</h2>
+  <p class="lead"><span class="pill h">Nhân sự</span> <span class="pill m">Quản lý</span> Menu <b>Tổng quan</b> và <b>Chấm công</b>.</p>
+  <h3>11.1 Tổng quan (dashboard)</h3>
+  <p>Mỗi sáng mở Tổng quan để thấy: số người đã vào, đi trễ, vắng, nghỉ phép; danh sách <b>"Chưa có lịch"</b>; số đơn quá hạn bạn có quyền xử lý; cảnh báo hệ thống (Zalo, máy chủ nhận diện) nếu là Quản trị.</p>
+  <h3>11.2 Chấm công</h3>
+  <p>Chọn ngày, phòng và bộ lọc: <b>Tất cả · Đi trễ · Về sớm · Vắng · Thiếu giờ ra · Ngoài ca · Sửa tay · Nghỉ phép</b>. Bấm ảnh thu nhỏ để xem snapshot lúc quét (kiểm tra có đúng người không).</p>
+  <h3>11.3 Việc tự động của hệ thống</h3>
+  <div class="tw"><table>
+    <tr><th>Việc</th><th>Khi nào</th><th>Làm gì</th></tr>
+    <tr><td>Kiểm tra vắng</td><td>Mỗi 5 phút</td><td>Quá <b>30 phút</b> (chỉnh được) sau giờ vào ca mà chưa quét, không có đơn nghỉ → ghi nhận vắng và thông báo</td></tr>
+    <tr><td>Thiếu giờ ra</td><td>Mỗi 30 phút</td><td>Có giờ vào nhưng không có giờ ra → gắn cờ "Thiếu giờ ra"</td></tr>
+    <tr><td>Nhắc đơn quá hạn</td><td>Mỗi 30 phút</td><td>Mốc 24 giờ / 48 giờ (mục 9.4)</td></tr>
+    <tr><td>Nhắc đăng ký ca</td><td>Thứ Sáu 15:00</td><td>Nhắc quản lý phòng chưa đăng ký tuần sau</td></tr>
+    <tr><td>Báo phòng thiếu lịch</td><td>Thứ Hai 07:00</td><td>Báo HR + nhóm Zalo</td></tr>
+    <tr><td>Dọn ảnh snapshot</td><td>02:00 hằng ngày</td><td>Xóa ảnh cũ hơn 90 ngày (chỉnh được)</td></tr>
+    <tr><td>Sao lưu dữ liệu</td><td>03:00 hằng ngày</td><td>Sao lưu cơ sở dữ liệu</td></tr>
+    <tr><td>Làm mới token Zalo</td><td>Mỗi 6 giờ</td><td>Giữ kết nối Zalo OA</td></tr>
+  </table></div>
+</section>
+
+<!-- 12 -->
+<section id="tinh-cong">
+  <h2><span class="num">12.</span>Cách tính công, trễ, giờ công, OT</h2>
+  <p class="lead">Phần quan trọng nhất cho Nhân sự. Mọi ví dụ dùng ca <b>Hành chính 08:00–17:00, nghỉ 12:00 (60 phút), ân hạn trễ 5 phút, hệ số 1</b>, làm tròn OT 15 phút.</p>
+
+  <div class="diagram">
+<pre class="mermaid">
+flowchart TD
+  S["Một ngày của nhân viên"] --> P{"Có ca?"}
+  P -- "Không (nghỉ, CN, lễ)" --> OT0["Công = 0<br/>OT = có mặt ∩ đơn tăng ca đã duyệt"]
+  P -- Có --> L{"Có quét VÀO?"}
+  L -- Không --> LV{"Đơn nghỉ phép<br/>đã duyệt?"}
+  LV -- "Cả ca" --> PH1["Công 0 · Phép = hệ số"]
+  LV -- "Nửa ca" --> PH2["Công 0 · Phép = hệ số × 0.5"]
+  LV -- Không --> VA["Vắng: Công 0 · Phép 0"]
+  L -- Có --> W{"Đơn nghỉ phép đã duyệt<br/>che ≥ nửa ca?"}
+  W -- Có --> HF["Công = hệ số × 0.5<br/>Phép = hệ số × 0.5"]
+  W -- Không --> FU["Công = hệ số"]
+  HF --> T["+ Tính trễ, sớm, giờ công, OT"]
+  FU --> T
+</pre>
+    <div class="cap">Hình 10. Ngày công và ngày phép của một ngày. Đi trễ vẫn được đủ công (trễ được thống kê riêng).</div>
+  </div>
+
+  <h3>12.1 Đi trễ, về sớm</h3>
+  <p>Phút trễ = giờ vào − giờ bắt đầu ca. Chỉ tính là <b>trễ</b> khi vượt ân hạn. Về sớm tương tự với giờ kết thúc. Đơn nghỉ phép / về sớm đã duyệt dời mốc tính tương ứng.</p>
+  <div class="tw"><table>
+    <tr><th>Giờ vào</th><th>Kết quả</th><th>Giải thích</th></tr>
+    <tr><td>07:50</td><td>Đúng giờ</td><td>Vào trước giờ ca</td></tr>
+    <tr><td>08:04</td><td>Đúng giờ</td><td>Trễ 4 phút ≤ ân hạn 5</td></tr>
+    <tr><td>08:12</td><td><b>Trễ 12 phút</b></td><td>Vượt ân hạn thì tính cả 12 phút (không trừ 5)</td></tr>
+    <tr><td>13:00, có đơn nghỉ phép 08:00–12:00</td><td>Đúng giờ</td><td>Mốc vào được dời sang sau giờ nghỉ trưa</td></tr>
+  </table></div>
+
+  <h3>12.2 Giờ công</h3>
+  <p>Giờ công = khoảng có mặt <b>nằm trong ca</b> trừ phần nghỉ trưa mà người đó có mặt. Đến sớm hay ở lại muộn không làm tăng giờ công (phần ngoài ca chỉ được tính là OT khi có đơn).</p>
+  <div class="tw"><table>
+    <tr><th>Vào – Ra</th><th>Giờ công</th><th>Cách tính</th></tr>
+    <tr><td>07:45 – 17:30</td><td>8 giờ</td><td>Kẹp vào 08:00–17:00 = 9 giờ − 1 giờ nghỉ</td></tr>
+    <tr><td>08:12 – 17:00</td><td>7 giờ 48 phút</td><td>08:12–17:00 = 8 giờ 48 − 1 giờ nghỉ</td></tr>
+    <tr><td>13:00 – 17:00</td><td>4 giờ</td><td>Không có mặt giờ nghỉ trưa → không trừ</td></tr>
+    <tr><td>08:00 – 12:30</td><td>4 giờ</td><td>08:00–12:30 = 4 giờ 30 − 30 phút nghỉ có mặt</td></tr>
+  </table></div>
+
+  <h3>12.3 Tăng ca (OT)</h3>
+  <div class="callout warn"><b>Không có đơn tăng ca được duyệt thì OT = 0</b><p>Ở lại muộn mà không có đơn thì không được tính OT, dù kiosk ghi giờ ra muộn.</p></div>
+  <div class="formula">OT = (thời gian có mặt NGOÀI ca) ∩ (khoảng của đơn tăng ca ĐÃ DUYỆT)
+     → làm tròn XUỐNG theo bội 15 phút</div>
+  <div class="ex"><div class="t">Ví dụ OT</div>
+    <p>Đơn tăng ca 17:00–19:30 đã duyệt. Nhân viên ra lúc <b>19:10</b>.</p>
+    <p>Có mặt ngoài ca: 17:00–19:10 = 130 phút · giao với đơn = 130 phút · làm tròn xuống bội 15 → <b>120 phút = 2 giờ OT</b>.</p>
+    <p>Nếu ra lúc 20:00: giao với đơn chỉ tới 19:30 → 150 phút = <b>2,5 giờ</b>. Phần 19:30–20:00 không được tính.</p>
+  </div>
+  <div class="ex"><div class="t">Ví dụ làm ngày nghỉ / ngày lễ</div>
+    <p>Chủ nhật, có đơn tăng ca 08:00–12:00 đã duyệt, quét 07:55 và 12:05 → công = 0, <b>OT = 4 giờ</b>. Kế toán áp hệ số OT ngày nghỉ/lễ theo quy chế công ty.</p>
+  </div>
+
+  <h3>12.4 Nửa ngày phép</h3>
+  <p>Đơn nghỉ phép được coi là <b>nửa ngày</b> khi che ít nhất một nửa thời gian làm thực của ca, hoặc che trọn một buổi (trước hoặc sau giờ nghỉ trưa). Hai đơn sáng và chiều nối nhau qua giờ nghỉ trưa được tính là nghỉ cả ca.</p>
+  <div class="tw"><table>
+    <tr><th>Trường hợp</th><th>Ngày công</th><th>Ngày phép</th></tr>
+    <tr><td>Đi làm cả ngày (kể cả đi trễ)</td><td>1</td><td>0</td></tr>
+    <tr><td>Nghỉ phép sáng 08:00–12:00, chiều đi làm</td><td>0.5</td><td>0.5</td></tr>
+    <tr><td>Nghỉ phép cả ngày</td><td>0</td><td>1</td></tr>
+    <tr><td>Có đơn phép nửa ngày nhưng không đi làm buổi còn lại</td><td>0</td><td>0.5 (còn 0.5 là vắng)</td></tr>
+    <tr><td>Vắng không phép</td><td>0</td><td>0</td></tr>
+    <tr><td>Sáng thứ Bảy (hệ số 0.5), đi làm</td><td>0.5</td><td>0</td></tr>
+    <tr><td>Về sớm có đơn đã duyệt</td><td>1 (không trừ)</td><td>0</td></tr>
+  </table></div>
+</section>
+
+<!-- 13 -->
+<section id="bao-cao">
+  <h2><span class="num">13.</span>Báo cáo &amp; dùng số liệu để tính lương</h2>
+  <p class="lead"><span class="pill h">Nhân sự</span> Menu <b>Báo cáo</b>: chọn tháng (hoặc khoảng ngày), phòng ban → xem bảng công → <b>Xuất Excel</b>.</p>
+
+  <h3>13.1 File Excel gồm hai sheet</h3>
+  <div class="grid">
+    <div class="card"><h4>Tổng hợp (mỗi người một dòng)</h4><p>Mã NV · Họ tên · Phòng ban · <b>Ngày công</b> · Giờ công · Số lần trễ · Tổng phút trễ · Số lần về sớm · Tổng phút về sớm · <b>Giờ OT</b> · <b>Ngày nghỉ phép</b> · Ngày vắng không phép · Số ngày thiếu giờ ra · Số lần bổ sung công</p></div>
+    <div class="card"><h4>Chi tiết (mỗi người mỗi ngày)</h4><p>Mã NV · Họ tên · Phòng ban · Ngày · Ca · Giờ vào · Giờ ra · Phút trễ · Phút sớm · Phút OT · Công · Giờ công · Trạng thái · Ghi chú (đơn liên quan, sửa thủ công, làm ngày lễ, thiếu giờ ra...)</p></div>
+  </div>
+
+  <h3>13.2 Từ bảng công đến bảng lương</h3>
+  <div class="callout warn"><b>Face Beo không tính tiền lương</b>
+    <p>Ứng dụng cung cấp <b>số công, số phép, giờ OT, trễ/sớm</b> đã chốt. Kế toán dùng file Excel để tính lương theo quy chế công ty (đơn giá, phụ cấp, hệ số OT, khấu trừ). Công thức dưới đây chỉ là <b>ví dụ</b> cho cách "lương theo ngày + giờ tăng ca".</p>
+  </div>
+  <div class="formula">Lương ngày     = Lương cơ bản ÷ Số công chuẩn của tháng
+Lương thời gian = Lương ngày × (Ngày công + Ngày nghỉ phép có lương)
+Lương OT        = Giờ OT × (Lương ngày ÷ 8) × Hệ số OT (theo quy chế: ngày thường / nghỉ / lễ)
+Thực lĩnh       = Lương thời gian + Lương OT + Phụ cấp − Khấu trừ (đi trễ, BHXH...)</div>
+  <div class="ex"><div class="t">Ví dụ</div>
+    <p>Lương cơ bản 7.800.000đ, công chuẩn 26 → lương ngày 300.000đ. Tháng này: Ngày công <b>23,5</b>, Ngày nghỉ phép <b>1,5</b>, Giờ OT <b>6</b> (ngày thường, hệ số 1,5).</p>
+    <p>Lương thời gian = 300.000 × 25 = 7.500.000đ · Lương OT = 6 × 37.500 × 1,5 = 337.500đ → <b>7.837.500đ</b> (chưa kể phụ cấp/khấu trừ).</p>
+  </div>
+
+  <div class="diagram">
+<pre class="mermaid">
+flowchart LR
+  A["Hằng ngày<br/>Quét mặt + đơn từ"] --> B["Cuối tháng<br/>HR rà bảng công,<br/>xử lý thiếu giờ ra, đơn tồn"]
+  B --> C["Từ ngày 2 tháng sau<br/>🔒 Chốt công"]
+  C --> D["Xuất Excel<br/>(số liệu đã chốt)"]
+  D --> E["Kế toán<br/>tính lương"]
+  E --> F["Trả lương"]
+</pre>
+    <div class="cap">Hình 11. Quy trình tháng từ chấm công tới trả lương.</div>
+  </div>
+</section>
+
+<!-- 14 -->
+<section id="chot-cong">
+  <h2><span class="num">14.</span>Chốt công tháng</h2>
+  <p class="lead"><span class="pill h">Nhân sự</span> chốt · <span class="pill a">Quản trị</span> mở khóa. Menu <b>Báo cáo</b> → thẻ <b>Chốt công tháng</b>.</p>
+
+  <h3>14.1 Trước khi chốt, rà theo danh sách</h3>
+  <ul class="check">
+    <li>Không còn đơn <b>chờ duyệt</b> hoặc bổ sung công <b>chờ chấm tay</b> của tháng đó.</li>
+    <li>Lọc <b>Thiếu giờ ra</b>: nhắc nhân viên gửi đơn bổ sung công, hoặc xác nhận để nguyên.</li>
+    <li>Không còn nhân viên xoay ca bị <b>"Chưa có lịch"</b> trong tháng.</li>
+    <li>Ngày lễ trong tháng đã nhập đúng.</li>
+    <li>Cột <b>Số lần bổ sung công</b> bất thường → trao đổi với quản lý.</li>
+  </ul>
+
+  <h3>14.2 Chốt và mở khóa</h3>
+  <div class="diagram">
+<pre class="mermaid">
+stateDiagram-v2
+  [*] --> Mo: Tháng đang chạy
+  Mo: Chưa chốt — sửa được
+  Mo --> DaChot: HR bấm Chốt (từ ngày 2 tháng sau)
+  DaChot: Đã chốt — hệ thống chụp kết quả từng ngày
+  DaChot --> Mo: Quản trị Mở khóa (lý do ≥ 5 ký tự) — tính lại theo dữ liệu hiện tại
+  DaChot --> DaChot: Sửa ca / ngày lễ / hệ số sau đó KHÔNG làm lệch bảng công
+</pre>
+    <div class="cap">Hình 12. Cả chốt và mở khóa đều ghi nhật ký và báo nhóm Zalo.</div>
+  </div>
+  <p>Khi tháng đã chốt, các thao tác sau <b>bị chặn</b>: xếp/đăng ký ca trong tháng đó; chấm tay, xóa log; tạo, duyệt, hủy đơn có thời gian thuộc tháng đó; kiosk gửi bù lần quét vào tháng đó. Báo cáo, Excel, dashboard, trang cá nhân của tháng đó đều đọc từ bản chụp.</p>
+  <div class="callout"><b>Phát hiện sai sau khi đã chốt?</b>
+    <p>Báo Quản trị → Quản trị mở khóa (ghi lý do) → HR sửa (đơn, chấm tay...) → HR chốt lại → xuất Excel mới cho kế toán.</p>
+  </div>
+</section>
+
+<!-- 15 -->
+<section id="zalo">
+  <h2><span class="num">15.</span>Zalo &amp; thông báo</h2>
+  <p class="lead"><span class="pill a">Quản trị</span> Menu <b>Cấu hình</b> → thẻ <b>Zalo OA — nhóm minh bạch</b>.</p>
+
+  <h3>15.1 Nhóm minh bạch nhận tin gì</h3>
+  <div class="grid">
+    <div class="card"><h4>✅ Có gửi</h4><ul><li>Duyệt đơn, chấm tay của HR/Quản trị</li><li>Thêm/sửa nhân viên, khuôn mặt, mật khẩu</li><li>Đăng ký/sửa ca, mẫu tuần, phòng ban</li><li>Phân quyền, chốt/mở khóa công</li><li>Phòng chưa đăng ký ca, đơn quá 48 giờ</li></ul></div>
+    <div class="card"><h4>❌ Không gửi</h4><ul><li>Từng lần quét chấm công</li><li>Việc cá nhân như HR tự gửi / hủy đơn của mình</li></ul></div>
+  </div>
+
+  <h3>15.2 Kết nối nhóm</h3>
+  <ol class="steps">
+    <li>Trong OA Manager, tạo nhóm chat GMF và thêm Quản trị/HR vào nhóm.</li>
+    <li>Mở thẻ Zalo OA: dòng trạng thái phải là <b>"Đang gửi thật · OA &lt;tên&gt;"</b> (nếu là "mô phỏng" thì máy chủ chưa có khóa Zalo — báo kỹ thuật).</li>
+    <li>Nhóm mới tạo tự hiện trong danh sách; hoặc dán ID nhóm vào ô. Bấm <b>Kết nối</b>. Hệ thống kiểm tra nhóm đang hoạt động rồi gửi tin xác nhận vào nhóm.</li>
+    <li>Bấm <b>Gửi tin thử vào nhóm</b>. Bảng bên dưới hiện 10 tin gần nhất và lỗi (nếu có).</li>
+  </ol>
+  <div class="callout"><b>Tin nhắn Zalo cá nhân cho từng nhân viên</b>
+    <p>Chưa bật ở bản này (đang chờ quyết định dùng ZNS hay tin tư vấn). Nhân viên xem thông báo tại <code>/me</code> → <b>Thông báo gần đây</b>.</p>
+  </div>
+</section>
+
+<!-- 16 -->
+<section id="nhan-vien-tu-phuc-vu">
+  <h2><span class="num">16.</span>Trang cá nhân nhân viên (<code>/me</code>)</h2>
+  <p class="lead"><span class="pill e">Nhân viên</span> Mọi vai trò đều có trang này (Quản lý/HR/Quản trị mở qua "Trang cá nhân").</p>
+  <div class="grid">
+    <div class="card"><h4>🏠 Trang chủ</h4><p>Ca hôm nay, giờ vào/ra, công tháng này (ngày công, phép, trễ, OT), thông báo gần đây.</p></div>
+    <div class="card"><h4>🕘 Chấm công</h4><p>Lịch sử từng ngày: ca, giờ vào/ra, trễ/sớm, trạng thái. Thấy sai thì gửi đơn ngay.</p></div>
+    <div class="card"><h4>📝 Đơn từ</h4><p>Chọn loại đơn → ngày → giờ → lý do (≥ 10 ký tự) → gửi. Theo dõi trạng thái: Chờ duyệt / Đã duyệt / Từ chối / Đã hủy.</p></div>
+  </div>
+  <div class="ex"><div class="t">Tình huống: hôm qua quên chấm ra</div>
+    <p>Đơn từ → <b>Bổ sung công</b> → chọn "Quên chấm RA" → giờ 17:05 hôm qua → lý do "Quên quét mặt khi về do vội đón con" → Gửi. Quản lý duyệt, HR chấm tay, công được tính lại.</p>
+  </div>
+</section>
+
+<!-- 17 -->
+<section id="lich-thang">
+  <h2><span class="num">17.</span>Lịch làm việc hằng tháng (ai làm gì, khi nào)</h2>
+  <div class="tw"><table>
+    <tr><th>Thời điểm</th><th>Quản lý</th><th>Nhân sự</th><th>Quản trị</th></tr>
+    <tr><td>Mỗi sáng</td><td>Xem Tổng quan phòng, duyệt đơn</td><td>Tổng quan: vắng, chưa có lịch, đơn quá hạn; chấm tay đơn bổ sung công</td><td>Xem cảnh báo hệ thống</td></tr>
+    <tr><td>Thứ Sáu</td><td>Hoàn tất xếp ca tuần sau</td><td>Nhắc phòng chậm</td><td>—</td></tr>
+    <tr><td>Trước 00:00 thứ Hai</td><td><b>Đăng ký</b> tuần</td><td>—</td><td>—</td></tr>
+    <tr><td>Thứ Hai sáng</td><td>—</td><td>Đăng ký thay phòng còn thiếu</td><td>—</td></tr>
+    <tr><td>Cuối tháng</td><td>Duyệt hết đơn tồn</td><td>Rà danh sách 14.1</td><td>—</td></tr>
+    <tr><td>Từ ngày 2</td><td>—</td><td><b>Chốt công</b>, xuất Excel gửi kế toán</td><td>Mở khóa khi có sai sót</td></tr>
+    <tr><td>Đầu năm</td><td>—</td><td>—</td><td>Nhập ngày lễ năm mới</td></tr>
+  </table></div>
+</section>
+
+<!-- 18 -->
+<section id="hoi-dap">
+  <h2><span class="num">18.</span>Hỏi đáp &amp; xử lý sự cố</h2>
+  <details><summary>Kiosk nhận nhầm người khác</summary><p>Báo HR ngay. HR mở Chấm công, xem snapshot của lần quét đó; Quản trị xóa log sai (ghi lý do). Enroll lại cả hai người cho kỹ 5 góc, tại chỗ đặt kiosk. Quản trị có thể nâng ngưỡng khớp ở <b>Cấu hình → Ngưỡng &amp; thời hạn</b> (mặc định 0.45, chênh lệch 0.08).</p></details>
+  <details><summary>Kiosk hay báo "Không nhận ra"</summary><p>Kiểm tra ánh sáng (không ngược sáng), camera sạch, nhân viên bỏ khẩu trang/mũ. Enroll lại nếu hồ sơ hiện "Enroll lại". Nếu cả kiosk báo "máy chủ chưa sẵn sàng" → báo kỹ thuật.</p></details>
+  <details><summary>Nhân viên bị báo vắng dù đã xin nghỉ</summary><p>Đơn nghỉ phép có thể chưa được duyệt. Duyệt đơn xong công được tính lại tự động.</p></details>
+  <details><summary>Ở lại làm thêm nhưng báo cáo OT = 0</summary><p>Cần đơn <b>Tăng ca</b> đã duyệt che khoảng thời gian đó. Gửi đơn (trong vòng 3 ngày) và duyệt, OT được tính lại.</p></details>
+  <details><summary>Nhân viên xoay ca hiện "Chưa có lịch"</summary><p>Tuần chưa được đăng ký. Quản lý (nếu tuần chưa bắt đầu) hoặc HR đăng ký tuần đó; công tự tính lại.</p></details>
+  <details><summary>Không sửa được ca / không duyệt được đơn, báo tháng đã chốt</summary><p>Tháng đã chốt công. Liên hệ Quản trị để mở khóa (mục 14).</p></details>
+  <details><summary>Quản lý muốn đổi ca đã đăng ký</summary><p>Quản lý không sửa được lịch đã đăng ký. Nhờ HR sửa, kèm lý do; thay đổi sẽ báo vào nhóm Zalo.</p></details>
+  <details><summary>Nhóm Zalo không nhận tin</summary><p>Quản trị mở thẻ Zalo OA: xem trạng thái (thật/mô phỏng), trạng thái nhóm phải là "enabled", xem lỗi ở bảng 10 tin gần nhất, bấm Gửi tin thử.</p></details>
+  <details><summary>Quên mật khẩu</summary><p>Nhờ HR (hoặc Quản trị với tài khoản HR/Quản trị) đặt lại mật khẩu trong hồ sơ nhân viên.</p></details>
+</section>
+
+<footer>Face Beo · Cẩm nang sử dụng · cập nhật 19/09/2026 (phiên bản ứng dụng v1.4)</footer>
+</main>
+</div>
+
+<script>
+(function(){
+  var root=document.documentElement;
+  try{var t=localStorage.getItem("fb-theme");if(t)root.setAttribute("data-theme",t);}catch(e){}
+  document.getElementById("themeBtn").addEventListener("click",function(){
+    var dark=root.getAttribute("data-theme")==="dark"||(!root.getAttribute("data-theme")&&matchMedia("(prefers-color-scheme: dark)").matches);
+    var next=dark?"light":"dark";root.setAttribute("data-theme",next);
+    try{localStorage.setItem("fb-theme",next);}catch(e){}
+  });
+  // Mục lục: tô mục đang xem
+  var links=[].slice.call(document.querySelectorAll("nav.toc a"));
+  var map={};links.forEach(function(a){map[a.getAttribute("href").slice(1)]=a;});
+  if("IntersectionObserver" in window){
+    var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){links.forEach(function(a){a.classList.remove("active")});var a=map[e.target.id];if(a)a.classList.add("active");}});},{rootMargin:"-10% 0px -80% 0px"});
+    document.querySelectorAll("main section").forEach(function(s){io.observe(s)});
+  }
+  links.forEach(function(a){a.addEventListener("click",function(){document.getElementById("toc").classList.remove("open")})});
+  // Sơ đồ: nếu môi trường chưa tự vẽ Mermaid thì tải thư viện
+  setTimeout(function(){
+    var pending=[].slice.call(document.querySelectorAll("pre.mermaid")).filter(function(p){return !p.querySelector("svg")&&!p.getAttribute("data-processed")});
+    if(!pending.length||window.__fbMermaid)return;window.__fbMermaid=1;
+    var s=document.createElement("script");s.src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js";
+    s.onload=function(){
+      var dark=root.getAttribute("data-theme")==="dark"||(!root.getAttribute("data-theme")&&matchMedia("(prefers-color-scheme: dark)").matches);
+      mermaid.initialize({startOnLoad:false,theme:dark?"dark":"default",fontFamily:"Be Vietnam Pro, sans-serif",securityLevel:"strict"});
+      mermaid.run({nodes:pending});
+    };
+    document.head.appendChild(s);
+  },700);
+})();
+</script>
