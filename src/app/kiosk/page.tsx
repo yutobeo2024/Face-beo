@@ -88,7 +88,14 @@ export default function KioskPage() {
           await queue.remove(item.clientEventId);
         } catch (e) {
           if (e instanceof DeviceRevokedError) return onRevoked();
-          if (e instanceof NetworkError) break;
+          if (e instanceof NetworkError) {
+            // Mất mạng hẳn: dừng, chờ ping tiếp theo. Server trả 5xx/429 cho riêng bản ghi này: đếm số lần, quá 30 lần thì bỏ để
+            // không chặn các bản ghi phía sau (bản ghi quá 24 giờ server cũng không nhận nữa).
+            if (e.status == null) break;
+            const attempts = (item.attempts ?? 0) + 1;
+            if (attempts >= 30) await queue.remove(item.clientEventId);
+            else await queue.add({ ...item, attempts }).catch(() => {});
+          }
         }
       }
     } finally {
@@ -100,10 +107,16 @@ export default function KioskPage() {
   // Ping thiết bị + trạng thái mạng.
   useEffect(() => {
     let alive = true;
+    let apiVersion: string | null = null;
     const ping = async () => {
       try {
         const r = await fetch("/api/kiosk/ping", { cache: "no-store" });
         if (r.status === 401) return onRevoked();
+        const v = (await r.clone().json().catch(() => null)) as { apiVersion?: string } | null;
+        if (v?.apiVersion) {
+          if (apiVersion && apiVersion !== v.apiVersion) return location.reload();
+          apiVersion = v.apiVersion;
+        }
         const d = await r.json();
         if (alive) {
           setOnline(true);
@@ -158,7 +171,8 @@ export default function KioskPage() {
         await queue.add(item).catch(() => {});
         void refreshCount();
         setOnline(false);
-        setCard({ tone: "info", title: "Đã ghi nhận", lines: ["Mất kết nối — sẽ xác nhận khi có mạng"] });
+        const serverSide = e instanceof NetworkError && e.status != null;
+        setCard({ tone: serverSide ? "warn" : "info", title: serverSide ? "Chưa xác nhận được" : "Đã ghi nhận", lines: [serverSide ? `${(e as Error).message} — đã lưu, sẽ gửi lại` : "Mất kết nối — sẽ xác nhận khi có mạng"] });
         beep("warn");
       }
       if (r) {

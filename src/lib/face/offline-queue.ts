@@ -65,7 +65,11 @@ export type ScanResponse = {
   duplicateEvent?: boolean;
 };
 
-export class NetworkError extends Error {}
+export class NetworkError extends Error {
+  constructor(message: string, public status?: number) {
+    super(message);
+  }
+}
 export class DeviceRevokedError extends Error {}
 
 /** Gửi 1 lần quét. Lỗi mạng / 5xx / 429 => NetworkError (giữ trong hàng đợi). 401 => thiết bị bị thu hồi. */
@@ -96,7 +100,10 @@ export async function sendScan(s: QueuedScan, timeoutMs = 8000): Promise<ScanRes
     clearTimeout(t);
   }
   if (res.status === 401) throw new DeviceRevokedError("Thiết bị chưa ghép hoặc đã bị thu hồi");
-  if (res.status >= 500 || res.status === 429) throw new NetworkError(`Máy chủ bận (${res.status})`);
+  if (res.status >= 500 || res.status === 429) {
+    const err = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new NetworkError(res.status === 503 && err.error ? err.error : `Máy chủ bận (${res.status})`, res.status);
+  }
   const data = (await res.json().catch(() => ({}))) as ScanResponse & { error?: string };
   if (!res.ok) return { result: "NO_MATCH", message: data.error ?? `Lỗi ${res.status}` };
   return data;

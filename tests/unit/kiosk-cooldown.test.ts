@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ABSENT_FRAMES, cooldownStep, RETRY_MS, startCooldown, type Box, type CooldownState } from "@/lib/face/cooldown";
+import { ABSENT_FRAMES, cooldownStep, MAX_COOLDOWN_MS, RETRY_MS, startCooldown, type Box, type CooldownState } from "@/lib/face/cooldown";
 
 const me: Box = [400, 100, 300, 300];
 const meShifted: Box = [430, 110, 290, 290]; // cùng chỗ, hơi nhúc nhích
@@ -16,9 +16,17 @@ function run(s: CooldownState, frames: { faceCount: number; box: Box | null }[],
 }
 
 describe("kiosk cooldown sau khi chấm công (theo khung mặt)", () => {
-  it("cùng một người đứng yên 200 khung: không bao giờ quét lại", () => {
-    const r = run(startCooldown(me, 0), Array.from({ length: 200 }, (_, i) => ({ faceCount: 1, box: i % 2 ? me : meShifted })));
-    expect(r.done).toBe(false);
+  it("cùng một người đứng yên: không quét lại trong 5 giây; quá 5 giây thì sẵn sàng (không kẹt khi người sau đứng đúng chỗ)", () => {
+    const frames = Array.from({ length: 200 }, (_, i) => ({ faceCount: 1, box: i % 2 ? me : meShifted }));
+    const r = run(startCooldown(me, 0), frames); // 100 ms/khung
+    expect(r.done).toBe(true);
+    expect(r.at * 100).toBeGreaterThanOrEqual(MAX_COOLDOWN_MS);
+    expect(run(startCooldown(me, 0), frames.slice(0, 40)).done).toBe(false);
+  });
+
+  it("mặt to lên hẳn (người khác đứng sát hơn) 3 khung: sẵn sàng", () => {
+    const close: Box = [380, 60, 480, 480];
+    expect(run(startCooldown(me, 0), [{ faceCount: 1, box: me }, ...Array(3).fill({ faceCount: 1, box: close })])).toEqual({ done: true, at: 3 });
   });
 
   it("rời khỏi camera đủ 8 khung liên tiếp: sẵn sàng", () => {
@@ -27,7 +35,7 @@ describe("kiosk cooldown sau khi chấm công (theo khung mặt)", () => {
   });
 
   it("mất mặt chập chờn (lẻ tẻ vài khung) thì bộ đếm reset, chưa thoát", () => {
-    const flicker = Array.from({ length: 60 }, (_, i) => (i % 5 === 4 ? { faceCount: 1, box: me } : { faceCount: 0, box: null }));
+    const flicker = Array.from({ length: 40 }, (_, i) => (i % 5 === 4 ? { faceCount: 1, box: me } : { faceCount: 0, box: null }));
     expect(run(startCooldown(me, 0), flicker).done).toBe(false);
   });
 

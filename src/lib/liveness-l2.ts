@@ -87,7 +87,7 @@ export function resizeBilinearCV(src: Uint8Array, sw: number, sh: number, dw: nu
 /** JPEG + khung mặt → tensor NCHW BGR float32 (0–255). */
 export async function preprocess(jpeg: Buffer, box: FaceBox, size: [number, number]): Promise<Float32Array> {
   const { default: sharp } = await import("sharp");
-  const img = sharp(jpeg, { failOn: "error" });
+  const img = sharp(jpeg, { failOn: "error", limitInputPixels: 1920 * 1080 });
   const meta = await img.metadata();
   if (!meta.width || !meta.height) throw new Error("Không đọc được kích thước snapshot");
   const region = cropRegion(meta.width, meta.height, box);

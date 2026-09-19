@@ -9,7 +9,8 @@ import { FACE_MODEL_VERSION } from "@/lib/roles";
 import { requirePerm } from "@/lib/permissions";
 import { assertCanTouchBiometrics } from "@/lib/employee-guards";
 import { announce, onceKey } from "@/lib/announce";
-import { embedFromSnapshot } from "@/lib/face-embed";
+import { embedFromSnapshot, FaceInputError } from "@/lib/face-embed";
+import { rateLimit } from "@/lib/rate-limit";
 import { decodeJpegDataUrl } from "@/lib/storage";
 
 const MIN_ENROLL_FACE_PX = 200;
@@ -21,6 +22,7 @@ const DUP_HARD_BLOCK = 0.65;
 /** Enroll 5 mẫu. Không lưu ảnh, chỉ lưu embedding mã hóa AES-256-GCM. */
 export const POST = handle<{ id: string }>(async (req, ctx) => {
   const u = await requirePerm(req, "faces.enroll");
+  if (!rateLimit(`enroll:${u.id}`, 30).ok) throw new HttpError(429, "Quá nhiều lượt enroll, vui lòng chờ một phút");
   const id = await idParam(ctx);
   const body = await parseJson(req, enrollSchema);
   const e = await prisma.employee.findUnique({ where: { id } });
@@ -35,12 +37,13 @@ export const POST = handle<{ id: string }>(async (req, ctx) => {
   // Tính embedding trên server từ snapshot + điểm mốc (không lưu ảnh).
   const descriptors: Float32Array[] = [];
   for (const s of body.samples) {
+    const jpeg = decodeJpegDataUrl(s.snapshot); // HttpError 400 nếu quá 1 MB / không phải JPEG
     try {
-      descriptors.push((await embedFromSnapshot(decodeJpegDataUrl(s.snapshot), s.landmarks)).embedding);
+      descriptors.push((await embedFromSnapshot(jpeg, s.landmarks)).embedding);
     } catch (e) {
-      const msg = (e as Error).message;
-      if (msg.includes("Điểm mốc") || msg.includes("Mặt quá nhỏ")) throw badRequest(`Mẫu ${s.pose}: ${msg}`);
-      throw new HttpError(503, `Máy chủ chưa sẵn sàng nhận diện khuôn mặt: ${msg}`);
+      if (e instanceof FaceInputError) throw badRequest(`Mẫu ${s.pose}: ${e.message}`);
+      if (e instanceof HttpError) throw e;
+      throw new HttpError(503, `Máy chủ chưa sẵn sàng nhận diện khuôn mặt: ${(e as Error).message}`);
     }
   }
   // 5 mẫu phải là cùng một người.

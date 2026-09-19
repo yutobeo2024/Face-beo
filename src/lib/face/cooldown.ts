@@ -4,13 +4,17 @@
  *  1. không còn mặt trong ABSENT_FRAMES khung liên tiếp (người đã rời đi), hoặc
  *  2. có đúng 1 mặt ở VỊ TRÍ KHÁC HẲN (tâm khung lệch quá DIFFERENT_RATIO × bề rộng khung cũ) trong DIFFERENT_FRAMES khung liên tiếp
  *     — người khác bước vào chỗ khác, hoặc
- *  3. kết quả trước thất bại (lastBox = null) và đã qua RETRY_MS — cho phép thử lại.
+ *  3. kết quả trước thất bại (lastBox = null) và đã qua RETRY_MS — cho phép thử lại, hoặc
+ *  4. đã quá MAX_COOLDOWN_MS kể từ khi bắt đầu (người sau bước vào đúng chỗ người trước thì không bị kẹt).
+ * Kích thước khung đổi quá SIZE_RATIO cũng coi là "mặt khác" (đứng gần/xa hơn hẳn).
  * Hàm thuần, không phụ thuộc DOM/Human để unit test được.
  */
 export const ABSENT_FRAMES = 8;
 export const DIFFERENT_FRAMES = 3;
 export const DIFFERENT_RATIO = 0.6;
 export const RETRY_MS = 1500;
+export const MAX_COOLDOWN_MS = 5000;
+export const SIZE_RATIO = 0.45;
 
 export type Box = [number, number, number, number]; // x, y, w, h
 
@@ -31,7 +35,8 @@ export function startCooldown(lastBox: Box | null, now: number): CooldownState {
 export function isDifferentPosition(last: Box, box: Box): boolean {
   const dx = box[0] + box[2] / 2 - (last[0] + last[2] / 2);
   const dy = box[1] + box[3] / 2 - (last[1] + last[3] / 2);
-  return Math.hypot(dx, dy) > DIFFERENT_RATIO * Math.max(1, last[2]);
+  const w = Math.max(1, last[2]);
+  return Math.hypot(dx, dy) > DIFFERENT_RATIO * w || Math.abs(box[2] - w) > SIZE_RATIO * w;
 }
 
 export function cooldownStep(s: CooldownState, obs: CooldownObs): { state: CooldownState; done: boolean } {
@@ -41,5 +46,5 @@ export function cooldownStep(s: CooldownState, obs: CooldownObs): { state: Coold
   let differentFrames = 0;
   if (obs.faceCount === 1 && obs.box) differentFrames = isDifferentPosition(s.lastBox, obs.box) ? s.differentFrames + 1 : 0;
   const state = { ...s, absentFrames, differentFrames };
-  return { state, done: absentFrames >= ABSENT_FRAMES || differentFrames >= DIFFERENT_FRAMES };
+  return { state, done: absentFrames >= ABSENT_FRAMES || differentFrames >= DIFFERENT_FRAMES || obs.now - s.since >= MAX_COOLDOWN_MS };
 }

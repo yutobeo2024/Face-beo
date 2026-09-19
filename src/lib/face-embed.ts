@@ -9,6 +9,7 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import type { InferenceSession } from "onnxruntime-node";
+import { FACE_MODEL_VERSION } from "./roles";
 
 export type Pt = [number, number];
 export type Landmarks5 = [Pt, Pt, Pt, Pt, Pt];
@@ -25,9 +26,17 @@ export const ARCFACE_TEMPLATE: Landmarks5 = [
   [70.7299, 92.2041],
 ];
 
+/** Lỗi do dữ liệu client gửi lên (điểm mốc, ảnh) — route trả 400; lỗi khác (thiếu mô hình…) trả 503. */
+export class FaceInputError extends Error {}
+
+/** Snapshot của kiosk tối đa 1280×720; cho phép dư một chút. Vượt quá => từ chối trước khi giải mã (chống cạn bộ nhớ). */
+export const MAX_SNAPSHOT_PIXELS = 1920 * 1080;
+/** Sai số trung bình (pixel trên ảnh 112×112) giữa 5 điểm sau căn chỉnh và mẫu ArcFace; mốc thật ≈ 1–5 px, mốc rác/lật gương ≈ 20 px. */
+export const MAX_ALIGN_RESIDUAL = 12;
+
 export const FACE_MODELS = {
-  r50: { file: "w600k_r50.onnx", version: "insightface-w600k_r50-v1", label: "InsightFace ResNet50 (buffalo_l)" },
-  mbf: { file: "w600k_mbf.onnx", version: "insightface-w600k_mbf-v1", label: "InsightFace MobileFaceNet (buffalo_sc)" },
+  r50: { file: "w600k_r50.onnx", label: "InsightFace ResNet50 (buffalo_l)" },
+  mbf: { file: "w600k_mbf.onnx", label: "InsightFace MobileFaceNet (buffalo_sc)" },
 } as const;
 export type FaceModelKey = keyof typeof FACE_MODELS;
 
@@ -46,7 +55,7 @@ export function faceModelPath() {
  */
 export function similarityTransform(src: Pt[], dst: Pt[]): { A: [[number, number], [number, number]]; t: Pt } {
   const n = src.length;
-  if (n < 2 || dst.length !== n) throw new Error("Cần ít nhất 2 cặp điểm");
+  if (n < 2 || dst.length !== n) throw new FaceInputError("Cần ít nhất 2 cặp điểm");
   let msx = 0, msy = 0, mdx = 0, mdy = 0;
   for (let i = 0; i < n; i++) {
     msx += src[i][0] / n; msy += src[i][1] / n; mdx += dst[i][0] / n; mdy += dst[i][1] / n;
@@ -56,11 +65,11 @@ export function similarityTransform(src: Pt[], dst: Pt[]): { A: [[number, number
     const x = src[i][0] - msx, y = src[i][1] - msy, u = dst[i][0] - mdx, v = dst[i][1] - mdy;
     sxx += u * x; sxy += u * y; syx += v * x; syy += v * y; varS += x * x + y * y;
   }
-  if (varS === 0) throw new Error("Các điểm nguồn trùng nhau");
+  if (varS === 0) throw new FaceInputError("Các điểm nguồn trùng nhau");
   // Ma trận xoay tối ưu cho phép tương tự 2D: góc θ = atan2(syx − sxy, sxx + syy).
   const a = sxx + syy, b = syx - sxy;
   const norm = Math.hypot(a, b);
-  if (norm === 0) throw new Error("Không ước lượng được phép xoay");
+  if (norm === 0) throw new FaceInputError("Không ước lượng được phép xoay");
   const cos = a / norm, sin = b / norm;
   const s = norm / varS;
   const A: [[number, number], [number, number]] = [[s * cos, -s * sin], [s * sin, s * cos]];
@@ -74,7 +83,8 @@ export function similarityTransform(src: Pt[], dst: Pt[]): { A: [[number, number
 export function alignFace(raw: Uint8Array, W: number, H: number, pts: Landmarks5): Float32Array {
   const { A, t } = similarityTransform(pts, ARCFACE_TEMPLATE);
   const det = A[0][0] * A[1][1] - A[0][1] * A[1][0];
-  if (!Number.isFinite(det) || Math.abs(det) < 1e-12) throw new Error("Phép căn chỉnh suy biến");
+  if (!Number.isFinite(det) || Math.abs(det) < 1e-12) throw new FaceInputError("Phép căn chỉnh suy biến");
+  if (alignResidual(pts, A, t) > MAX_ALIGN_RESIDUAL) throw new FaceInputError("Điểm mốc không giống bố cục khuôn mặt (sai thứ tự hoặc không phải mặt)");
   const inv = [[A[1][1] / det, -A[0][1] / det], [-A[1][0] / det, A[0][0] / det]];
   const N = FACE_SIZE * FACE_SIZE;
   const out = new Float32Array(3 * N);
@@ -95,6 +105,17 @@ export function alignFace(raw: Uint8Array, W: number, H: number, pts: Landmarks5
   return out;
 }
 
+/** Sai số trung bình giữa 5 điểm sau phép biến đổi và mẫu ArcFace (pixel 112×112). */
+export function alignResidual(pts: Landmarks5, A: [[number, number], [number, number]], t: Pt): number {
+  let sum = 0;
+  for (let i = 0; i < 5; i++) {
+    const x = A[0][0] * pts[i][0] + A[0][1] * pts[i][1] + t[0];
+    const y = A[1][0] * pts[i][0] + A[1][1] * pts[i][1] + t[1];
+    sum += Math.hypot(x - ARCFACE_TEMPLATE[i][0], y - ARCFACE_TEMPLATE[i][1]);
+  }
+  return sum / 5;
+}
+
 export function l2normalize(v: ArrayLike<number>): Float32Array {
   let n = 0;
   for (let i = 0; i < v.length; i++) n += v[i] * v[i];
@@ -104,18 +125,30 @@ export function l2normalize(v: ArrayLike<number>): Float32Array {
   return out;
 }
 
-/** Điểm mốc hợp lệ: nằm trong ảnh, hai mắt cách nhau đủ xa (mặt không quá nhỏ). */
-export function validateLandmarks(pts: Landmarks5, W: number, H: number, minEyeDist = 20): string | null {
+/**
+ * Điểm mốc hợp lệ: nằm trong ảnh, hai mắt cách nhau đủ xa (mặt không quá nhỏ); nếu có khung mặt (dùng cho L2) thì
+ * 5 điểm phải nằm trong khung (nới 15%) và khoảng cách mắt hợp lý so với bề rộng khung — đảm bảo L2 và nhận diện cùng một mặt.
+ */
+export function validateLandmarks(pts: Landmarks5, W: number, H: number, faceBox?: [number, number, number, number] | null, minEyeDist = 20): string | null {
   for (const [x, y] of pts) if (!Number.isFinite(x) || !Number.isFinite(y) || x < 0 || y < 0 || x > W || y > H) return "Điểm mốc nằm ngoài ảnh";
   const eye = Math.hypot(pts[0][0] - pts[1][0], pts[0][1] - pts[1][1]);
   if (eye < minEyeDist) return "Mặt quá nhỏ trong ảnh";
+  if (faceBox) {
+    const [bx, by, bw, bh] = faceBox;
+    const mx = bw * 0.15, my = bh * 0.15;
+    for (const [x, y] of pts) if (x < bx - mx || x > bx + bw + mx || y < by - my || y > by + bh + my) return "Điểm mốc nằm ngoài khung mặt";
+    if (eye < 0.15 * bw || eye > 0.8 * bw) return "Điểm mốc không khớp kích thước khung mặt";
+  }
   return null;
 }
 
 type Engine = { session: InferenceSession; input: string; output: string };
-const g = globalThis as unknown as { __faceEmbed?: Promise<Engine> | null; __faceEmbedError?: string | null; __faceEmbedHook?: EmbedHook | null };
+const g = globalThis as unknown as { __faceEmbed?: Promise<Engine> | null; __faceEmbedError?: string | null; __faceEmbedErrorAt?: number; __faceEmbedHook?: EmbedHook | null };
+const LOAD_RETRY_MS = 60_000;
 
 export function loadFaceModel(): Promise<Engine> {
+  // Nạp thất bại (thiếu file, mô hình hỏng): không thử lại liên tục mỗi request (mô hình R50 nặng 170 MB).
+  if (!g.__faceEmbed && g.__faceEmbedError && Date.now() - (g.__faceEmbedErrorAt ?? 0) < LOAD_RETRY_MS) return Promise.reject(new Error(g.__faceEmbedError));
   g.__faceEmbed ??= (async () => {
     const path = faceModelPath();
     if (!existsSync(path)) throw new Error(`Không tìm thấy mô hình nhận diện ${path} — chạy: npm run models:face`);
@@ -126,6 +159,7 @@ export function loadFaceModel(): Promise<Engine> {
   })().catch((e) => {
     g.__faceEmbed = null;
     g.__faceEmbedError = (e as Error).message;
+    g.__faceEmbedErrorAt = Date.now();
     throw e;
   });
   return g.__faceEmbed;
@@ -133,7 +167,7 @@ export function loadFaceModel(): Promise<Engine> {
 
 export function faceModelStatus() {
   const key = faceModelKey();
-  return { key, label: FACE_MODELS[key].label, version: FACE_MODELS[key].version, modelPath: faceModelPath(), modelExists: existsSync(faceModelPath()), error: g.__faceEmbedError ?? null };
+  return { key, label: FACE_MODELS[key].label, version: FACE_MODEL_VERSION, modelPath: faceModelPath(), modelExists: existsSync(faceModelPath()), error: g.__faceEmbedError ?? null };
 }
 
 export type EmbedHook = (jpeg: Buffer, landmarks: Landmarks5) => Float32Array | null;
@@ -143,16 +177,31 @@ export function __setFaceEmbedTestHook(hook: EmbedHook | null) {
 }
 
 /** Embedding 512 chiều (chuẩn hóa L2) của mặt trong snapshot JPEG theo 5 điểm mốc (tọa độ pixel của snapshot). */
-export async function embedFromSnapshot(jpeg: Buffer, landmarks: Landmarks5): Promise<{ embedding: Float32Array; ms: number }> {
+export async function embedFromSnapshot(jpeg: Buffer, landmarks: Landmarks5, faceBox?: [number, number, number, number] | null): Promise<{ embedding: Float32Array; ms: number }> {
   const t0 = Date.now();
+  const { default: sharp } = await import("sharp");
+  // Đọc kích thước trước, chưa giải mã: ảnh quá lớn hoặc điểm mốc sai bị loại sớm (chống cạn bộ nhớ).
+  let meta: { width?: number; height?: number };
+  try {
+    meta = await sharp(jpeg, { failOn: "error" }).metadata();
+  } catch {
+    throw new FaceInputError("Snapshot không phải JPEG hợp lệ");
+  }
+  const W = meta.width ?? 0, H = meta.height ?? 0;
+  if (!W || !H) throw new FaceInputError("Snapshot không đọc được kích thước");
+  if (W * H > MAX_SNAPSHOT_PIXELS) throw new FaceInputError(`Snapshot quá lớn (${W}×${H})`);
+  const bad = validateLandmarks(landmarks, W, H, faceBox);
+  if (bad) throw new FaceInputError(bad);
   if (g.__faceEmbedHook) {
     const e = g.__faceEmbedHook(jpeg, landmarks);
     if (e) return { embedding: l2normalize(e), ms: Date.now() - t0 };
   }
-  const { default: sharp } = await import("sharp");
-  const { data, info } = await sharp(jpeg, { failOn: "error" }).removeAlpha().raw().toBuffer({ resolveWithObject: true });
-  const bad = validateLandmarks(landmarks, info.width, info.height);
-  if (bad) throw new Error(bad);
+  let data: Buffer, info: { width: number; height: number };
+  try {
+    ({ data, info } = await sharp(jpeg, { failOn: "error", limitInputPixels: MAX_SNAPSHOT_PIXELS }).removeAlpha().raw().toBuffer({ resolveWithObject: true }));
+  } catch {
+    throw new FaceInputError("Snapshot không giải mã được");
+  }
   const tensorData = alignFace(new Uint8Array(data.buffer, data.byteOffset, data.byteLength), info.width, info.height, landmarks);
   const eng = await loadFaceModel();
   const ort = await import("onnxruntime-node");

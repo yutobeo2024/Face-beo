@@ -19,3 +19,6 @@ export async function requireDevice(req: NextRequest) {
   await prisma.kioskDevice.update({ where: { id: d.id }, data: { lastSeenAt: new Date() } });
   return d;
 }
+
+/** Tăng khi payload/giao thức kiosk đổi — kiosk đang mở sẽ tự tải lại trang. */
+export const KIOSK_API_VERSION = "2";

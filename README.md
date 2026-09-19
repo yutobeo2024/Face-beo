@@ -131,7 +131,8 @@ npm run models:face -- mbf   # buffalo_sc -> models/w600k_mbf.onnx (~13 MB, Mobi
 ```
 
 Script tải từ bản phát hành chính thức trên GitHub của InsightFace và kiểm tra SHA-256. Thiếu mô hình thì kiosk báo 503 và Cấu hình hiện cảnh báo.
-**Đổi mô hình (r50 ↔ mbf) là đổi phiên bản template => phải enroll lại toàn bộ.** Mỗi lần quét mất ~80–130 ms trên CPU (R50).
+**Đổi mô hình (r50 ↔ mbf) là đổi phiên bản template => phải enroll lại toàn bộ.** Khi deploy bản mới, kiosk đang mở tự tải lại trang (so
+phiên bản API qua ping). Reverse proxy phải cho body ≥ 8 MB (enroll gửi 5 ảnh): Nginx `client_max_body_size 8m`, Caddy `request_body { max_size 8MB }`. Mỗi lần quét mất ~80–130 ms trên CPU (R50).
 
 Vì sao đổi: mô hình `faceres` của Human (chạy trên tablet) không tách được người có nét giống nhau — trên dữ liệu thật của công ty nó nhận nhầm
 2/16 ảnh và từ chối 14 lượt quét; InsightFace R50 trên cùng dữ liệu: 0 nhầm (cùng người ≥ 0.51, khác người ≤ 0.35).

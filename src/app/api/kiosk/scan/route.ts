@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { handle, HttpError, json, parseJson } from "@/lib/api";
+import { handle, HttpError, json } from "@/lib/api";
 import { requireDevice } from "@/lib/kiosk-auth";
 import { rateLimit } from "@/lib/rate-limit";
 import { kioskScanSchema } from "@/lib/validators";
@@ -12,7 +12,7 @@ import { audit } from "@/lib/audit";
 import { notifyLateIfNeeded } from "@/lib/notify";
 import { vnTime } from "@/lib/attendance";
 import { evaluateLiveness } from "@/lib/liveness";
-import { embedFromSnapshot } from "@/lib/face-embed";
+import { embedFromSnapshot, FaceInputError } from "@/lib/face-embed";
 
 const MAX_OFFLINE_AGE_MS = 24 * 3600_000;
 
@@ -24,7 +24,15 @@ export const POST = handle(async (req) => {
   const device = await requireDevice(req);
   const rl = rateLimit(`scan:${device.id}`, 60);
   if (!rl.ok) throw new HttpError(429, "Quá nhiều lượt quét, vui lòng chờ");
-  const body = await parseJson(req, kioskScanSchema);
+  const raw: unknown = await req.json().catch(() => {
+    throw new HttpError(400, "Body JSON không hợp lệ");
+  });
+  // Kiosk chạy bản cũ (trước v1.3) vẫn gửi embedding: báo rõ để tải lại trang, không bỏ qua lặng lẽ.
+  if (raw && typeof raw === "object" && "embedding" in raw && !("landmarks" in raw)) {
+    await auditThrottled("KIOSK_OUTDATED", device.id, { hint: "payload cũ (embedding)" });
+    throw new HttpError(400, "Kiosk đang chạy bản cũ — hãy tải lại trang kiosk");
+  }
+  const body = kioskScanSchema.parse(raw);
 
   const now = Date.now();
   const captured = body.capturedAt.getTime();
@@ -79,12 +87,12 @@ export const POST = handle(async (req) => {
 
   let embedding: Float32Array;
   try {
-    embedding = (await embedFromSnapshot(snapshotBuf, body.landmarks)).embedding;
+    embedding = (await embedFromSnapshot(snapshotBuf, body.landmarks, body.faceBox ?? null)).embedding;
   } catch (e) {
-    const msg = (e as Error).message;
-    if (msg.includes("Điểm mốc") || msg.includes("Mặt quá nhỏ")) throw new HttpError(400, msg);
-    await audit({ action: "FACE_MODEL_ERROR", entity: "KioskDevice", entityId: device.id, detail: { error: msg } });
-    throw new HttpError(503, "Máy chủ chưa sẵn sàng nhận diện khuôn mặt — báo Quản trị");
+    if (e instanceof FaceInputError) throw new HttpError(400, e.message);
+    if (e instanceof HttpError) throw e;
+    await auditThrottled("FACE_MODEL_ERROR", device.id, { error: (e as Error).message });
+    throw new HttpError(503, "Máy chủ chưa sẵn sàng nhận diện khuôn mặt — báo Quản trị", { code: "FACE_MODEL_UNAVAILABLE" });
   }
   const m = await matchFace(embedding, settings.matchThreshold, settings.matchMargin);
   if (!m.employeeId) {
@@ -150,11 +158,17 @@ export const POST = handle(async (req) => {
 });
 
 // Ghi tối đa 1 AuditLog mỗi 10 phút khi L2 lỗi (dashboard ADMIN hiện cảnh báo).
-const gl = globalThis as unknown as { __l2AuditAt?: number };
+const gl = globalThis as unknown as { __auditAt?: Record<string, number> };
 async function auditL2Unavailable(deviceId: number, error: string) {
-  if (Date.now() - (gl.__l2AuditAt ?? 0) < 10 * 60_000) return;
-  gl.__l2AuditAt = Date.now();
-  await audit({ action: "LIVENESS_L2_UNAVAILABLE", entity: "KioskDevice", entityId: deviceId, detail: { error } });
+  await auditThrottled("LIVENESS_L2_UNAVAILABLE", deviceId, { error });
+}
+
+/** Ghi nhật ký tối đa 1 lần / 10 phút cho mỗi (loại lỗi) — tránh spam khi kiosk gửi lại liên tục. */
+async function auditThrottled(action: "LIVENESS_L2_UNAVAILABLE" | "FACE_MODEL_ERROR" | "KIOSK_OUTDATED", deviceId: number, detail: Record<string, unknown>) {
+  const at = (gl.__auditAt ??= {});
+  if (Date.now() - (at[action] ?? 0) < 10 * 60_000) return;
+  at[action] = Date.now();
+  await audit({ action, entity: "KioskDevice", entityId: deviceId, detail });
 }
 
 function round(n: number) {
