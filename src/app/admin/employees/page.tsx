@@ -26,9 +26,24 @@ type Emp = {
   faceCount: number;
   faceStatus: "ENROLLED" | "REENROLL" | "NONE";
   hasSchedules: boolean;
+  scheduleType: "FIXED" | "ROTATING";
+  workPatternId: number | null;
+  workPattern: { name: string } | null;
 };
 type Shift = { id: number; name: string; startTime: string; endTime: string };
-type Form = { id?: number; code: string; name: string; phone: string; role: string; departmentId: string; defaultShiftId: string; active: boolean };
+type Form = {
+  id?: number;
+  code: string;
+  name: string;
+  phone: string;
+  role: string;
+  departmentId: string;
+  defaultShiftId: string;
+  active: boolean;
+  scheduleType: "FIXED" | "ROTATING";
+  workPatternId: string;
+};
+type Pattern = { id: number; name: string };
 
 const ROLE: Record<string, string> = { ADMIN: "Quản trị", HR: "Nhân sự", MANAGER: "Quản lý", EMPLOYEE: "Nhân viên" };
 const PRIVILEGED = ["ADMIN", "HR"];
@@ -58,16 +73,25 @@ export default function EmployeesPage() {
   const { data, error, loading, reload } = useApi<{ employees: Emp[] }>(`/api/employees${qs({ q, departmentId: dept, includeInactive: inactive ? 1 : "" })}`);
   const depts = useDepartments();
   const shifts = useApi<{ shifts: Shift[] }>("/api/shifts");
+  const patterns = useApi<{ patterns: Pattern[] }>("/api/work-patterns");
 
   function openCreate() {
-    setForm({ code: "", name: "", phone: "", role: "EMPLOYEE", departmentId: String(depts.data?.departments[0]?.id ?? ""), defaultShiftId: String(shifts.data?.shifts[0]?.id ?? ""), active: true });
+    setForm({ code: "", name: "", phone: "", role: "EMPLOYEE", departmentId: String(depts.data?.departments[0]?.id ?? ""), defaultShiftId: String(shifts.data?.shifts[0]?.id ?? ""), active: true, scheduleType: "FIXED", workPatternId: String(patterns.data?.patterns[0]?.id ?? "") });
   }
 
   async function save() {
     if (!form) return;
     setBusy(true);
     try {
-      const body = { name: form.name, phone: form.phone, role: form.role, departmentId: Number(form.departmentId), defaultShiftId: Number(form.defaultShiftId) };
+      const body = {
+        name: form.name,
+        phone: form.phone,
+        role: form.role,
+        departmentId: Number(form.departmentId),
+        defaultShiftId: Number(form.defaultShiftId),
+        scheduleType: form.scheduleType,
+        workPatternId: form.scheduleType === "FIXED" && form.workPatternId ? Number(form.workPatternId) : null,
+      };
       if (form.id) {
         await api(`/api/employees/${form.id}`, { method: "PATCH", body: { ...body, active: form.active } });
         toast.success("Đã lưu thông tin nhân viên");
@@ -155,8 +179,7 @@ export default function EmployeesPage() {
                     {e.code} · {ROLE[e.role]} · {e.department.name}
                   </p>
                   <p className="truncate text-xs text-slate-500">
-                    {e.defaultShift.name} {e.defaultShift.startTime}–{e.defaultShift.endTime}
-                    {e.hasSchedules && " · xoay ca"}
+                    {e.scheduleType === "ROTATING" ? `Xoay ca · mặc định ${e.defaultShift.name}` : `Cố định · ${e.workPattern?.name ?? `${e.defaultShift.name} ${e.defaultShift.startTime}–${e.defaultShift.endTime}`}`}
                     {e.phone && ` · ${e.phone}`}
                   </p>
                 </div>
@@ -179,7 +202,18 @@ export default function EmployeesPage() {
                   variant="secondary"
                   icon="edit"
                   onClick={() =>
-                    setForm({ id: e.id, code: e.code, name: e.name, phone: e.phone ?? "", role: e.role, departmentId: String(e.departmentId), defaultShiftId: String(e.defaultShiftId), active: e.active })
+                    setForm({
+                      id: e.id,
+                      code: e.code,
+                      name: e.name,
+                      phone: e.phone ?? "",
+                      role: e.role,
+                      departmentId: String(e.departmentId),
+                      defaultShiftId: String(e.defaultShiftId),
+                      active: e.active,
+                      scheduleType: e.scheduleType,
+                      workPatternId: e.workPatternId ? String(e.workPatternId) : "",
+                    })
                   }
                 >
                   Sửa
@@ -251,6 +285,28 @@ export default function EmployeesPage() {
                 </Select>
               )}
             </Field>
+            <Field label="Loại lịch làm việc" hint={form.scheduleType === "ROTATING" ? "Phải có lịch tuần đã đăng ký; chưa đăng ký => “Chưa có lịch”." : "Tự động theo mẫu tuần, không cần xếp ca hằng tuần."}>
+              {(id) => (
+                <Select id={id} value={form.scheduleType} onChange={(e) => setForm({ ...form, scheduleType: e.target.value as Form["scheduleType"] })}>
+                  <option value="FIXED">Ca cố định (theo mẫu tuần)</option>
+                  <option value="ROTATING">Xoay ca (xếp ca hằng tuần)</option>
+                </Select>
+              )}
+            </Field>
+            {form.scheduleType === "FIXED" && (
+              <Field label="Mẫu tuần làm việc">
+                {(id) => (
+                  <Select id={id} value={form.workPatternId} onChange={(e) => setForm({ ...form, workPatternId: e.target.value })}>
+                    <option value="">— Ca mặc định, nghỉ Chủ nhật —</option>
+                    {patterns.data?.patterns.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </Select>
+                )}
+              </Field>
+            )}
             {form.id && current && (
               <div className="space-y-2 rounded-xl bg-slate-50 p-3 sm:col-span-2">
                 <label className="flex items-center gap-2 text-sm font-medium text-slate-700">

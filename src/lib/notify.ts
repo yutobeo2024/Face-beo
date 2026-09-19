@@ -109,12 +109,18 @@ export async function notifyRequestCreated(r: LeaveRequest) {
     correctionText: correctionText(r),
     reason: r.reason,
   };
-  const to = new Set(await approversFor(r.employeeId));
-  // Đơn bổ sung công: Nhân sự (người sẽ chấm tay) cũng nhận thông báo ngay từ đầu.
+  const approvers = new Set(await approversFor(r.employeeId));
+  const to = new Set(approvers);
+  // Đơn bổ sung công: Nhân sự (người sẽ chấm tay) nhận tin ngay từ đầu — dạng "để biết", không phải "cần duyệt".
   if (r.type === "BO_SUNG_CONG") for (const id of await executorsFor(r.employeeId)) to.add(id);
   return Promise.all(
     [...to].map((toId) =>
-      sendZaloMessage({ toEmployeeId: toId, messageType: "REQUEST_CREATED", data, dedupeKey: `req-created:${r.id}:${toId}` }),
+      sendZaloMessage({
+        toEmployeeId: toId,
+        messageType: "REQUEST_CREATED",
+        data: { ...data, fyi: !approvers.has(toId) },
+        dedupeKey: `req-created:${r.id}:${toId}`,
+      }),
     ),
   );
 }

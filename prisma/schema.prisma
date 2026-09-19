@@ -30,6 +30,9 @@ model Employee {
   managedDepartments Department[]      @relation("DeptManager")
   defaultShiftId     Int
   defaultShift       Shift             @relation(fields: [defaultShiftId], references: [id])
+  scheduleType       String            @default("FIXED") // FIXED (theo mẫu tuần) | ROTATING (phải đăng ký ca tuần)
+  workPatternId      Int?
+  workPattern        WorkPattern?      @relation(fields: [workPatternId], references: [id])
   avatarUrl          String?
   active             Boolean           @default(true)
   biometricConsentAt DateTime?
@@ -202,4 +205,32 @@ model RolePermission {
   capability String
 
   @@id([role, capability])
+}
+
+// Mẫu tuần làm việc cho nhân viên ca cố định: ca theo từng thứ (null = nghỉ).
+model WorkPattern {
+  id         Int        @id @default(autoincrement())
+  name       String     @unique
+  monShiftId Int?
+  tueShiftId Int?
+  wedShiftId Int?
+  thuShiftId Int?
+  friShiftId Int?
+  satShiftId Int?
+  sunShiftId Int?
+  employees  Employee[]
+}
+
+// Đăng ký ca tuần theo phòng ban: lịch (WorkSchedule) chỉ có hiệu lực khi tuần đã REGISTERED.
+model RosterWeek {
+  id             Int       @id @default(autoincrement())
+  departmentId   Int
+  weekStart      String // "YYYY-MM-DD" thứ Hai
+  status         String    @default("DRAFT") // DRAFT | REGISTERED
+  registeredById Int?
+  registeredAt   DateTime?
+  updatedAt      DateTime  @updatedAt
+
+  @@unique([departmentId, weekStart])
+  @@index([weekStart])
 }

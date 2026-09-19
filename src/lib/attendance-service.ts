@@ -14,7 +14,10 @@ import {
   type DayPlan,
   type DaySummary,
   type RequestLite,
+  type ScheduleType,
   type ShiftDef,
+  type WeekPattern,
+  startOfWeek,
 } from "./attendance";
 import { getSettings } from "./settings";
 
@@ -28,30 +31,53 @@ export async function loadShifts(db: Db = prisma): Promise<Map<number, ShiftDef>
 /**
  * Bộ lập kế hoạch ngày công cho một nhóm nhân viên trong khoảng ngày (bao gồm biên ±1 ngày để xét ca đêm).
  */
+/** Mẫu tuần (cột mon..sun) → map theo thứ ISO 1..7. */
+export function patternOf(p: { monShiftId: number | null; tueShiftId: number | null; wedShiftId: number | null; thuShiftId: number | null; friShiftId: number | null; satShiftId: number | null; sunShiftId: number | null } | null): WeekPattern | null {
+  if (!p) return null;
+  return { 1: p.monShiftId, 2: p.tueShiftId, 3: p.wedShiftId, 4: p.thuShiftId, 5: p.friShiftId, 6: p.satShiftId, 7: p.sunShiftId };
+}
+
+/**
+ * Bộ lập kế hoạch ngày công cho một nhóm nhân viên trong khoảng ngày (bao gồm biên ±1 ngày để xét ca đêm).
+ * Lịch (WorkSchedule) CHỈ có hiệu lực khi tuần của phòng ban đó đã đăng ký (RosterWeek REGISTERED) — bản nháp bị bỏ qua.
+ */
 export async function buildPlanner(employeeIds: number[], from: string, to: string, db: Db = prisma) {
   const lo = addDays(from, -1);
   const hi = addDays(to, 1);
-  const [shifts, emps, schedules, holidays] = await Promise.all([
+  const [shifts, emps, schedules, holidays, weeks] = await Promise.all([
     loadShifts(db),
-    db.employee.findMany({ where: { id: { in: employeeIds } }, select: { id: true, defaultShiftId: true } }),
+    db.employee.findMany({
+      where: { id: { in: employeeIds } },
+      select: { id: true, defaultShiftId: true, departmentId: true, scheduleType: true, workPattern: true },
+    }),
     db.workSchedule.findMany({ where: { employeeId: { in: employeeIds }, date: { gte: lo, lte: hi } } }),
     db.holiday.findMany({ where: { date: { gte: lo, lte: hi } } }),
+    db.rosterWeek.findMany({ where: { status: "REGISTERED", weekStart: { gte: startOfWeek(lo), lte: startOfWeek(hi) } }, select: { departmentId: true, weekStart: true } }),
   ]);
   const holidaySet = new Set(holidays.map((h) => h.date));
-  const defaults = new Map(emps.map((e) => [e.id, e.defaultShiftId]));
+  const empById = new Map(emps.map((e) => [e.id, e]));
   const sched = new Map(schedules.map((s) => [`${s.employeeId}|${s.date}`, s]));
+  const registered = new Set(weeks.map((w) => `${w.departmentId}|${w.weekStart}`));
+  const isRegistered = (departmentId: number, date: string) => registered.has(`${departmentId}|${startOfWeek(date)}`);
   return {
     shifts,
     holidays: holidaySet,
     holidayNames: new Map(holidays.map((h) => [h.date, h.name])),
+    isRegistered,
+    /** Lịch nháp/đã đăng ký thô (để hiển thị bảng xếp ca), không dùng để tính công. */
+    rawSchedule: (employeeId: number, date: string) => sched.get(`${employeeId}|${date}`) ?? null,
     planFor(employeeId: number, date: string): DayPlan {
-      const defId = defaults.get(employeeId);
+      const e = empById.get(employeeId);
+      const reg = e ? isRegistered(e.departmentId, date) : false;
       return resolveDayPlan({
         date,
-        schedule: sched.get(`${employeeId}|${date}`) ?? null,
-        defaultShift: defId != null ? (shifts.get(defId) ?? null) : null,
+        schedule: reg ? (sched.get(`${employeeId}|${date}`) ?? null) : null,
+        defaultShift: e ? (shifts.get(e.defaultShiftId) ?? null) : null,
         shiftsById: shifts,
         holidays: holidaySet,
+        scheduleType: (e?.scheduleType as ScheduleType) ?? "FIXED",
+        pattern: patternOf(e?.workPattern ?? null),
+        weekRegistered: reg,
       });
     },
   };
@@ -148,6 +174,7 @@ export type ScanInput = {
   verified3D?: boolean;
   note?: string | null;
   createdById?: number | null;
+  sourceRequestId?: number | null;
 };
 
 export type ScanOutcome =
@@ -156,8 +183,9 @@ export type ScanOutcome =
   | { status: "CREATED"; log: AttendanceLog; plan: DayPlan | null; outOfShift: boolean; requests: RequestLite[] };
 
 /** Ghi một lần quét (kiosk hoặc thủ công) theo đúng quy tắc mục 4. */
-export async function recordScan(input: ScanInput): Promise<ScanOutcome> {
-  return prisma.$transaction(async (tx) => {
+/** Ghi một lần quét. Truyền `db` (transaction đang mở) để gộp vào nghiệp vụ lớn hơn — vd. chấm tay theo đơn. */
+export async function recordScan(input: ScanInput, db?: Prisma.TransactionClient): Promise<ScanOutcome> {
+  const run = async (tx: Prisma.TransactionClient): Promise<ScanOutcome> => {
     if (input.clientEventId) {
       const ex = await tx.attendanceLog.findUnique({ where: { clientEventId: input.clientEventId } });
       if (ex) return { status: "DUPLICATE_EVENT" as const, log: ex };
@@ -195,12 +223,14 @@ export async function recordScan(input: ScanInput): Promise<ScanOutcome> {
         verified3D: input.verified3D ?? false,
         note: input.note ?? (a.outOfShift ? "Ngoài ca" : null),
         createdById: input.createdById ?? null,
+        sourceRequestId: input.sourceRequestId ?? null,
       },
     });
     const { requests } = await recomputeDay(input.employeeId, a.workDate, tx);
     const log = await tx.attendanceLog.findUniqueOrThrow({ where: { id: created.id } });
     return { status: "CREATED" as const, log, plan: a.plan, outOfShift: a.outOfShift, requests };
-  });
+  };
+  return db ? run(db) : prisma.$transaction(run);
 }
 
 /** Tổng hợp ngày công cho nhiều nhân viên trong khoảng [from, to] (ngày VN). Key: `${employeeId}|${date}`. */

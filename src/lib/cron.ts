@@ -9,6 +9,8 @@ const SCHEDULE: Record<JobName, string> = {
   "zalo-token-refresh": "0 */6 * * *",
   "snapshot-cleanup": "0 2 * * *",
   "db-backup": "0 3 * * *",
+  "roster-reminder": "0 15 * * 5", // thứ Sáu 15:00
+  "roster-report": "0 7 * * 1", // thứ Hai 07:00
 };
 
 const g = globalThis as unknown as { __cronStarted?: boolean; __jobRunning?: Set<string> };

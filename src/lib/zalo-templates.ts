@@ -10,7 +10,9 @@ export type MessageType =
   | "GROUP_EVENT"
   | "CORRECTION_READY"
   | "CORRECTION_DONE"
-  | "MISSING_OUT_NUDGE";
+  | "MISSING_OUT_NUDGE"
+  | "ROSTER_REMINDER"
+  | "ROSTER_UNREGISTERED";
 
 const link = (path: string) => `${env.appBaseUrl.replace(/\/$/, "")}${path}`;
 
@@ -20,11 +22,11 @@ const s = (v: unknown) => (v == null ? "" : String(v));
 export const zaloTemplates: Record<MessageType, (d: Data) => string> = {
   REQUEST_CREATED: (d) =>
     [
-      `📝 Đơn mới cần duyệt`,
+      d.fyi ? `📝 Đơn bổ sung công mới (chờ quản lý duyệt — bạn sẽ chấm tay sau khi duyệt)` : `📝 Đơn mới cần duyệt`,
       `${s(d.employeeName)} (${s(d.employeeCode)}) gửi đơn ${s(d.typeLabel)}.`,
       d.correctionText ? `Cần bổ sung ${s(d.correctionText)}` : `Thời gian: ${s(d.fromText)} → ${s(d.toText)}`,
       `Lý do: ${s(d.reason)}`,
-      `Duyệt tại: ${link("/admin/requests?status=PENDING")}`,
+      d.fyi ? `Theo dõi tại: ${link("/admin/requests?status=PENDING")}` : `Duyệt tại: ${link("/admin/requests?status=PENDING")}`,
     ].join("\n"),
   REQUEST_DECIDED: (d) =>
     [
@@ -66,6 +68,20 @@ export const zaloTemplates: Record<MessageType, (d: Data) => string> = {
       `🔔 Thiếu giờ ra ngày ${s(d.dateText)}`,
       `Hệ thống chỉ ghi nhận giờ vào lúc ${s(d.inText)} (ca ${s(d.shiftName)}).`,
       `Nếu bạn quên chấm ra, hãy tạo đơn bổ sung công: ${link(`/me/requests?new=1&type=BO_SUNG_CONG&date=${s(d.date)}`)}`,
+    ].join("\n"),
+  ROSTER_REMINDER: (d) =>
+    [
+      `🗓️ Nhắc đăng ký ca tuần ${s(d.weekText)}`,
+      `Phòng ${s(d.departmentName)} có ${s(d.rotatingCount)} nhân viên xoay ca nhưng chưa đăng ký lịch tuần tới.`,
+      `Hạn chót: trước 00:00 thứ Hai. Sau hạn chỉ Nhân sự đăng ký được.`,
+      `Xếp ca tại: ${link(`/admin/roster?week=${s(d.week)}`)}`,
+    ].join("\n"),
+  ROSTER_UNREGISTERED: (d) =>
+    [
+      `⚠️ Tuần ${s(d.weekText)} còn ${s(d.count)} phòng chưa đăng ký ca`,
+      s(d.list),
+      `Nhân viên xoay ca của các phòng này đang ở trạng thái "Chưa có lịch" (không tính trễ/vắng).`,
+      `Đăng ký tại: ${link(`/admin/roster?week=${s(d.week)}`)}`,
     ].join("\n"),
   // Tin minh bạch gửi vào nhóm Zalo OA: ai làm gì, cho ai, lý do.
   GROUP_EVENT: (d) =>

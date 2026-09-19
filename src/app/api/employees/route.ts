@@ -39,6 +39,9 @@ export const GET = handle(async (req) => {
       department: { select: { name: true } },
       defaultShiftId: true,
       defaultShift: { select: { name: true, startTime: true, endTime: true } },
+      scheduleType: true,
+      workPatternId: true,
+      workPattern: { select: { name: true } },
       zaloUserId: true,
       zaloLinkedAt: true,
       biometricConsentAt: true,
@@ -57,6 +60,7 @@ export const GET = handle(async (req) => {
         faceCount: current,
         faceStatus: current > 0 ? "ENROLLED" : faceTemplates.length > 0 ? "REENROLL" : "NONE",
         hasSchedules: _count.schedules > 0,
+        rotating: e.scheduleType === "ROTATING",
       };
     }),
   });
@@ -76,6 +80,8 @@ export const POST = handle(async (req) => {
       role: body.role,
       departmentId: body.departmentId,
       defaultShiftId: body.defaultShiftId,
+      scheduleType: body.scheduleType ?? "FIXED",
+      workPatternId: (body.scheduleType ?? "FIXED") === "FIXED" ? (body.workPatternId ?? null) : null,
       passwordHash: await bcrypt.hash(body.password || "123456", 10),
       mustChangePassword: true,
     },

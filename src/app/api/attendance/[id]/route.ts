@@ -16,6 +16,12 @@ export const DELETE = handle<{ id: string }>(async (req, ctx) => {
   assertDept(u, log.employee.departmentId);
   if (log.employeeId === u.id && u.role !== "ADMIN") throw forbidden("Không thể tự xóa log chấm công của chính mình");
   await prisma.attendanceLog.delete({ where: { id } });
+  if (log.sourceRequestId) {
+    await prisma.leaveRequest.updateMany({
+      where: { id: log.sourceRequestId, executedLogId: id },
+      data: { executedAt: null, executedById: null, executedLogId: null },
+    });
+  }
   await recomputeDay(log.employeeId, log.workDate);
   await audit({
     actorId: u.id,

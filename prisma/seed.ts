@@ -25,12 +25,14 @@ async function wipe() {
     prisma.attendanceLog.deleteMany(),
     prisma.leaveRequest.deleteMany(),
     prisma.workSchedule.deleteMany(),
+    prisma.rosterWeek.deleteMany(),
     prisma.faceTemplate.deleteMany(),
     prisma.zaloLinkCode.deleteMany(),
     prisma.kioskDevice.deleteMany(),
     prisma.department.updateMany({ data: { managerId: null } }),
     prisma.employee.deleteMany(),
     prisma.department.deleteMany(),
+    prisma.workPattern.deleteMany(),
     prisma.shift.deleteMany(),
     prisma.holiday.deleteMany(),
     prisma.auditLog.deleteMany(),
@@ -44,10 +46,19 @@ async function main() {
   await wipe();
   const rand = rng(20260919);
 
-  const [hc, sang, dem] = await Promise.all([
+  const [hc, sang, dem, satAm] = await Promise.all([
     prisma.shift.create({ data: { name: "Hành chính", startTime: "08:00", endTime: "17:00", breakMinutes: 60, graceLateMinutes: 5 } }),
     prisma.shift.create({ data: { name: "Sáng sớm", startTime: "07:00", endTime: "17:00", breakMinutes: 60, graceLateMinutes: 5 } }),
     prisma.shift.create({ data: { name: "Ca đêm", startTime: "22:00", endTime: "06:00", breakMinutes: 60, graceLateMinutes: 5 } }),
+    prisma.shift.create({ data: { name: "Sáng thứ Bảy", startTime: "08:00", endTime: "12:00", breakMinutes: 0, graceLateMinutes: 5 } }),
+  ]);
+
+  // Mẫu tuần làm việc cho nhóm ca cố định (~70%).
+  const week = (d: number | null, sat: number | null) => ({ monShiftId: d, tueShiftId: d, wedShiftId: d, thuShiftId: d, friShiftId: d, satShiftId: sat, sunShiftId: null });
+  const [patHalfSat, patFullSat, patEarly] = await Promise.all([
+    prisma.workPattern.create({ data: { name: "HC T2–T6 + T7 sáng", ...week(hc.id, satAm.id) } }),
+    prisma.workPattern.create({ data: { name: "HC T2–T7", ...week(hc.id, hc.id) } }),
+    prisma.workPattern.create({ data: { name: "Sáng sớm T2–T7", ...week(sang.id, sang.id) } }),
   ]);
 
   const deptNames = ["Hành chính", "Kinh doanh", "Kỹ thuật", "Kho vận", "Chăm sóc khách hàng"];
@@ -87,6 +98,8 @@ async function main() {
         role: p.role,
         departmentId: depts[p.dept].id,
         defaultShiftId: p.shift,
+        scheduleType: p.rotating ? "ROTATING" : "FIXED",
+        workPatternId: p.rotating ? null : p.shift === sang.id ? patEarly.id : i % 2 === 0 ? patHalfSat.id : patFullSat.id,
       },
     });
     emps.push({ ...e, rotating: !!p.rotating });
@@ -107,6 +120,12 @@ async function main() {
       await prisma.workSchedule.create({
         data: { employeeId: rotating[r].id, date, shiftId: isDayOff ? null : slot, isDayOff },
       });
+    }
+  }
+  // Đăng ký sẵn ca tuần này và tuần sau cho các phòng có nhân viên xoay ca (lịch nháp không được tính công).
+  for (const deptId of new Set(rotating.map((e) => e.departmentId))) {
+    for (const ws of [monday, addDays(monday, 7)]) {
+      await prisma.rosterWeek.create({ data: { departmentId: deptId, weekStart: ws, status: "REGISTERED", registeredById: emps[0].id, registeredAt: new Date() } });
     }
   }
 

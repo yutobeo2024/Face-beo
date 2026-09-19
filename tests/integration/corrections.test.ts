@@ -29,6 +29,9 @@ function pastWorkday(back: number) {
 }
 
 beforeAll(async () => {
+  // Cô lập với file test khác dùng chung DB: xóa đơn bổ sung công + log sinh ra từ đơn.
+  await prisma.attendanceLog.deleteMany({ where: { sourceRequestId: { not: null } } });
+  await prisma.leaveRequest.deleteMany({ where: { type: "BO_SUNG_CONG" } });
   admin = await byCode("NV001");
   hr = await byCode("NV016");
   mgrKD = await byCode("NV003");
@@ -92,14 +95,43 @@ describe("đơn bổ sung công — duyệt rồi chấm tay", () => {
     expect((await execute(H, request.id)).status).toBe(400);
   });
 
-  it("giờ chấm tay có thể chỉnh nhưng không lệch quá 12 giờ", async () => {
+  it("chỉnh giờ: tối đa 60 phút, cùng ngày, bắt buộc ghi chú", async () => {
+    // NV015 (Kinh doanh) không có log mẫu => lần bổ sung "vào" sẽ là IN.
+    const e = await byCode("NV015");
+    const cookie = await sessionCookie(e.id);
     const day = pastWorkday(1);
-    const { request } = await (await create(EMP, vnDateTime(day, "08:02"), "IN")).json();
+    const cr = await create(cookie, vnDateTime(day, "08:02"), "IN");
+    expect(cr.status, JSON.stringify(await cr.clone().json())).toBe(201);
+    const { request } = await cr.json();
     await decide(MKD, request.id);
-    expect((await execute(H, request.id, { checkTime: vnDateTime(addDays(day, -1), "08:00").toISOString() })).status).toBe(400);
+    expect((await execute(H, request.id, { checkTime: vnDateTime(addDays(day, -1), "08:00").toISOString(), note: "Lệch sang hôm trước" })).status).toBe(400);
+    expect((await execute(H, request.id, { checkTime: vnDateTime(day, "09:30").toISOString(), note: "Lệch quá 60 phút" })).status).toBe(400);
+    expect((await execute(H, request.id, { checkTime: vnDateTime(day, "07:58").toISOString() })).status).toBe(400); // thiếu ghi chú
     expect((await execute(H, request.id, { checkTime: vnDateTime(day, "07:58").toISOString(), note: "Theo camera an ninh" })).status).toBe(200);
     const log = await prisma.attendanceLog.findFirstOrThrow({ where: { sourceRequestId: request.id } });
     expect(log.checkTime.toISOString()).toBe(vnDateTime(day, "07:58").toISOString());
+    expect(log.type).toBe("IN");
+  });
+
+  it("giờ bổ sung tạo ra sai loại vào/ra thì hủy toàn bộ, không để lại log, đơn vẫn chờ chấm tay", async () => {
+    // NV008 đã có log vào/ra mẫu cả ngày => bổ sung "vào" lúc 10:00 sẽ thành lần RA => không khớp.
+    const day = pastWorkday(3);
+    const { request } = await (await create(EMP, vnDateTime(day, "10:00"), "IN")).json();
+    await decide(MKD, request.id);
+    const before = await prisma.attendanceLog.count({ where: { employeeId: emp.id } });
+    expect((await execute(H, request.id)).status).toBe(400);
+    expect(await prisma.attendanceLog.count({ where: { employeeId: emp.id } })).toBe(before);
+    const r = await prisma.leaveRequest.findUniqueOrThrow({ where: { id: request.id } });
+    expect(r.executedAt).toBeNull();
+    expect(r.executedLogId).toBeNull();
+  });
+
+  it("hai người chấm tay cùng lúc chỉ tạo đúng một log", async () => {
+    const { request } = await (await create(EMP, vnDateTime(pastWorkday(2), "17:45"))).json();
+    await decide(MKD, request.id);
+    const [a, b] = await Promise.all([execute(H, request.id), execute(A, request.id)]);
+    expect([a.status, b.status].sort()).toEqual([200, 400]);
+    expect(await prisma.attendanceLog.count({ where: { sourceRequestId: request.id } })).toBe(1);
   });
 
   it("đơn bị từ chối thì không chấm tay được", async () => {
@@ -109,6 +141,8 @@ describe("đơn bổ sung công — duyệt rồi chấm tay", () => {
   });
 
   it("luồng Quản lý: Nhân sự vừa duyệt vừa chấm tay", async () => {
+    // Bảo đảm ngày đó quản lý đã có giờ vào (dữ liệu mẫu có thể cho vắng ngẫu nhiên).
+    await recordScan({ employeeId: mgrKT.id, checkTime: vnDateTime(pastWorkday(1), "06:50"), source: "MANUAL", createdById: admin.id });
     const { request } = await (await create(MKT, vnDateTime(pastWorkday(1), "17:10"))).json();
     expect((await decide(MKD, request.id)).status).toBe(403);
     expect((await decide(H, request.id)).status).toBe(200);

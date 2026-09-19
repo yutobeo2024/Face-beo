@@ -223,3 +223,64 @@ describe("múi giờ máy chủ", () => {
     expect(a.workDate).toBe("2026-09-22");
   });
 });
+
+describe("mẫu tuần làm việc & nhóm xoay ca (v1.1)", () => {
+  const SAT = "2026-09-26"; // Thứ Bảy
+  const SUN2 = "2026-09-27"; // Chủ nhật
+  const T7S: ShiftDef = { id: 4, name: "Sáng thứ Bảy", startTime: "08:00", endTime: "12:00", breakMinutes: 0, graceLateMinutes: 5, graceEarlyMinutes: 0 };
+  const byId = new Map([HC, SANG, DEM, T7S].map((s) => [s.id, s]));
+  const HALF_SAT = { 1: HC.id, 2: HC.id, 3: HC.id, 4: HC.id, 5: HC.id, 6: T7S.id, 7: null };
+  const FULL_SAT = { 1: HC.id, 2: HC.id, 3: HC.id, 4: HC.id, 5: HC.id, 6: HC.id, 7: null };
+  const fixed = (date: string, pattern: typeof HALF_SAT | null, holidays = new Set<string>()) =>
+    resolveDayPlan({ date, schedule: null, defaultShift: HC, shiftsById: byId, holidays, scheduleType: "FIXED", pattern });
+
+  it("mẫu 'T2–T6 + T7 sáng': thứ Bảy tính theo 08:00–12:00", () => {
+    const p = fixed(SAT, HALF_SAT);
+    expect(p.shift?.id).toBe(T7S.id);
+    expect(p.source).toBe("PATTERN");
+    const r = computeDayLogs(p, logsAt(SAT, "08:10", "12:00"), []);
+    expect(r[0]).toMatchObject({ isLate: true, lateMinutes: 10 });
+    expect(r[1]).toMatchObject({ isEarly: false });
+  });
+
+  it("mẫu 'T2–T7': thứ Bảy làm cả ngày; Chủ nhật nghỉ; ngày lễ nghỉ", () => {
+    expect(fixed(SAT, FULL_SAT).shift?.id).toBe(HC.id);
+    expect(fixed(SUN2, FULL_SAT).isDayOff).toBe(true);
+    expect(fixed(MON, FULL_SAT, new Set([MON])).isDayOff).toBe(true);
+  });
+
+  it("nhân viên cố định chưa gán mẫu: giữ hành vi cũ (ca mặc định, nghỉ Chủ nhật)", () => {
+    expect(fixed(SAT, null).shift?.id).toBe(HC.id);
+    expect(fixed(SUN2, null).isDayOff).toBe(true);
+  });
+
+  it("lịch ngoại lệ đã có hiệu lực thắng mẫu tuần", () => {
+    const p = resolveDayPlan({ date: SAT, schedule: { shiftId: DEM.id, isDayOff: false }, defaultShift: HC, shiftsById: byId, holidays: new Set(), scheduleType: "FIXED", pattern: HALF_SAT });
+    expect(p.shift?.id).toBe(DEM.id);
+  });
+
+  it("xoay ca, tuần CHƯA đăng ký: 'Chưa có lịch', không báo vắng", () => {
+    const p = resolveDayPlan({ date: MON, schedule: null, defaultShift: HC, shiftsById: byId, holidays: new Set(), scheduleType: "ROTATING", weekRegistered: false });
+    expect(p.unscheduled).toBe(true);
+    expect(summarizeDay({ plan: p, logs: [], requests: [], now: at(MON, "20:00") }).status).toBe("NO_SCHEDULE");
+    expect(summarizeDay({ plan: p, logs: logsAt(MON, "08:30"), requests: [], now: at(MON, "20:00") }).status).toBe("NO_SCHEDULE");
+    expect(decideAbsence({ plan: p, hasIn: false, enrolled: true, requests: [], now: at(MON, "09:00"), absentAfterMinutes: 30 })).toEqual({ action: "SKIP", reason: "NO_SCHEDULE" });
+  });
+
+  it("xoay ca, tuần ĐÃ đăng ký: dùng lịch; ô trống dùng ca mặc định như bảng xếp ca hiển thị", () => {
+    const base = { defaultShift: HC, shiftsById: byId, holidays: new Set<string>(), scheduleType: "ROTATING" as const, weekRegistered: true };
+    expect(resolveDayPlan({ ...base, date: MON, schedule: { shiftId: DEM.id, isDayOff: false } }).shift?.id).toBe(DEM.id);
+    expect(resolveDayPlan({ ...base, date: MON, schedule: null }).shift?.id).toBe(HC.id);
+    expect(resolveDayPlan({ ...base, date: MON, schedule: null }).unscheduled).toBeFalsy();
+  });
+
+  it("làm thêm ngày nghỉ có đơn OT đã duyệt thì được tính OT; không có đơn thì 0", () => {
+    const off = fixed(SUN2, FULL_SAT);
+    const ot = req(61, "TANG_CA_OT", at(SUN2, "08:00"), at(SUN2, "12:00"));
+    const s = summarizeDay({ plan: off, logs: logsAt(SUN2, "07:55", "12:40"), requests: [ot], now: at(SUN2, "20:00") });
+    expect(s.status).toBe("OUT_OF_SHIFT");
+    expect(s.otMinutes).toBe(240);
+    expect(s.relatedRequestIds).toContain(61);
+    expect(summarizeDay({ plan: off, logs: logsAt(SUN2, "07:55", "12:40"), requests: [], now: at(SUN2, "20:00") }).otMinutes).toBe(0);
+  });
+});

@@ -7,6 +7,7 @@ import { addDays, todayVN, vnDate } from "@/lib/attendance";
 import { canDecideRequest, canExecuteCorrection, notifyRequestCreated } from "@/lib/notify";
 import { REQUEST_STATUSES, REQUEST_TYPES } from "@/lib/roles";
 import { can } from "@/lib/permissions";
+import { withLock } from "@/lib/mutex";
 
 const listQuery = z.object({
   scope: z.enum(["mine", "team"]).default("mine"),
@@ -23,7 +24,10 @@ const CORRECTION_SLOT_MS = 60_000; // đơn bổ sung công lưu như khoảng 1
 export const GET = handle(async (req) => {
   const u = await requireUser(req);
   const q = parseQuery(req, listQuery);
-  const filters = { ...(q.status ? { status: q.status } : {}), ...(q.type ? { type: q.type } : {}) };
+  const filters = {
+    ...(q.status ? { status: q.status } : {}),
+    ...(q.type ? { type: q.type } : {}),
+  };
   const decider = await can(u, "requests.decide");
   const executor = await can(u, "attendance.executeCorrection");
   if (q.scope === "mine" || (!decider && !executor)) {
@@ -33,18 +37,38 @@ export const GET = handle(async (req) => {
       take: 200,
       include: { approver: { select: { name: true } } },
     });
-    return json({ requests: rows.map((r) => ({ ...r, canDecide: false, canExecute: false, canCancel: r.status === "PENDING" })) });
+    return json({
+      requests: rows.map((r) => ({
+        ...r,
+        canDecide: false,
+        canExecute: false,
+        canCancel: r.status === "PENDING",
+      })),
+    });
   }
   const where =
     q.view === "execute"
-      ? { type: "BO_SUNG_CONG", status: "APPROVED", executedAt: null, employee: employeeScopeWhere(u, q.departmentId) }
+      ? {
+          type: "BO_SUNG_CONG",
+          status: "APPROVED",
+          executedAt: null,
+          employee: employeeScopeWhere(u, q.departmentId),
+        }
       : { ...filters, employee: employeeScopeWhere(u, q.departmentId) };
   const rows = await prisma.leaveRequest.findMany({
     where,
     orderBy: [{ status: "asc" }, { createdAt: "desc" }],
     take: 300,
     include: {
-      employee: { select: { id: true, code: true, name: true, departmentId: true, department: { select: { name: true } } } },
+      employee: {
+        select: {
+          id: true,
+          code: true,
+          name: true,
+          departmentId: true,
+          department: { select: { name: true } },
+        },
+      },
       approver: { select: { name: true } },
     },
   });
@@ -87,27 +111,38 @@ export const POST = handle(async (req) => {
     if (vnDate(fromTime) < minDate) throw badRequest(`Không tạo đơn cho ngày đã qua quá ${MAX_PAST_DAYS} ngày`);
   }
 
-  // Không trùng thời gian với đơn cùng loại đang chờ duyệt hoặc đã duyệt.
-  const overlap = await prisma.leaveRequest.findFirst({
-    where: {
-      employeeId: u.id,
-      type: body.type,
-      status: { in: ["PENDING", "APPROVED"] },
-      fromTime: { lt: body.type === "BO_SUNG_CONG" ? new Date(toTime.getTime() + 15 * 60_000) : toTime },
-      toTime: { gt: body.type === "BO_SUNG_CONG" ? new Date(fromTime.getTime() - 15 * 60_000) : fromTime },
-    },
-  });
-  if (overlap) throw badRequest(`Trùng thời gian với đơn #${overlap.id} cùng loại đang chờ duyệt hoặc đã duyệt`);
+  // Không trùng thời gian với đơn cùng loại đang chờ duyệt hoặc đã duyệt (kiểm tra + ghi tuần tự theo nhân viên).
+  const r = await withLock(`request-create:${u.id}`, async () => {
+    const overlap = await prisma.leaveRequest.findFirst({
+      where: {
+        employeeId: u.id,
+        type: body.type,
+        status: { in: ["PENDING", "APPROVED"] },
+        fromTime: {
+          lt: body.type === "BO_SUNG_CONG" ? new Date(toTime.getTime() + 15 * 60_000) : toTime,
+        },
+        toTime: {
+          gt: body.type === "BO_SUNG_CONG" ? new Date(fromTime.getTime() - 15 * 60_000) : fromTime,
+        },
+      },
+    });
+    if (overlap) throw badRequest(`Trùng thời gian với đơn #${overlap.id} cùng loại đang chờ duyệt hoặc đã duyệt`);
 
-  const r = await prisma.leaveRequest.create({
-    data: {
-      employeeId: u.id,
-      type: body.type,
-      fromTime,
-      toTime,
-      reason: body.reason,
-      ...(body.type === "BO_SUNG_CONG" ? { correctionAt: body.correctionAt, correctionKind: body.correctionKind } : {}),
-    },
+    return prisma.leaveRequest.create({
+      data: {
+        employeeId: u.id,
+        type: body.type,
+        fromTime,
+        toTime,
+        reason: body.reason,
+        ...(body.type === "BO_SUNG_CONG"
+          ? {
+              correctionAt: body.correctionAt,
+              correctionKind: body.correctionKind,
+            }
+          : {}),
+      },
+    });
   });
   await notifyRequestCreated(r);
   return json({ request: r }, { status: 201 });

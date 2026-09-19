@@ -9,6 +9,7 @@ export const DAY_STATUS: Record<string, { label: string; tone: Tone }> = {
   DAY_OFF: { label: "Nghỉ", tone: "neutral" },
   HOLIDAY: { label: "Ngày lễ", tone: "violet" },
   OUT_OF_SHIFT: { label: "Ngoài ca", tone: "violet" },
+  NO_SCHEDULE: { label: "Chưa có lịch", tone: "late" },
 };
 
 export function DayStatusBadge({ status }: { status: string }) {

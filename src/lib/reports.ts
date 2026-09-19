@@ -14,6 +14,7 @@ export const STATUS_LABEL: Record<DayStatus, string> = {
   ON_TIME: "Đúng giờ",
   LATE: "Đi trễ",
   OUT_OF_SHIFT: "Ngoài ca",
+  NO_SCHEDULE: "Chưa có lịch",
 };
 
 export type SummaryRow = {

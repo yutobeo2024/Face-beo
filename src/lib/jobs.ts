@@ -13,8 +13,10 @@ import { audit } from "./audit";
 import { dataDir, snapshotDir } from "./storage";
 import { FACE_MODEL_VERSION } from "./roles";
 import { invalidateFaceCache } from "./face-matcher";
+import { announceSystem } from "./announce";
+import { startOfWeek } from "./attendance";
 
-export const JOBS = ["absence-check", "missing-checkout", "zalo-token-refresh", "snapshot-cleanup", "db-backup"] as const;
+export const JOBS = ["absence-check", "missing-checkout", "zalo-token-refresh", "snapshot-cleanup", "db-backup", "roster-reminder", "roster-report"] as const;
 export type JobName = (typeof JOBS)[number];
 
 type DigestItem = { name: string; code: string; note?: string };
@@ -189,8 +191,59 @@ export async function dbBackup(now = new Date()) {
   return { file: name, removed: old.length };
 }
 
+/** Các phòng có nhân viên xoay ca đang làm việc nhưng tuần `week` chưa đăng ký ca. */
+async function unregisteredDepartments(week: string) {
+  const rot = await prisma.employee.groupBy({ by: ["departmentId"], where: { active: true, scheduleType: "ROTATING" }, _count: true });
+  if (!rot.length) return [];
+  const reg = await prisma.rosterWeek.findMany({ where: { weekStart: week, status: "REGISTERED" }, select: { departmentId: true } });
+  const done = new Set(reg.map((r) => r.departmentId));
+  const depts = await prisma.department.findMany({ where: { id: { in: rot.map((r) => r.departmentId) } }, select: { id: true, name: true, managerId: true } });
+  return depts.filter((d) => !done.has(d.id)).map((d) => ({ ...d, rotatingCount: rot.find((r) => r.departmentId === d.id)!._count }));
+}
+
+/** Thứ Sáu 15:00: nhắc quản lý các phòng chưa đăng ký ca TUẦN SAU. */
+export async function rosterReminder(now = new Date()) {
+  const week = addDays(startOfWeek(vnDate(now)), 7);
+  const pending = await unregisteredDepartments(week);
+  let sent = 0;
+  for (const d of pending) {
+    const to = d.managerId ? [d.managerId] : await approversFor(-1);
+    for (const id of to) {
+      const r = await sendZaloMessage({
+        toEmployeeId: id,
+        messageType: "ROSTER_REMINDER",
+        dedupeKey: `roster-remind:${d.id}:${week}:${id}`,
+        data: { departmentName: d.name, rotatingCount: d.rotatingCount, week, weekText: `${fmtDate(week)}–${fmtDate(addDays(week, 6))}` },
+      });
+      if (r.status !== "DUPLICATE") sent++;
+    }
+  }
+  return { week, pending: pending.length, sent };
+}
+
+/** Thứ Hai 07:00: báo Nhân sự + nhóm Zalo các phòng vẫn chưa đăng ký ca TUẦN NÀY. */
+export async function rosterReport(now = new Date()) {
+  const week = startOfWeek(vnDate(now));
+  const pending = await unregisteredDepartments(week);
+  if (!pending.length) return { week, pending: 0 };
+  const data = {
+    week,
+    weekText: `${fmtDate(week)}–${fmtDate(addDays(week, 6))}`,
+    count: pending.length,
+    list: pending.map((d) => `• ${d.name} (${d.rotatingCount} người xoay ca)`).join("\n"),
+  };
+  const hrs = await prisma.employee.findMany({ where: { role: "HR", active: true }, select: { id: true } });
+  for (const h of hrs) await sendZaloMessage({ toEmployeeId: h.id, messageType: "ROSTER_UNREGISTERED", dedupeKey: `roster-unreg:${week}:${h.id}`, data });
+  await announceSystem(`báo: tuần ${data.weekText} còn ${pending.length} phòng CHƯA ĐĂNG KÝ ca`, { key: `roster-unreg:${week}`, detail: data.list });
+  return { week, pending: pending.length };
+}
+
 export async function runJob(name: JobName, now = new Date()) {
   switch (name) {
+    case "roster-reminder":
+      return rosterReminder(now);
+    case "roster-report":
+      return rosterReport(now);
     case "absence-check":
       return absenceCheck(now);
     case "missing-checkout":

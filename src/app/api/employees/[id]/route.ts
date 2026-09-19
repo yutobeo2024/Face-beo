@@ -57,6 +57,9 @@ export const PATCH = handle<{ id: string }>(async (req, ctx) => {
   }
   const { resetPassword, unlinkZalo, ...fields } = body;
   const data: Record<string, unknown> = { ...fields };
+  // Nhân viên xoay ca không dùng mẫu tuần.
+  if ((fields.scheduleType ?? e.scheduleType) === "ROTATING") data.workPatternId = null;
+  if (fields.workPatternId && !(await prisma.workPattern.findUnique({ where: { id: fields.workPatternId } }))) throw badRequest("Mẫu tuần không tồn tại");
   // Mật khẩu tạm ngẫu nhiên (không dùng mật khẩu mặc định đoán được), bắt buộc đổi ở lần đăng nhập sau.
   const tempPassword = resetPassword ? randomTempPassword() : null;
   if (resetPassword) {
@@ -94,6 +97,8 @@ export const PATCH = handle<{ id: string }>(async (req, ctx) => {
   if (fields.role && fields.role !== e.role) changes.push(`vai trò ${ROLE_LABEL[e.role as Role] ?? e.role} → ${ROLE_LABEL[fields.role as Role]}`);
   if (fields.departmentId && fields.departmentId !== e.departmentId) changes.push("đổi phòng ban");
   if (fields.defaultShiftId && fields.defaultShiftId !== e.defaultShiftId) changes.push("đổi ca mặc định");
+  if (fields.scheduleType && fields.scheduleType !== e.scheduleType) changes.push(fields.scheduleType === "ROTATING" ? "chuyển sang XOAY CA" : "chuyển sang CA CỐ ĐỊNH");
+  if (fields.workPatternId !== undefined && fields.workPatternId !== e.workPatternId) changes.push("đổi mẫu tuần làm việc");
   if (fields.name && fields.name !== e.name) changes.push("đổi họ tên");
   if (fields.phone && fields.phone !== e.phone) changes.push("đổi số điện thoại");
   if (fields.active === false && e.active) changes.push("CHO NGHỈ VIỆC (đã xóa dữ liệu khuôn mặt)");

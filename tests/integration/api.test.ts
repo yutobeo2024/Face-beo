@@ -29,6 +29,7 @@ import * as xlsxRoute from "@/app/api/reports/attendance.xlsx/route";
 import * as loginRoute from "@/app/api/auth/login/route";
 import * as cronRoute from "@/app/api/cron/[job]/route";
 import * as rosterRoute from "@/app/api/roster/route";
+import * as registerRoute from "@/app/api/roster/register/route";
 
 const frames = (v: number) => Array.from({ length: 5 }, () => ({ real: v, live: v }));
 const nextWeekday = (from: string, wd: number) => {
@@ -339,7 +340,7 @@ describe("kiosk — lớp L2 phía server (LIVENESS_SERVER=true)", () => {
 
 describe("xếp ca sau khi đã quét", () => {
   it("quét ngày nghỉ (ngoài ca) rồi mới xếp ca => log được gán vào ca, không bị tính vắng", async () => {
-    let sunday = addDays(todayVN(), -1);
+    let sunday = addDays(todayVN(), -15); // tránh tuần mà roster.test đăng ký (dùng chung DB)
     while (weekday(sunday) !== 7) sunday = addDays(sunday, -1);
     const e = await byCode("NV009");
     const out = await recordScan({ employeeId: e.id, checkTime: vnDateTime(sunday, "07:58"), source: "MANUAL", createdById: admin.id });
@@ -349,6 +350,11 @@ describe("xếp ca sau khi đã quét", () => {
     const cookie = await sessionCookie(admin.id);
     const res = await rosterRoute.PUT(req("/api/roster", { method: "PUT", cookie, body: { cells: [{ employeeId: e.id, date: sunday, shiftId: hc.id, isDayOff: false }] } }), ctx());
     expect(res.status).toBe(200);
+    // Tuần chưa đăng ký => lịch chỉ là bản nháp, chưa ảnh hưởng chấm công.
+    expect((await prisma.attendanceLog.findUniqueOrThrow({ where: { id: out.log.id } })).shiftId).toBeNull();
+    // Đăng ký tuần (muộn, bởi Quản trị) => lịch có hiệu lực, log được gán lại vào ca.
+    const reg = await registerRoute.POST(req("/api/roster/register", { method: "POST", cookie, body: { week: sunday, departmentIds: [e.departmentId] } }), ctx());
+    expect(reg.status).toBe(200);
     const log = await prisma.attendanceLog.findUniqueOrThrow({ where: { id: out.log.id } });
     expect(log.shiftId).toBe(hc.id);
     expect(log.type).toBe("IN");

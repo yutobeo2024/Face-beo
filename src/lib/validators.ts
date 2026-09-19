@@ -28,6 +28,9 @@ export const employeeCreateSchema = z.object({
   role: z.enum(ROLES),
   departmentId: idNum,
   defaultShiftId: idNum,
+  // Không đặt .default(): schema sửa (partial) sẽ âm thầm điền "FIXED" => mặc định xử lý ở route tạo.
+  scheduleType: z.enum(["FIXED", "ROTATING"]).optional(),
+  workPatternId: z.number().int().positive().nullable().optional(),
   password: z.string().min(6).max(128).optional(),
 });
 
@@ -59,7 +62,13 @@ export const rosterCellSchema = z.object({
   clear: z.boolean().optional(), // true => xóa lịch, quay về ca mặc định
 });
 export const rosterUpdateSchema = z.object({ cells: z.array(rosterCellSchema).min(1).max(1000) });
-export const copyWeekSchema = z.object({ fromWeek: dateStr, toWeek: dateStr, departmentId: optId, employeeIds: z.array(idNum).optional() });
+export const copyWeekSchema = z.object({
+  fromWeek: dateStr,
+  toWeek: dateStr,
+  departmentId: optId,
+  employeeIds: z.array(idNum).optional(),
+  reason: z.string().trim().max(300).optional(),
+});
 
 const reasonStr = z.string().trim().min(10, "lý do tối thiểu 10 ký tự").max(500);
 

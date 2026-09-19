@@ -19,6 +19,8 @@ type Dashboard = {
   late: (Person & { inTime: string | null; lateMinutes: number })[];
   absent: (Person & { pendingLeave: boolean; enrolled: boolean })[];
   manual: (Person & { status: string })[];
+  unscheduled: Person[];
+  rosterWarnings: { week: string; departments: string[] }[];
   pendingRequests: number;
   suspicious24h: number;
   l2Error: { at: string; detail: string | null } | null;
@@ -41,7 +43,7 @@ export default function DashboardPage() {
 
 function Dashboard() {
   const [dept, setDept] = useState("");
-  const [tab, setTab] = useState<"late" | "absent" | "manual">("late");
+  const [tab, setTab] = useState<"late" | "absent" | "manual" | "unscheduled">("late");
   const { data, error, loading, reload } = useApi<Dashboard>(`/api/dashboard${qs({ departmentId: dept })}`, { refreshMs: 60_000 });
 
   return (
@@ -76,6 +78,22 @@ function Dashboard() {
           </div>
         </div>
       )}
+
+      {data?.rosterWarnings.map((w) => (
+        <Link
+          key={w.week}
+          href={`/admin/roster?week=${w.week}`}
+          className="mb-3 flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900 hover:bg-amber-100"
+        >
+          <Icon name="calendar" className="mt-0.5 size-5 shrink-0" />
+          <span>
+            <b>
+              {w.week <= data.date ? "Tuần này" : "Tuần sau"} ({fmtDay(w.week)}) còn {w.departments.length} phòng chưa đăng ký ca:
+            </b>{" "}
+            {w.departments.join(", ")}. {w.week <= data.date ? "Nhân viên xoay ca đang ở trạng thái “Chưa có lịch”." : "Hạn chót trước 00:00 thứ Hai."}
+          </span>
+        </Link>
+      ))}
 
       {error && <ErrorBox message={error} onRetry={reload} />}
 
@@ -124,6 +142,7 @@ function Dashboard() {
                 { value: "late", label: `Trễ${data ? ` (${data.late.length})` : ""}` },
                 { value: "absent", label: `Vắng${data ? ` (${data.absent.length})` : ""}` },
                 { value: "manual", label: `Chấm tay${data ? ` (${data.manual.length})` : ""}` },
+                ...(data?.unscheduled.length ? [{ value: "unscheduled" as const, label: `Chưa có lịch (${data.unscheduled.length})` }] : []),
               ]}
             />
           }
@@ -142,8 +161,9 @@ function Dashboard() {
   );
 }
 
-function PeopleList({ data, tab }: { data: Dashboard; tab: "late" | "absent" | "manual" }) {
-  const rows = tab === "late" ? data.late : tab === "absent" ? data.absent : data.manual;
+function PeopleList({ data, tab }: { data: Dashboard; tab: "late" | "absent" | "manual" | "unscheduled" }) {
+  const rows =
+    tab === "late" ? data.late : tab === "absent" ? data.absent : tab === "unscheduled" ? data.unscheduled.map((p) => ({ ...p, status: "NO_SCHEDULE" })) : data.manual;
   if (!rows.length) {
     return (
       <EmptyState icon="check" title={tab === "late" ? "Không ai đi trễ" : tab === "absent" ? "Không ai vắng mặt" : "Mọi người đều đã enroll khuôn mặt"}>
@@ -179,7 +199,7 @@ function PeopleList({ data, tab }: { data: Dashboard; tab: "late" | "absent" | "
                 {!p.enrolled && <span className="text-xs text-slate-500">Chưa enroll</span>}
               </>
             )}
-            {tab === "manual" && "status" in p && <DayStatusBadge status={p.status} />}
+            {(tab === "manual" || tab === "unscheduled") && "status" in p && <DayStatusBadge status={p.status} />}
           </div>
         </li>
       ))}

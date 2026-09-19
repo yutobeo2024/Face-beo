@@ -259,7 +259,7 @@ function MyRequestsInner() {
       )}
       <NewRequest
         initialType={sp.get("type") === "BO_SUNG_CONG" ? "BO_SUNG_CONG" : undefined}
-        initialDate={/^d{4}-d{2}-d{2}$/.test(sp.get("date") ?? "") ? sp.get("date")! : undefined}
+        initialDate={/^\d{4}-\d{2}-\d{2}$/.test(sp.get("date") ?? "") ? sp.get("date")! : undefined}
         open={open}
         onClose={() => {
           setOpen(false);

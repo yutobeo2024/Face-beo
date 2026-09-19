@@ -10,6 +10,9 @@ import { useCan } from "../admin-nav";
 type Settings = { matchThreshold: number; matchMargin: number; livenessThreshold: number; livenessServerThreshold: number; absentAfterMinutes: number; snapshotRetentionDays: number; otRoundMinutes: number };
 type Shift = { id: number; name: string; startTime: string; endTime: string; breakMinutes: number; graceLateMinutes: number; graceEarlyMinutes: number };
 type Holiday = { date: string; name: string };
+const DAY_KEYS = ["monShiftId", "tueShiftId", "wedShiftId", "thuShiftId", "friShiftId", "satShiftId", "sunShiftId"] as const;
+const DAY_LABEL = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
+type Pattern = { id?: number; name: string; employeeCount?: number } & Record<(typeof DAY_KEYS)[number], number | null>;
 
 const FIELDS: { key: keyof Settings; label: string; hint: string; step: number }[] = [
   { key: "matchThreshold", label: "Ngưỡng khớp khuôn mặt", hint: "Cosine top-1 tối thiểu (mặc định 0.55). Hiệu chỉnh trong pilot.", step: 0.01 },
@@ -29,6 +32,8 @@ export default function SettingsPage() {
   const s = useApi<{ settings: Settings; zaloGroupId: string; system: { zaloSimulated: boolean; livenessServer: boolean; l2: { modelPath: string; modelExists: boolean; error: string | null }; faceModelVersion: string } }>(sys ? "/api/settings" : null);
   const shifts = useApi<{ shifts: Shift[] }>("/api/shifts");
   const holidays = useApi<{ holidays: Holiday[] }>("/api/holidays");
+  const patterns = useApi<{ patterns: Pattern[] }>(org ? "/api/work-patterns" : null);
+  const [patternForm, setPatternForm] = useState<Pattern | null>(null);
   const depts = useDepartments();
   const emps = useApi<{ employees: { id: number; code: string; name: string; departmentId: number }[] }>(org ? "/api/employees" : null);
   const [form, setForm] = useState<Settings | null>(null);
@@ -205,9 +210,95 @@ export default function SettingsPage() {
             </Button>
           </form>
         </Card>
+            <Card>
+              <CardHeader
+                title="Mẫu tuần làm việc (nhóm ca cố định)"
+                actions={
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    icon="plus"
+                    onClick={() => setPatternForm({ name: "", monShiftId: null, tueShiftId: null, wedShiftId: null, thuShiftId: null, friShiftId: null, satShiftId: null, sunShiftId: null })}
+                  >
+                    Thêm mẫu
+                  </Button>
+                }
+              />
+              <ul className="divide-y divide-slate-100">
+                {patterns.data?.patterns.map((pt) => (
+                  <li key={pt.id} className="flex items-center gap-3 px-4 py-3 sm:px-5">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-slate-800">
+                        {pt.name} <span className="text-xs font-normal text-slate-500">· {pt.employeeCount ?? 0} nhân viên</span>
+                      </p>
+                      <p className="mt-0.5 flex flex-wrap gap-1 text-xs">
+                        {DAY_KEYS.map((k, i) => {
+                          const sh = shifts.data?.shifts.find((x) => x.id === pt[k]);
+                          return (
+                            <span key={k} className={sh ? "rounded bg-brand-50 px-1.5 py-0.5 text-brand-800" : "rounded bg-slate-100 px-1.5 py-0.5 text-slate-400"}>
+                              {DAY_LABEL[i]} {sh ? `${sh.startTime}–${sh.endTime}` : "nghỉ"}
+                            </span>
+                          );
+                        })}
+                      </p>
+                    </div>
+                    <IconButton icon="edit" label="Sửa mẫu" onClick={() => setPatternForm(pt)} />
+                  </li>
+                ))}
+              </ul>
+            </Card>
           </>
         )}
       </div>
+
+      <Modal
+        open={!!patternForm}
+        onClose={() => setPatternForm(null)}
+        title={patternForm?.id ? "Sửa mẫu tuần" : "Thêm mẫu tuần"}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setPatternForm(null)}>
+              Hủy
+            </Button>
+            <Button
+              loading={busy}
+              onClick={() => {
+                if (!patternForm) return;
+                const { id, employeeCount: _n, ...body } = patternForm;
+                void _n;
+                void run(() => api(id ? `/api/work-patterns/${id}` : "/api/work-patterns", { method: id ? "PATCH" : "POST", body }), "Đã lưu mẫu tuần", () => (setPatternForm(null), patterns.reload()));
+              }}
+            >
+              Lưu mẫu
+            </Button>
+          </>
+        }
+      >
+        {patternForm && (
+          <div className="space-y-3">
+            {patternForm.id && (patternForm.employeeCount ?? 0) > 0 && (
+              <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">Mẫu đang áp dụng cho {patternForm.employeeCount} nhân viên — thay đổi ảnh hưởng cách tính công từ nay và được gửi vào nhóm Zalo.</p>
+            )}
+            <Field label="Tên mẫu">{(id) => <input id={id} className="input" value={patternForm.name} onChange={(e) => setPatternForm({ ...patternForm, name: e.target.value })} placeholder="VD: HC T2–T6 + T7 sáng" />}</Field>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {DAY_KEYS.map((k, i) => (
+                <Field key={k} label={DAY_LABEL[i]}>
+                  {(id) => (
+                    <Select id={id} value={patternForm[k] ?? ""} onChange={(e) => setPatternForm({ ...patternForm, [k]: e.target.value ? Number(e.target.value) : null })}>
+                      <option value="">Nghỉ</option>
+                      {shifts.data?.shifts.map((sh) => (
+                        <option key={sh.id} value={sh.id}>
+                          {sh.name} {sh.startTime}–{sh.endTime}
+                        </option>
+                      ))}
+                    </Select>
+                  )}
+                </Field>
+              ))}
+            </div>
+          </div>
+        )}
+      </Modal>
 
       <Modal
         open={!!shiftForm}

@@ -47,5 +47,10 @@ export async function announce(
   }
 }
 
+/** Tin do hệ thống (job) gửi vào nhóm — không có người thao tác. */
+export async function announceSystem(action: string, opts: { key: string; detail?: string }) {
+  return announce({ id: 0, name: "Face Beo", role: "Hệ thống" }, action, { ...opts, always: true });
+}
+
 /** Khóa dedupe cho thao tác có thể lặp lại (sửa hồ sơ nhiều lần): gắn thời điểm. */
 export const onceKey = (...parts: (string | number)[]) => `${parts.join(":")}:${randomUUID()}`;

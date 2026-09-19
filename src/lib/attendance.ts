@@ -28,8 +28,15 @@ export type DayPlan = {
   shift: ShiftDef | null;
   isDayOff: boolean;
   isHoliday: boolean;
-  source: "SCHEDULE" | "DEFAULT";
+  source: "SCHEDULE" | "DEFAULT" | "PATTERN";
+  /** Nhân viên xoay ca, tuần chưa đăng ký lịch => "Chưa có lịch" (không tính trễ/sớm/vắng). */
+  unscheduled?: boolean;
 };
+
+export type ScheduleType = "FIXED" | "ROTATING";
+
+/** Mẫu tuần làm việc: ca theo thứ ISO (1 = Thứ Hai … 7 = Chủ nhật); null = nghỉ. */
+export type WeekPattern = Partial<Record<1 | 2 | 3 | 4 | 5 | 6 | 7, number | null>>;
 
 export type RequestType = "NGHI_PHEP" | "VE_SOM" | "TANG_CA_OT";
 export type RequestStatus = "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
@@ -141,12 +148,22 @@ function diffMinutes(a: Date, b: Date): number {
 // Xác định ca của một ngày
 // ---------------------------------------------------------------------------
 
+/**
+ * Ca của một (nhân viên, ngày). `schedule` chỉ được truyền vào khi lịch đó CÓ HIỆU LỰC (đã đăng ký / do Nhân sự đặt) —
+ * bản nháp không bao giờ tới đây.
+ *  - Có lịch hiệu lực trong ngày: dùng lịch (kể cả ngày lễ — làm ngày lễ).
+ *  - FIXED: theo mẫu tuần (ngày lễ nghỉ); chưa gán mẫu => ca mặc định, nghỉ Chủ nhật (hành vi cũ).
+ *  - ROTATING: tuần đã đăng ký mà ô trống => ca mặc định như bảng xếp ca hiển thị; tuần chưa đăng ký => "Chưa có lịch".
+ */
 export function resolveDayPlan(args: {
   date: string;
   schedule?: ScheduleEntry | null;
   defaultShift: ShiftDef | null;
   shiftsById: Map<number, ShiftDef>;
   holidays: Set<string>;
+  scheduleType?: ScheduleType;
+  pattern?: WeekPattern | null;
+  weekRegistered?: boolean;
 }): DayPlan {
   const { date, schedule, defaultShift, shiftsById, holidays } = args;
   const isHoliday = holidays.has(date);
@@ -157,7 +174,16 @@ export function resolveDayPlan(args: {
     const shift = shiftsById.get(schedule.shiftId) ?? null;
     return { workDate: date, shift, isDayOff: shift == null, isHoliday, source: "SCHEDULE" };
   }
-  if (weekday(date) === 7 || isHoliday || !defaultShift) {
+  if ((args.scheduleType ?? "FIXED") === "ROTATING" && !args.weekRegistered) {
+    return { workDate: date, shift: null, isDayOff: false, isHoliday, source: "SCHEDULE", unscheduled: true };
+  }
+  if (isHoliday) return { workDate: date, shift: null, isDayOff: true, isHoliday, source: "DEFAULT" };
+  if ((args.scheduleType ?? "FIXED") === "FIXED" && args.pattern) {
+    const id = args.pattern[weekday(date) as 1 | 2 | 3 | 4 | 5 | 6 | 7] ?? null;
+    const shift = id != null ? (shiftsById.get(id) ?? null) : null;
+    return { workDate: date, shift, isDayOff: !shift, isHoliday, source: "PATTERN" };
+  }
+  if (weekday(date) === 7 || !defaultShift) {
     return { workDate: date, shift: null, isDayOff: true, isHoliday, source: "DEFAULT" };
   }
   return { workDate: date, shift: defaultShift, isDayOff: false, isHoliday, source: "DEFAULT" };
@@ -359,24 +385,29 @@ function overlap(a0: number, a1: number, b0: number, b1: number): number {
 }
 
 /** OT = giao giữa đơn TANG_CA_OT đã duyệt và thời gian có mặt ngoài ca, làm tròn xuống theo otRoundMinutes. */
+/** OT; ngày không có ca (nghỉ theo lịch/mẫu, Chủ nhật, ngày lễ) thì toàn bộ khoảng có mặt là "ngoài ca". */
 export function otMinutes(args: {
   workDate: string;
-  shift: ShiftDef;
+  shift: ShiftDef | null;
   inTime: Date;
   outTime: Date;
   requests: RequestLite[];
   otRoundMinutes: number;
 }): { minutes: number; requestIds: number[] } {
   const { workDate, shift, inTime, outTime, requests, otRoundMinutes } = args;
-  const iv = shiftInterval(workDate, shift);
   const p0 = inTime.getTime();
   const p1 = outTime.getTime();
-  const s = iv.start.getTime();
-  const e = iv.end.getTime();
   // Khoảng có mặt ngoài ca: [p0, min(p1, s)] và [max(p0, e), p1]
   const outside: [number, number][] = [];
-  if (p0 < s) outside.push([p0, Math.min(p1, s)]);
-  if (p1 > e) outside.push([Math.max(p0, e), p1]);
+  if (!shift) {
+    if (p1 > p0) outside.push([p0, p1]);
+  } else {
+    const iv = shiftInterval(workDate, shift);
+    const s = iv.start.getTime();
+    const e = iv.end.getTime();
+    if (p0 < s) outside.push([p0, Math.min(p1, s)]);
+    if (p1 > e) outside.push([Math.max(p0, e), p1]);
+  }
   let ms = 0;
   const ids: number[] = [];
   for (const r of approved(requests, "TANG_CA_OT")) {
@@ -402,7 +433,8 @@ export type DayStatus =
   | "ABSENT" // vắng mặt không phép
   | "ON_TIME"
   | "LATE"
-  | "OUT_OF_SHIFT"; // có log nhưng không có ca
+  | "OUT_OF_SHIFT" // có log nhưng không có ca
+  | "NO_SCHEDULE"; // nhân viên xoay ca, tuần chưa đăng ký lịch
 
 export type DaySummary = {
   workDate: string;
@@ -458,7 +490,20 @@ export function summarizeDay(args: {
   };
 
   if (!plan.shift) {
-    base.status = logs.length > 0 ? "OUT_OF_SHIFT" : plan.isHoliday ? "HOLIDAY" : "DAY_OFF";
+    base.status = plan.unscheduled ? "NO_SCHEDULE" : logs.length > 0 ? "OUT_OF_SHIFT" : plan.isHoliday ? "HOLIDAY" : "DAY_OFF";
+    // Làm thêm ngày nghỉ / ngày lễ có đơn tăng ca đã duyệt: OT = khoảng có mặt giao với đơn.
+    if (!plan.unscheduled && logs.length > 1) {
+      const ot = otMinutes({
+        workDate: plan.workDate,
+        shift: null,
+        inTime: logs[0].checkTime,
+        outTime: logs[logs.length - 1].checkTime,
+        requests,
+        otRoundMinutes: settings.otRoundMinutes,
+      });
+      base.otMinutes = ot.minutes;
+      base.relatedRequestIds = ot.requestIds;
+    }
     return base;
   }
   const shift = plan.shift;
@@ -534,7 +579,7 @@ export function shouldSendLateReminder(isLate: boolean, workDate: string, shift:
 }
 
 export type AbsenceDecision =
-  | { action: "SKIP"; reason: "HOLIDAY" | "DAY_OFF" | "CHECKED_IN" | "ON_LEAVE" | "NOT_ENROLLED" | "NOT_DUE" | "TOO_OLD" }
+  | { action: "SKIP"; reason: "HOLIDAY" | "DAY_OFF" | "CHECKED_IN" | "ON_LEAVE" | "NOT_ENROLLED" | "NOT_DUE" | "TOO_OLD" | "NO_SCHEDULE" }
   | { action: "DIGEST_ONLY"; reason: "PENDING_LEAVE" }
   | { action: "WARN" };
 
@@ -551,6 +596,7 @@ export function decideAbsence(args: {
   absentAfterMinutes: number;
 }): AbsenceDecision {
   const { plan, hasIn, enrolled, requests, now, absentAfterMinutes } = args;
+  if (plan.unscheduled) return { action: "SKIP", reason: "NO_SCHEDULE" };
   if (plan.isHoliday) return { action: "SKIP", reason: "HOLIDAY" };
   if (!plan.shift || plan.isDayOff) return { action: "SKIP", reason: "DAY_OFF" };
   const eff = effectiveTimes(plan.workDate, plan.shift, requests);

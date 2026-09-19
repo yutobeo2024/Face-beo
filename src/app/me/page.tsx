@@ -90,7 +90,7 @@ export default function MeHome() {
           </div>
           {t && (
             <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-semibold backdrop-blur">
-              {t.shift ? `${t.shift.name} ${t.shift.startTime}–${t.shift.endTime}` : t.isHoliday ? "Ngày lễ" : "Nghỉ"}
+              {t.shift ? `${t.shift.name} ${t.shift.startTime}–${t.shift.endTime}` : t.status === "NO_SCHEDULE" ? "Chưa có lịch" : t.isHoliday ? "Ngày lễ" : "Nghỉ"}
             </span>
           )}
         </div>
@@ -177,7 +177,7 @@ export default function MeHome() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold text-slate-800">
-                    {d.shift ? d.shift.name : d.holidayName ? `🎉 ${d.holidayName}` : "Nghỉ"}
+                    {d.shift ? d.shift.name : d.status === "NO_SCHEDULE" ? "Chưa có lịch (chờ quản lý đăng ký ca)" : d.holidayName ? `🎉 ${d.holidayName}` : "Nghỉ"}
                     {d.shift && <span className="ml-1.5 text-sm font-normal whitespace-nowrap text-slate-500 tabular-nums">{d.shift.startTime}–{d.shift.endTime}</span>}
                   </p>
                   {(d.inTime || d.outTime) && (
