@@ -2,6 +2,7 @@
 import * as XLSX from "xlsx";
 import { prisma } from "./db";
 import { summarizeRange } from "./attendance-service";
+import { lockedMonths } from "./payroll-lock-state";
 import { vnDayRange, vnTime, type DayStatus } from "./attendance";
 import { REQUEST_TYPE_LABEL, type RequestTypeT } from "./roles";
 
@@ -57,16 +58,45 @@ export type DetailRow = {
   note: string;
 };
 
+type ReportScope = { departmentId?: number | { in: number[] }; id?: number };
+
+/**
+ * `where` là phạm vi nhân viên (employeeScopeWhere: theo phòng ban hoặc id).
+ * Lọc phòng ban THEO TỪNG NGÀY (phòng của nhân viên vào ngày đó; tháng đã chốt lấy từ bản chụp) —
+ * chuyển phòng giữa kỳ không làm đổi báo cáo của phòng cũ trong tháng đã chốt.
+ */
 export async function buildAttendanceReport(where: object, from: string, to: string, now = new Date()) {
-  // Tháng đã chốt: gồm cả người đã nghỉ việc sau khi chốt (có trong bản chụp).
-  const frozenIds = (await prisma.lockedDay.findMany({ where: { workDate: { gte: from, lte: to } }, select: { employeeId: true }, distinct: ["employeeId"] })).map(
-    (x) => x.employeeId,
-  );
+  const scope = where as ReportScope;
+  const deptFilter = scope.departmentId;
+  const deptOk = (d: number | null | undefined) =>
+    deptFilter === undefined ? true : d == null ? false : typeof deptFilter === "number" ? d === deptFilter : deptFilter.in.includes(d);
+  const deptIds = deptFilter === undefined ? null : typeof deptFilter === "number" ? [deptFilter] : deptFilter.in;
+
+  // Tháng đã chốt trong kỳ: gồm cả người có trong bản chụp (vd. đã nghỉ việc / chuyển phòng sau khi chốt).
+  const months = [...(await lockedMonths())].filter((m) => m >= from.slice(0, 7) && m <= to.slice(0, 7));
+  const frozen = months.length
+    ? await prisma.lockedDay.findMany({
+        where: { month: { in: months }, workDate: { gte: from, lte: to }, ...(deptIds ? { departmentId: { in: deptIds } } : {}) },
+        select: { employeeId: true },
+        distinct: ["employeeId"],
+      })
+    : [];
+  // Người từng thuộc phòng trong kỳ (lịch sử phân công) — để tách đúng ngày theo phòng.
+  const movedIn = deptIds
+    ? await prisma.scheduleAssignment.findMany({ where: { departmentId: { in: deptIds }, effectiveFrom: { lte: to } }, select: { employeeId: true }, distinct: ["employeeId"] })
+    : [];
   const emps = await prisma.employee.findMany({
-    where: { ...where, OR: [{ active: true }, { id: { in: frozenIds } }] },
-    select: { id: true, code: true, name: true, department: { select: { name: true } } },
+    where: {
+      ...(scope.id !== undefined ? { id: scope.id } : {}),
+      AND: [
+        { OR: [{ active: true }, { leftAt: { gte: vnDayRange(from).start } }, { id: { in: frozen.map((x) => x.employeeId) } }] },
+        deptIds ? { OR: [{ departmentId: { in: deptIds } }, { id: { in: [...frozen, ...movedIn].map((x) => x.employeeId) } }] } : {},
+      ],
+    },
+    select: { id: true, code: true, name: true, departmentId: true, department: { select: { name: true } } },
     orderBy: [{ departmentId: "asc" }, { code: "asc" }],
   });
+  const deptName = new Map((await prisma.department.findMany({ select: { id: true, name: true } })).map((d) => [d.id, d.name]));
   const ids = emps.map((e) => e.id);
   const { summaries, planner, requests } = await summarizeRange(ids, from, to, now);
   const reqById = new Map(requests.map((r) => [r.id, r]));
@@ -98,8 +128,14 @@ export async function buildAttendanceReport(where: object, from: string, to: str
       missingOutDays: 0,
       correctionCount: corrections.get(e.id) ?? 0,
     };
+    let days = 0;
+    let lastDept: number | null | undefined = null;
     for (const [k, s] of summaries) {
       if (!k.startsWith(`${e.id}|`)) continue;
+      const dayDept = s.departmentId ?? e.departmentId;
+      if (!deptOk(dayDept)) continue;
+      days++;
+      lastDept = dayDept;
       row.workDays += s.workDayUnits;
       row.workMinutes += s.workMinutes;
       if (s.isLate) {
@@ -129,7 +165,7 @@ export async function buildAttendanceReport(where: object, from: string, to: str
         employeeId: e.id,
         code: e.code,
         name: e.name,
-        department: e.department.name,
+        department: deptName.get(dayDept) ?? e.department.name,
         date: s.workDate,
         shift: s.shift ? `${s.shift.name} ${s.shift.startTime}–${s.shift.endTime}` : "",
         inTime: s.inTime ? vnTime(s.inTime) : "",
@@ -143,6 +179,8 @@ export async function buildAttendanceReport(where: object, from: string, to: str
         note: notes.join("; "),
       });
     }
+    if (!days) continue; // không có ngày nào thuộc phòng đang xem
+    if (lastDept != null) row.department = deptName.get(lastDept) ?? row.department;
     // Làm tròn một lần ở cuối (không làm tròn từng bước để tổng không bị lệch).
     row.workDays = r2(row.workDays);
     row.leaveDays = r2(row.leaveDays);

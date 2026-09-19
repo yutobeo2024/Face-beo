@@ -15,6 +15,7 @@ import { dataDir, snapshotDir } from "./storage";
 import { FACE_MODEL_VERSION } from "./roles";
 import { invalidateFaceCache } from "./face-matcher";
 import { announceSystem } from "./announce";
+import { lockedMonths } from "./payroll-lock-state";
 import { can } from "./permissions";
 import { startOfWeek } from "./attendance";
 
@@ -245,6 +246,16 @@ export async function rosterReport(now = new Date()) {
 const HOUR = 3_600_000;
 export const OVERDUE_REMIND_HOURS = 24;
 export const OVERDUE_ESCALATE_HOURS = 48;
+/** Đơn bổ sung công chỉ được chấm tay trong vòng 7 ngày kể từ giờ cần bổ sung. */
+export const MAX_EXECUTE_AGE_DAYS = 7;
+export const OVERDUE_LOOKBACK_DAYS = 60;
+
+/** Đơn bổ sung công đã duyệt còn chấm tay được không (trong cửa sổ 7 ngày, tháng chưa chốt). */
+export function correctionStillExecutable(r: { correctionAt: Date | null }, locked: Set<string>, now = new Date()) {
+  if (!r.correctionAt) return false;
+  if (now.getTime() - r.correctionAt.getTime() > MAX_EXECUTE_AGE_DAYS * 86_400_000) return false;
+  return !locked.has(vnDate(r.correctionAt).slice(0, 7));
+}
 
 /**
  * D3 — đơn chờ quá lâu (không bao giờ tự duyệt):
@@ -253,7 +264,7 @@ export const OVERDUE_ESCALATE_HOURS = 48;
  */
 export async function requestOverdue(now = new Date()) {
   const remindBefore = new Date(now.getTime() - OVERDUE_REMIND_HOURS * HOUR);
-  const since = new Date(now.getTime() - 60 * 24 * HOUR); // bỏ qua đơn quá cũ (> 60 ngày)
+  const since = new Date(now.getTime() - OVERDUE_LOOKBACK_DAYS * 24 * HOUR); // bỏ qua đơn quá cũ
   const [pending, awaitingExec] = await Promise.all([
     prisma.leaveRequest.findMany({ where: { status: "PENDING", createdAt: { lte: remindBefore, gte: since } }, include: { employee: { select: { name: true, code: true } } } }),
     prisma.leaveRequest.findMany({
@@ -261,6 +272,7 @@ export async function requestOverdue(now = new Date()) {
       include: { employee: { select: { name: true, code: true } } },
     }),
   ]);
+  const locked = await lockedMonths();
   const admins = (await prisma.employee.findMany({ where: { role: "ADMIN", active: true }, select: { id: true } })).map((a) => a.id);
   const names = async (ids: number[]) =>
     (await prisma.employee.findMany({ where: { id: { in: ids } }, select: { name: true } })).map((e) => e.name).join(", ");
@@ -268,7 +280,10 @@ export async function requestOverdue(now = new Date()) {
   let escalated = 0;
   const items = [
     ...pending.map((r) => ({ r, stage: "duyệt", since: r.createdAt, key: "req", handlers: () => approversFor(r.employeeId) })),
-    ...awaitingExec.map((r) => ({ r, stage: "chấm tay", since: r.decidedAt!, key: "corr", handlers: () => executorsFor(r.employeeId) })),
+    // Bổ sung công quá cửa sổ chấm tay / thuộc tháng đã chốt: không còn chấm được => không nhắc.
+    ...awaitingExec
+      .filter((r) => correctionStillExecutable(r, locked, now))
+      .map((r) => ({ r, stage: "chấm tay", since: r.decidedAt!, key: "corr", handlers: () => executorsFor(r.employeeId) })),
   ];
   for (const it of items) {
     const { r } = it;

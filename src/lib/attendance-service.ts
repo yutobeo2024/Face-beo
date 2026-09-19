@@ -49,7 +49,7 @@ export async function buildPlanner(employeeIds: number[], from: string, to: stri
     loadShifts(db),
     db.employee.findMany({
       where: { id: { in: employeeIds } },
-      select: { id: true, defaultShiftId: true, departmentId: true, scheduleType: true, workPattern: true },
+      select: { id: true, defaultShiftId: true, departmentId: true, scheduleType: true, workPattern: true, active: true, leftAt: true },
     }),
     db.scheduleAssignment.findMany({ where: { employeeId: { in: employeeIds }, effectiveFrom: { lte: hi } }, orderBy: { effectiveFrom: "asc" } }),
     db.workSchedule.findMany({ where: { employeeId: { in: employeeIds }, date: { gte: lo, lte: hi } } }),
@@ -84,7 +84,12 @@ export async function buildPlanner(employeeIds: number[], from: string, to: stri
     isRegistered,
     /** Lịch nháp/đã đăng ký thô (để hiển thị bảng xếp ca), không dùng để tính công. */
     rawSchedule: (employeeId: number, date: string) => sched.get(`${employeeId}|${date}`) ?? null,
+    /** Phòng ban của nhân viên có hiệu lực vào ngày `date`. */
+    departmentAt: (employeeId: number, date: string) => configAt(employeeId, date)?.departmentId ?? null,
     planFor(employeeId: number, date: string): DayPlan {
+      // Đã nghỉ việc: sau ngày nghỉ việc không còn lịch làm (không tính vắng).
+      const emp = empById.get(employeeId);
+      if (emp && !emp.active && emp.leftAt && date > vnDate(emp.leftAt)) return { workDate: date, shift: null, isDayOff: true, isHoliday: holidaySet.has(date), source: "DEFAULT" };
       const c = configAt(employeeId, date);
       const reg = c ? isRegistered(c.departmentId, date) : false;
       const plan = resolveDayPlan({
@@ -262,7 +267,7 @@ export async function recordScan(input: ScanInput, db?: Prisma.TransactionClient
 }
 
 /** Tổng hợp ngày công cho nhiều nhân viên trong khoảng [from, to] (ngày VN). Key: `${employeeId}|${date}`. */
-export type DayResult = DaySummary & { logs: AttendanceLog[]; plan: DayPlan };
+export type DayResult = DaySummary & { logs: AttendanceLog[]; plan: DayPlan; /** phòng ban của nhân viên vào ngày đó */ departmentId?: number | null };
 
 /** Kết quả ngày công đã chụp khi chốt tháng: (employeeId|workDate) → kết quả. */
 export async function loadLockedDays(employeeIds: number[], from: string, to: string) {
@@ -272,12 +277,19 @@ export async function loadLockedDays(employeeIds: number[], from: string, to: st
   const rows = await prisma.lockedDay.findMany({ where: { employeeId: { in: employeeIds }, month: { in: months }, workDate: { gte: from, lte: to } } });
   return {
     isLocked: (d: string) => locked.has(monthOf(d)),
-    snap: new Map(rows.map((r) => [`${r.employeeId}|${r.workDate}`, reviveSnapshot<DayResult>(r.data)])),
+    snap: new Map(rows.map((r) => [`${r.employeeId}|${r.workDate}`, { ...reviveSnapshot<DayResult>(r.data), departmentId: r.departmentId }])),
   };
 }
 
-export async function summarizeRange(employeeIds: number[], from: string, to: string, now = new Date()) {
-  const [planner, settings, frozen] = await Promise.all([buildPlanner(employeeIds, from, to), getSettings(), loadLockedDays(employeeIds, from, to)]);
+const NO_FROZEN = { isLocked: (() => false) as (d: string) => boolean, snap: new Map<string, DayResult>() };
+
+/** `ignoreLocks`: tính trực tiếp kể cả ngày thuộc tháng đã chốt (chỉ dùng khi đang chụp bản chốt). */
+export async function summarizeRange(employeeIds: number[], from: string, to: string, now = new Date(), opts: { ignoreLocks?: boolean } = {}) {
+  const [planner, settings, frozen] = await Promise.all([
+    buildPlanner(employeeIds, from, to),
+    getSettings(),
+    opts.ignoreLocks ? NO_FROZEN : loadLockedDays(employeeIds, from, to),
+  ]);
   const r = rangeUtc(from, to);
   const [logs, requests] = await Promise.all([
     prisma.attendanceLog.findMany({
@@ -304,17 +316,24 @@ export async function summarizeRange(employeeIds: number[], from: string, to: st
         // Tháng đã chốt: dùng bản chụp; nhân viên không có trong bản chụp (vd. vào làm sau) => coi như không có ca.
         const snap = frozen.snap.get(`${id}|${d}`);
         const empty: DayPlan = { workDate: d, shift: null, isDayOff: true, isHoliday: false, source: "DEFAULT" };
-        out.set(`${id}|${d}`, snap ?? { ...summarizeDay({ plan: empty, logs: [], requests: [], now, settings }), logs: [], plan: empty });
+        out.set(`${id}|${d}`, snap ?? { ...summarizeDay({ plan: empty, logs: [], requests: [], now, settings }), logs: [], plan: empty, departmentId: planner.departmentAt(id, d) });
         continue;
       }
       const plan = planner.planFor(id, d);
       const all = logsBy.get(`${id}|${d}`) ?? [];
       const shiftLogs = plan.shift ? all.filter((l) => l.shiftId != null) : all;
       const s = summarizeDay({ plan, logs: shiftLogs, requests: reqBy.get(id) ?? [], now, settings });
-      out.set(`${id}|${d}`, { ...s, logs: all, plan });
+      out.set(`${id}|${d}`, { ...s, logs: all, plan, departmentId: planner.departmentAt(id, d) });
     }
   }
   return { summaries: out, planner, requests };
+}
+
+/** Ngày công mà một lần bổ sung công (giờ `at`) sẽ rơi vào (ca đêm: 03:00 ngày 1 thuộc ngày công hôm trước). */
+export async function correctionWorkDate(employeeId: number, at: Date): Promise<string> {
+  const day = vnDate(at);
+  const planner = await buildPlanner([employeeId], day, day);
+  return assignScan(at, (d) => planner.planFor(employeeId, d)).workDate;
 }
 
 export function shiftLabel(s: ShiftDef | null | undefined) {

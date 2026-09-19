@@ -8,11 +8,10 @@ import { vnDate } from "@/lib/attendance";
 import { canExecuteCorrection, correctionText, fmtDT, notifyCorrectionDone } from "@/lib/notify";
 import { audit } from "@/lib/audit";
 import { announce } from "@/lib/announce";
+import { MAX_EXECUTE_AGE_DAYS } from "@/lib/jobs";
 
 /** Nhân sự chỉ được chỉnh giờ trong đơn tối đa 60 phút, cùng ngày, và phải ghi chú lý do. */
 const MAX_ADJUST_MS = 60 * 60_000;
-/** Đơn đã duyệt quá lâu thì không chấm tay được nữa (tránh sửa công của kỳ đã chốt). */
-const MAX_EXECUTE_AGE_DAYS = 7;
 
 /**
  * Bước 2 của đơn bổ sung công: Nhân sự (hoặc Quản trị cho đơn của Nhân sự) chấm tay theo đơn đã duyệt.

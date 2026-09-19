@@ -5,7 +5,7 @@ import { lockMonth, recentMonths } from "@/lib/payroll-lock";
 
 /** Trạng thái chốt công 6 tháng gần nhất. */
 export const GET = handle(async (req) => {
-  const u = await requirePerm(req, "reports.view");
+  const u = await requirePerm(req, ["reports.view", "payroll.lock"]);
   const [canLock, canUnlock] = await Promise.all([can(u, "payroll.lock"), can(u, "payroll.unlock")]);
   return json({ months: await recentMonths(6), canLock, canUnlock });
 });

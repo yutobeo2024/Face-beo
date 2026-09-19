@@ -5,7 +5,7 @@ import { employeeScopeWhere } from "@/lib/auth";
 import { dateStr, optId } from "@/lib/validators";
 import { summarizeRange } from "@/lib/attendance-service";
 import { toDayRow } from "@/lib/day-rows";
-import { todayVN } from "@/lib/attendance";
+import { todayVN, vnDayRange } from "@/lib/attendance";
 import { FACE_MODEL_VERSION } from "@/lib/roles";
 import { requirePerm } from "@/lib/permissions";
 
@@ -26,7 +26,11 @@ export const GET = handle(async (req) => {
   if (to < from) throw badRequest("Khoảng ngày không hợp lệ");
   if ((Date.parse(to) - Date.parse(from)) / 86_400_000 > 31) throw badRequest("Tối đa 31 ngày mỗi lần xem");
   const emps = await prisma.employee.findMany({
-    where: { ...employeeScopeWhere(u, q.departmentId), active: true, ...(q.employeeId ? { id: q.employeeId } : {}) },
+    where: {
+      ...employeeScopeWhere(u, q.departmentId),
+      OR: [{ active: true }, { leftAt: { gte: vnDayRange(from).start } }],
+      ...(q.employeeId ? { id: q.employeeId } : {}),
+    },
     orderBy: [{ departmentId: "asc" }, { code: "asc" }],
     select: {
       id: true,

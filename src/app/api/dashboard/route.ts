@@ -9,7 +9,8 @@ import { getZaloRefreshError, isZaloSimulated } from "@/lib/zalo-token";
 import { FACE_MODEL_VERSION } from "@/lib/roles";
 import { can, requirePerm } from "@/lib/permissions";
 import { canDecideRequest, canExecuteCorrection } from "@/lib/notify";
-import { OVERDUE_REMIND_HOURS } from "@/lib/jobs";
+import { correctionStillExecutable, OVERDUE_LOOKBACK_DAYS, OVERDUE_REMIND_HOURS } from "@/lib/jobs";
+import { lockedMonths } from "@/lib/payroll-lock-state";
 
 /** Dashboard hôm nay (PRD mục 5): 5 thẻ + danh sách trễ/vắng; MANAGER chỉ thấy phòng mình. */
 export const GET = handle(async (req) => {
@@ -73,6 +74,8 @@ export const GET = handle(async (req) => {
     if (s.status === "NO_SCHEDULE") unscheduled.push(base);
   }
   const overdueBefore = new Date(Date.now() - OVERDUE_REMIND_HOURS * 3_600_000);
+  const overdueSince = new Date(Date.now() - OVERDUE_LOOKBACK_DAYS * 86_400_000);
+  const locked = await lockedMonths();
   const [[pendingRequests, overduePending], overdueExec, suspicious, l2Down] = await Promise.all([
     prisma.leaveRequest
       .findMany({
@@ -90,19 +93,30 @@ export const GET = handle(async (req) => {
           if (!memo.has(r.employeeId)) memo.set(r.employeeId, await canDecideRequest(u, r));
           if (!memo.get(r.employeeId)) continue;
           n++;
-          if (r.createdAt <= overdueBefore) overdue++;
+          if (r.createdAt <= overdueBefore && r.createdAt >= overdueSince) overdue++;
         }
         return [n, overdue] as const;
       }),
     // Đơn bổ sung công đã duyệt, chờ chấm tay quá 24 giờ mà người xem có quyền chấm.
     prisma.leaveRequest
       .findMany({
-        where: { type: "BO_SUNG_CONG", status: "APPROVED", executedAt: null, decidedAt: { lte: overdueBefore }, employee: employeeScopeWhere(u, q.departmentId) },
-        select: { employeeId: true },
+        where: {
+          type: "BO_SUNG_CONG",
+          status: "APPROVED",
+          executedAt: null,
+          decidedAt: { lte: overdueBefore, gte: overdueSince },
+          employee: employeeScopeWhere(u, q.departmentId),
+        },
+        select: { employeeId: true, correctionAt: true },
       })
       .then(async (rows) => {
+        const memo = new Map<number, boolean>();
         let n = 0;
-        for (const r of rows) if (await canExecuteCorrection(u, r)) n++;
+        for (const r of rows) {
+          if (!correctionStillExecutable(r, locked)) continue;
+          if (!memo.has(r.employeeId)) memo.set(r.employeeId, await canExecuteCorrection(u, r));
+          if (memo.get(r.employeeId)) n++;
+        }
         return n;
       }),
     seeSuspicious

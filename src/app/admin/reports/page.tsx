@@ -187,6 +187,7 @@ type LockMonth = {
   totals: { employees: number; workDays: number; leaveDays: number; otMinutes: number; absentDays: number } | null;
   canLockFrom: string;
   lockable: boolean;
+  pendingRequests: number;
 };
 const fmtMonth = (m: string) => `${m.slice(5, 7)}/${m.slice(0, 4)}`;
 
@@ -276,6 +277,12 @@ function PayrollLockCard({ onChanged }: { onChanged: () => void }) {
           </>
         }
       >
+        {!!confirm?.pendingRequests && (
+          <p className="mb-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">
+            Tháng này còn <b>{confirm.pendingRequests}</b> đơn chưa xử lý xong (chờ duyệt hoặc chờ chấm tay). Sau khi chốt, các đơn này không thể duyệt / chấm tay nữa (chỉ từ
+            chối được) — nên xử lý trước khi chốt.
+          </p>
+        )}
         <p className="text-sm text-slate-700">
           Sau khi chốt, bảng công tháng này được giữ nguyên để tính lương. Mọi thao tác làm thay đổi công trong tháng (xếp ca, chấm tay, xóa log, tạo/duyệt đơn) sẽ bị chặn. Thao
           tác được gửi vào nhóm Zalo.

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { correctionWorkDate } from "@/lib/attendance-service";
 import { assertDatesUnlocked, datesBetween } from "@/lib/payroll-lock-state";
 import { badRequest, forbidden, handle, idParam, json, notFound, parseJson } from "@/lib/api";
 import { decideSchema } from "@/lib/validators";
@@ -19,7 +20,12 @@ export const POST = handle<{ id: string }>(async (req, ctx) => {
   const r = await prisma.leaveRequest.findUnique({ where: { id } });
   if (!r) throw notFound();
   if (!(await canDecideRequest(u, r))) throw forbidden("Bạn không phải người duyệt đơn này");
-  await assertDatesUnlocked(datesBetween(vnDate(r.fromTime), vnDate(new Date(r.toTime.getTime() - 1))));
+  // Tháng đã chốt: chỉ chặn DUYỆT (làm đổi công); từ chối vẫn được để đơn không bị treo mãi.
+  if (body.action === "APPROVE") {
+    await assertDatesUnlocked(
+      r.type === "BO_SUNG_CONG" && r.correctionAt ? [await correctionWorkDate(r.employeeId, r.correctionAt)] : datesBetween(vnDate(r.fromTime), vnDate(new Date(r.toTime.getTime() - 1))),
+    );
+  }
   const status = body.action === "APPROVE" ? "APPROVED" : "REJECTED";
   const upd = await prisma.leaveRequest.updateMany({
     where: { id, status: "PENDING" },

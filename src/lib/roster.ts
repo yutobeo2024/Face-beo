@@ -61,8 +61,12 @@ export function applyCells(u: AuthUser, cells: Cell[], reason?: string | null) {
   return withLock(ROSTER_LOCK, () => applyCellsLocked(u, cells, reason));
 }
 
-async function applyCellsLocked(u: AuthUser, cells: Cell[], reason?: string | null) {
-  await assertDatesUnlocked(cells.map((c) => c.date));
+async function applyCellsLocked(u: AuthUser, allCells: Cell[], reason?: string | null) {
+  // Ô thuộc tháng đã chốt công: bỏ qua (vd. sao chép tuần giáp ranh tháng); nếu mọi ô đều đã chốt => 409.
+  const locked = await lockedMonths();
+  const cells = allCells.filter((c) => !locked.has(monthOf(c.date)));
+  const skippedLocked = allCells.length - cells.length;
+  if (!cells.length && allCells.length) await assertDatesUnlocked(allCells.map((c) => c.date));
   const ids = [...new Set(cells.map((c) => c.employeeId))];
   const emps = await prisma.employee.findMany({ where: { id: { in: ids } }, select: { id: true, code: true, name: true, departmentId: true } });
   const empById = new Map(emps.map((e) => [e.id, e]));
@@ -132,7 +136,7 @@ async function applyCellsLocked(u: AuthUser, cells: Cell[], reason?: string | nu
     if (changes.length > 15) lines.push(`… và ${changes.length - 15} ô khác`);
     await announce(u, `đã SỬA lịch ca đã đăng ký (${changes.length} ô)`, { key: `roster-change:${Date.now()}:${u.id}`, detail: lines.join("\n"), reason, always: true });
   }
-  return { saved: plan.length, changed: changes.length };
+  return { saved: plan.length, changed: changes.length, skippedLocked };
 }
 
 /** Đăng ký (khóa) ca tuần cho các phòng ban. Đăng ký muộn (tuần đã bắt đầu) chỉ Nhân sự/Quản trị, và tính lại công. */

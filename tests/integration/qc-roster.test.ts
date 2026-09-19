@@ -180,11 +180,11 @@ describe("QC: quy tắc sửa/đăng ký của Quản lý", () => {
     const groups = await prisma.notificationLog.count({ where: { messageType: "GROUP_EVENT" } });
     const r = await put(H, [cell(rot1, d, sang.id)], "Đổi ca theo yêu cầu");
     expect(r.status).toBe(200);
-    expect(await r.json()).toEqual({ saved: 1, changed: 1 });
+    expect(await r.json()).toMatchObject({ saved: 1, changed: 1 });
     expect(await prisma.auditLog.count({ where: { action: "ROSTER_CHANGE", entityId: `${deptQ.id}|${W(5)}` } })).toBe(1);
     expect(await prisma.notificationLog.count({ where: { messageType: "GROUP_EVENT" } })).toBe(groups + 1);
     // ghi lại cùng giá trị: không có thay đổi => không nhật ký / không tin nhóm
-    expect(await (await put(H, [cell(rot1, d, sang.id)], "Ghi lại y như cũ")).json()).toEqual({ saved: 1, changed: 0 });
+    expect(await (await put(H, [cell(rot1, d, sang.id)], "Ghi lại y như cũ")).json()).toMatchObject({ saved: 1, changed: 0 });
     expect(await prisma.auditLog.count({ where: { action: "ROSTER_CHANGE", entityId: `${deptQ.id}|${W(5)}` } })).toBe(1);
   });
 

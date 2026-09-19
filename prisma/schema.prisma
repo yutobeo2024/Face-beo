@@ -35,6 +35,7 @@ model Employee {
   workPattern        WorkPattern?      @relation(fields: [workPatternId], references: [id])
   avatarUrl          String?
   active             Boolean           @default(true)
+  leftAt             DateTime? // thời điểm cho nghỉ việc: sau ngày này không còn lịch làm (không tính vắng)
   biometricConsentAt DateTime?
   failedLogins       Int               @default(0)
   lockedUntil        DateTime?
@@ -280,9 +281,10 @@ model PayrollLock {
 // Bản chụp kết quả công của một nhân viên trong một ngày thuộc tháng đã chốt (JSON DaySummary + plan + logs).
 model LockedDay {
   employeeId Int
-  workDate   String
-  month      String
-  data       String
+  workDate     String
+  month        String
+  departmentId Int? // phòng ban của nhân viên vào ngày đó (báo cáo theo phòng của tháng đã chốt không đổi khi chuyển phòng)
+  data         String
 
   @@id([employeeId, workDate])
   @@index([month])

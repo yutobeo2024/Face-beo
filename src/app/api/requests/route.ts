@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { prisma } from "@/lib/db";
+import { correctionWorkDate } from "@/lib/attendance-service";
 import { assertDatesUnlocked, datesBetween } from "@/lib/payroll-lock-state";
 import { badRequest, handle, json, parseJson, parseQuery } from "@/lib/api";
 import { employeeScopeWhere, requireUser } from "@/lib/auth";
@@ -112,7 +113,9 @@ export const POST = handle(async (req) => {
     if (vnDate(fromTime) < minDate) throw badRequest(`Không tạo đơn cho ngày đã qua quá ${MAX_PAST_DAYS} ngày`);
   }
 
-  await assertDatesUnlocked(datesBetween(vnDate(fromTime), vnDate(new Date(toTime.getTime() - 1))));
+  await assertDatesUnlocked(
+    body.type === "BO_SUNG_CONG" ? [await correctionWorkDate(u.id, fromTime)] : datesBetween(vnDate(fromTime), vnDate(new Date(toTime.getTime() - 1))),
+  );
 
   // Không trùng thời gian với đơn cùng loại đang chờ duyệt hoặc đã duyệt (kiểm tra + ghi tuần tự theo nhân viên).
   const r = await withLock(`request-create:${u.id}`, async () => {

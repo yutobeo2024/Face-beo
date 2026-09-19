@@ -101,8 +101,9 @@ describe("chốt công tháng", () => {
     });
     const dec = await decideRoute.POST(req(`/api/requests/${r.id}/decide`, { method: "POST", cookie: A, body: { action: "APPROVE" } }), ctx({ id: String(r.id) }));
     expect(dec.status).toBe(409);
+    // Từ chối / hủy vẫn được để đơn không bị treo (bản chụp đã bảo vệ số liệu).
     const can = await cancelRoute.POST(req(`/api/requests/${r.id}/cancel`, { method: "POST", cookie: await sessionCookie(emp.id) }), ctx({ id: String(r.id) }));
-    expect(can.status).toBe(409);
+    expect(can.status).toBe(200);
     await prisma.leaveRequest.delete({ where: { id: r.id } });
   });
 
@@ -117,5 +118,40 @@ describe("chốt công tháng", () => {
     const after = await report(emp);
     // Ngày lễ vừa thêm giờ có hiệu lực: ngày DAY thành làm ngày lễ (0 công).
     expect(after.workDays).toBe(before.workDays - 1);
+  });
+});
+
+describe("chốt công — hồi quy review", () => {
+  const M2 = DateTime.fromISO(todayVN(), { zone: TZ }).startOf("month").minus({ months: 6 }).toFormat("yyyy-MM");
+
+  it("ghi dữ liệu đồng thời với lúc chốt: hoặc bị chặn (409), hoặc có trong bản chụp — không bao giờ lọt", async () => {
+    let d = `${M2}-14`;
+    while (weekday(d) !== 3) d = addDays(d, 1);
+    await prisma.attendanceLog.deleteMany({ where: { employeeId: emp.id, workDate: d } });
+    const [res, scan] = await Promise.allSettled([
+      lock(H, M2),
+      recordScan({ employeeId: emp.id, checkTime: vnDateTime(d, "07:59"), source: "MANUAL", createdById: admin.id }),
+    ]);
+    expect(res.status === "fulfilled" && res.value.status).toBe(200);
+    const snap = await prisma.lockedDay.findUniqueOrThrow({ where: { employeeId_workDate: { employeeId: emp.id, workDate: d } } });
+    const logs = (JSON.parse(snap.data) as { logs: unknown[] }).logs.length;
+    if (scan.status === "fulfilled") expect(logs).toBe(1);
+    else expect(logs).toBe(0);
+    await prisma.payrollLock.deleteMany({ where: { month: M2 } });
+    await prisma.lockedDay.deleteMany({ where: { month: M2 } });
+    invalidatePayrollLockCache();
+  });
+
+  it("nhân viên nghỉ việc: sau ngày nghỉ việc không bị tính vắng", async () => {
+    const e = await byCode("NV013");
+    const left = vnDateTime(`${M2}-10`, "17:00");
+    await prisma.employee.update({ where: { id: e.id }, data: { active: false, leftAt: left } });
+    try {
+      const r = (await buildAttendanceReport({ id: e.id }, `${M2}-11`, `${M2}-25`)).summary;
+      // Có thể không còn dòng nào (không có ngày làm), hoặc có dòng nhưng 0 vắng.
+      expect(r.reduce((n, x) => n + x.absentDays, 0)).toBe(0);
+    } finally {
+      await prisma.employee.update({ where: { id: e.id }, data: { active: true, leftAt: null } });
+    }
   });
 });

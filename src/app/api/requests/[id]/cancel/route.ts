@@ -1,6 +1,4 @@
 import { prisma } from "@/lib/db";
-import { assertDatesUnlocked, datesBetween } from "@/lib/payroll-lock-state";
-import { vnDate } from "@/lib/attendance";
 import { badRequest, forbidden, handle, idParam, json, notFound } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
 
@@ -12,7 +10,6 @@ export const POST = handle<{ id: string }>(async (req, ctx) => {
   if (!r) throw notFound();
   if (r.employeeId !== u.id) throw forbidden();
   if (r.status !== "PENDING") throw badRequest("Chỉ hủy được đơn đang chờ duyệt");
-  await assertDatesUnlocked(datesBetween(vnDate(r.fromTime), vnDate(new Date(r.toTime.getTime() - 1))));
   const upd = await prisma.leaveRequest.updateMany({ where: { id, status: "PENDING" }, data: { status: "CANCELLED" } });
   if (!upd.count) throw badRequest("Đơn đã được xử lý");
   return json({ ok: true });

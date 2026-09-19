@@ -105,7 +105,8 @@ function RosterInner() {
       return { employeeId: Number(employeeId), date, shiftId: c.kind === "shift" ? c.shiftId : null, isDayOff: c.kind === "off", clear: c.kind === "default" ? true : undefined };
     });
     try {
-      const r = await api<{ saved: number; changed: number }>("/api/roster", { method: "PUT", body: { cells, reason: reason.trim() || undefined } });
+      const r = await api<{ saved: number; changed: number; skippedLocked?: number }>("/api/roster", { method: "PUT", body: { cells, reason: reason.trim() || undefined } });
+      if (r.skippedLocked) toast.info(`Bỏ qua ${r.skippedLocked} ô thuộc tháng đã chốt công`);
       toast.success(editing.needReason ? `Đã sửa ${r.changed} ô — đã ghi nhật ký và báo nhóm Zalo` : `Đã lưu ${r.saved} ô (nháp)`);
       setEditing(null);
       setChoice(null);

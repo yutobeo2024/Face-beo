@@ -59,6 +59,9 @@ export const PATCH = handle<{ id: string }>(async (req, ctx) => {
   }
   const { resetPassword, unlinkZalo, ...fields } = body;
   const data: Record<string, unknown> = { ...fields };
+  // Ngày nghỉ việc: sau ngày này không còn lịch làm (không tính vắng); kích hoạt lại => xóa.
+  if (fields.active === false && e.active) data.leftAt = new Date();
+  if (fields.active === true && !e.active) data.leftAt = null;
   // Nhân viên xoay ca không dùng mẫu tuần.
   if ((fields.scheduleType ?? e.scheduleType) === "ROTATING") data.workPatternId = null;
   if (fields.workPatternId && !(await prisma.workPattern.findUnique({ where: { id: fields.workPatternId } }))) throw badRequest("Mẫu tuần không tồn tại");
