@@ -24,6 +24,11 @@ _(hiện không có mục nào đang mở)_
 - **OT ngày không có ca:** tính theo đơn tăng ca đã duyệt.
 - **Minh bạch:** thao tác duyệt/sửa của HR và ADMIN được gửi vào nhóm Zalo OA. Không gửi lần quét chấm công, cũng như thao tác ngang quyền nhân viên.
 
+## Đã chốt v1.3 (19/09/2026)
+
+- **Nhận diện khuôn mặt chuyển sang server (InsightFace R50):** do mô hình trên tablet nhận nhầm người có nét giống (đo trên dữ liệu thật). Phải enroll lại toàn bộ.
+- Tuỳ chọn mô hình nhẹ `mbf` cho máy chủ yếu (`FACE_EMBED_MODEL=mbf`).
+
 ## Đã chốt v1.2 (19/09/2026, xem `PRD-v2.1-HR.md` mục 8–10)
 
 - **Ngày công theo hệ số ca (mới):**

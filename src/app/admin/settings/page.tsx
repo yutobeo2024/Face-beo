@@ -26,8 +26,8 @@ const DAY_LABEL = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
 type Pattern = { id?: number; name: string; employeeCount?: number } & Record<(typeof DAY_KEYS)[number], number | null>;
 
 const FIELDS: { key: keyof Settings; label: string; hint: string; step: number }[] = [
-  { key: "matchThreshold", label: "Ngưỡng khớp khuôn mặt", hint: "Cosine top-1 tối thiểu (mặc định 0.55). Hiệu chỉnh trong pilot.", step: 0.01 },
-  { key: "matchMargin", label: "Chênh lệch top-1/top-2", hint: "Top-1 phải hơn top-2 ít nhất (mặc định 0.05).", step: 0.01 },
+  { key: "matchThreshold", label: "Ngưỡng khớp khuôn mặt", hint: "Cosine InsightFace tối thiểu (mặc định 0.45; cùng người thường ≥ 0.5, khác người ≤ 0.35).", step: 0.01 },
+  { key: "matchMargin", label: "Chênh lệch top-1/top-2", hint: "Top-1 phải hơn top-2 ít nhất (mặc định 0.08) — chống nhận nhầm người có nét giống.", step: 0.01 },
   { key: "livenessThreshold", label: "Ngưỡng liveness", hint: "Trung bình điểm antispoof + liveness của 5 khung.", step: 0.01 },
   { key: "livenessServerThreshold", label: "Ngưỡng liveness L2 (server)", hint: "Xác suất “mặt thật” tối thiểu của MiniFASNetV2. Chỉ dùng khi LIVENESS_SERVER=true.", step: 0.01 },
   { key: "absentAfterMinutes", label: "Tính vắng sau (phút)", hint: "Quá số phút này sau giờ vào ca mà chưa chấm => vắng.", step: 1 },
@@ -40,7 +40,7 @@ export default function SettingsPage() {
   const sys = can("settings.system");
   const org = can("org.manage");
   const toast = useToast();
-  const s = useApi<{ settings: Settings; zaloGroupId: string; system: { zaloSimulated: boolean; livenessServer: boolean; l2: { modelPath: string; modelExists: boolean; error: string | null }; faceModelVersion: string } }>(sys ? "/api/settings" : null);
+  const s = useApi<{ settings: Settings; zaloGroupId: string; system: { zaloSimulated: boolean; livenessServer: boolean; l2: { modelPath: string; modelExists: boolean; error: string | null }; faceModelVersion: string; face: { label: string; modelPath: string; modelExists: boolean; error: string | null } } }>(sys ? "/api/settings" : null);
   const shifts = useApi<{ shifts: Shift[] }>("/api/shifts");
   const holidays = useApi<{ holidays: Holiday[] }>("/api/holidays");
   const patterns = useApi<{ patterns: Pattern[] }>(org ? "/api/work-patterns" : null);
@@ -86,6 +86,9 @@ export default function SettingsPage() {
       {sys && s.data && (
       <div className="mb-4 flex flex-wrap gap-2">
         <Badge tone={s.data.system.zaloSimulated ? "late" : "ontime"}>Zalo OA: {s.data.system.zaloSimulated ? "mô phỏng" : "đang gửi thật"}</Badge>
+        <Badge tone={s.data.system.face.modelExists && !s.data.system.face.error ? "ontime" : "absent"}>
+          Nhận diện: {!s.data.system.face.modelExists ? "THIẾU mô hình — chạy npm run models:face" : s.data.system.face.error ? "lỗi" : s.data.system.face.label}
+        </Badge>
         <Badge tone={!s.data.system.livenessServer ? "neutral" : s.data.system.l2.modelExists && !s.data.system.l2.error ? "ontime" : "absent"}>
           Liveness L2 server: {!s.data.system.livenessServer ? "tắt" : !s.data.system.l2.modelExists ? "bật nhưng thiếu mô hình" : s.data.system.l2.error ? "lỗi" : "bật (MiniFASNetV2)"}
         </Badge>

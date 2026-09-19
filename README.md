@@ -120,6 +120,23 @@ Chỉ ADMIN chấm tay trực tiếp được (không qua đơn), dùng cho trư
 
 **Camera cần HTTPS**, trừ khi chạy trên `localhost`.
 
+### Mô hình nhận diện (v1.3 — bắt buộc)
+
+Nhận diện danh tính chạy **trên server** bằng InsightFace (ArcFace, giấy phép MIT) qua onnxruntime. Kiosk và trang enroll chỉ phát hiện mặt,
+chấm liveness và gửi ảnh chụp + 5 điểm mốc (mắt, mũi, khóe miệng); server căn chỉnh mặt về 112×112, tính vector 512 chiều và so khớp.
+
+```bash
+npm run models:face          # buffalo_l -> models/w600k_r50.onnx (~170 MB, ResNet50, mặc định — chính xác nhất)
+npm run models:face -- mbf   # buffalo_sc -> models/w600k_mbf.onnx (~13 MB, MobileFaceNet, cho máy chủ yếu; đặt FACE_EMBED_MODEL=mbf)
+```
+
+Script tải từ bản phát hành chính thức trên GitHub của InsightFace và kiểm tra SHA-256. Thiếu mô hình thì kiosk báo 503 và Cấu hình hiện cảnh báo.
+**Đổi mô hình (r50 ↔ mbf) là đổi phiên bản template => phải enroll lại toàn bộ.** Mỗi lần quét mất ~80–130 ms trên CPU (R50).
+
+Vì sao đổi: mô hình `faceres` của Human (chạy trên tablet) không tách được người có nét giống nhau — trên dữ liệu thật của công ty nó nhận nhầm
+2/16 ảnh và từ chối 14 lượt quét; InsightFace R50 trên cùng dữ liệu: 0 nhầm (cùng người ≥ 0.51, khác người ≤ 0.35).
+Ngưỡng mặc định mới: khớp 0.45, chênh lệch top-1/top-2 0.08 (Cấu hình → Ngưỡng).
+
 ### Enroll khuôn mặt
 
 Vào **Nhân viên → Enroll khuôn mặt**, trên máy có webcam hoặc trên tablet:

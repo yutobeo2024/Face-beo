@@ -8,7 +8,6 @@ const needed = [
   "blazeface.json", "blazeface.bin",
   "facemesh.json", "facemesh.bin",
   "iris.json", "iris.bin",
-  "faceres.json", "faceres.bin",
   "antispoof.json", "antispoof.bin",
   "liveness.json", "liveness.bin",
 ];

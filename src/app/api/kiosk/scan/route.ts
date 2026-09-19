@@ -12,6 +12,7 @@ import { audit } from "@/lib/audit";
 import { notifyLateIfNeeded } from "@/lib/notify";
 import { vnTime } from "@/lib/attendance";
 import { evaluateLiveness } from "@/lib/liveness";
+import { embedFromSnapshot } from "@/lib/face-embed";
 
 const MAX_OFFLINE_AGE_MS = 24 * 3600_000;
 
@@ -46,7 +47,7 @@ export const POST = handle(async (req) => {
   }
 
   const settings = await getSettings();
-  const snapshotBuf = body.snapshot ? decodeJpegDataUrl(body.snapshot) : null;
+  const snapshotBuf = decodeJpegDataUrl(body.snapshot);
   const live = await evaluateLiveness({
     frames: body.frames,
     threshold: settings.livenessThreshold,
@@ -76,7 +77,16 @@ export const POST = handle(async (req) => {
     return json({ result: "REJECTED_SPOOF", message: "Không xác minh được người thật. Vui lòng nhìn thẳng vào camera." });
   }
 
-  const m = await matchFace(body.embedding, settings.matchThreshold, settings.matchMargin);
+  let embedding: Float32Array;
+  try {
+    embedding = (await embedFromSnapshot(snapshotBuf, body.landmarks)).embedding;
+  } catch (e) {
+    const msg = (e as Error).message;
+    if (msg.includes("Điểm mốc") || msg.includes("Mặt quá nhỏ")) throw new HttpError(400, msg);
+    await audit({ action: "FACE_MODEL_ERROR", entity: "KioskDevice", entityId: device.id, detail: { error: msg } });
+    throw new HttpError(503, "Máy chủ chưa sẵn sàng nhận diện khuôn mặt — báo Quản trị");
+  }
+  const m = await matchFace(embedding, settings.matchThreshold, settings.matchMargin);
   if (!m.employeeId) {
     await audit({
       action: "SCAN_NO_MATCH",

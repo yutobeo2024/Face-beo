@@ -6,6 +6,7 @@ import { isZaloSimulated } from "@/lib/zalo-token";
 import { env } from "@/lib/env";
 import { FACE_MODEL_VERSION } from "@/lib/roles";
 import { l2Status } from "@/lib/liveness-l2";
+import { faceModelStatus } from "@/lib/face-embed";
 import { requirePerm } from "@/lib/permissions";
 
 export const GET = handle(async (req) => {
@@ -13,7 +14,7 @@ export const GET = handle(async (req) => {
   return json({
     settings: await getSettings(),
     zaloGroupId: await getStringSetting("zaloGroupId"),
-    system: { zaloSimulated: isZaloSimulated(), livenessServer: env.livenessServer, l2: l2Status(), faceModelVersion: FACE_MODEL_VERSION },
+    system: { zaloSimulated: isZaloSimulated(), livenessServer: env.livenessServer, l2: l2Status(), faceModelVersion: FACE_MODEL_VERSION, face: faceModelStatus() },
   });
 });
 

@@ -11,7 +11,7 @@ import { notifyLateIfNeeded } from "@/lib/notify";
 import { registerServerLiveness } from "@/lib/liveness";
 import { modelPath } from "@/lib/liveness-l2";
 import { __setZaloTestHooks, refreshZaloToken } from "@/lib/zalo-token";
-import { byCode, ctx, enrollFake, pairedDevice, readXlsx, req, sessionCookie } from "./helpers";
+import { byCode, ctx, enrollFake, fakeEmbedding, pairedDevice, readXlsx, req, scanPayload, sessionCookie } from "./helpers";
 
 import * as dashboardRoute from "@/app/api/dashboard/route";
 import * as employeesRoute from "@/app/api/employees/route";
@@ -90,7 +90,7 @@ describe("phân quyền", () => {
 
 describe("kiosk", () => {
   it("không có token thiết bị nhận 401; token đã thu hồi nhận 401", async () => {
-    const body = { embedding: Array(128).fill(0.1), frames: frames(0.9), clientEventId: randomUUID(), capturedAt: new Date().toISOString() };
+    const body = { ...scanPayload(fakeEmbedding(1)), frames: frames(0.9), clientEventId: randomUUID(), capturedAt: new Date().toISOString() };
     expect((await scanRoute.POST(req("/api/kiosk/scan", { method: "POST", body }), ctx())).status).toBe(401);
     const { device, cookie } = await pairedDevice("Kiosk thu hồi");
     expect((await pingRoute.GET(req("/api/kiosk/ping", { cookie }), ctx())).status).toBe(200);
@@ -116,7 +116,7 @@ describe("kiosk", () => {
     await enrollFake((await byCode("NV010")).id, 10);
     const { cookie } = await pairedDevice("Kiosk quét");
     const clientEventId = randomUUID();
-    const body = { embedding: base, frames: frames(0.95), clientEventId, capturedAt: new Date().toISOString() };
+    const body = { ...scanPayload(base), frames: frames(0.95), clientEventId, capturedAt: new Date().toISOString() };
     const r1 = await (await scanRoute.POST(req("/api/kiosk/scan", { method: "POST", body, cookie }), ctx())).json();
     expect(r1.result).toBe("OK");
     expect(r1.employee.code).toBe("NV007");
@@ -136,7 +136,7 @@ describe("kiosk", () => {
     const base = await enrollFake(target.id, 7);
     const { cookie } = await pairedDevice("Kiosk giả mạo");
     const before = await prisma.auditLog.count({ where: { action: "SCAN_SPOOF_REJECTED" } });
-    const body = { embedding: base, frames: frames(0.2), clientEventId: randomUUID(), capturedAt: new Date().toISOString(), verified3D: true };
+    const body = { ...scanPayload(base), frames: frames(0.2), clientEventId: randomUUID(), capturedAt: new Date().toISOString(), verified3D: true };
     const r = await (await scanRoute.POST(req("/api/kiosk/scan", { method: "POST", body, cookie }), ctx())).json();
     expect(r.result).toBe("REJECTED_SPOOF");
     expect(await prisma.auditLog.count({ where: { action: "SCAN_SPOOF_REJECTED" } })).toBe(before + 1);
@@ -144,7 +144,7 @@ describe("kiosk", () => {
 
   it("khuôn mặt lạ => không nhận ra", async () => {
     const { cookie } = await pairedDevice("Kiosk lạ");
-    const body = { embedding: Array.from({ length: 1024 }, (_, i) => Math.sin(i * 7.3)), frames: frames(0.95), clientEventId: randomUUID(), capturedAt: new Date().toISOString() };
+    const body = { ...scanPayload(Array.from({ length: 512 }, (_, i) => Math.sin(i * 7.3))), frames: frames(0.95), clientEventId: randomUUID(), capturedAt: new Date().toISOString() };
     const r = await (await scanRoute.POST(req("/api/kiosk/scan", { method: "POST", body, cookie }), ctx())).json();
     expect(r.result).toBe("NO_MATCH");
   });
@@ -264,9 +264,9 @@ describe("kiosk — lớp L2 phía server (LIVENESS_SERVER=true)", () => {
   const sampleJpeg = () =>
     "data:image/jpeg;base64," + readFileSync(join(process.cwd(), "node_modules", "@vladmandic", "human", "assets", "samples.jpg")).toString("base64");
   const scan = async (cookie: string, extra: Record<string, unknown>, base: number[]) =>
-    (await scanRoute.POST(req("/api/kiosk/scan", { method: "POST", cookie, body: { embedding: base, frames: frames(0.95), clientEventId: randomUUID(), capturedAt: new Date().toISOString(), ...extra } }), ctx())).json();
+    (await scanRoute.POST(req("/api/kiosk/scan", { method: "POST", cookie, body: { ...scanPayload(base), frames: frames(0.95), clientEventId: randomUUID(), capturedAt: new Date().toISOString(), ...extra } }), ctx())).json();
 
-  it("thiếu snapshot hoặc khung mặt => từ chối (client không né được L2)", async () => {
+  it("thiếu khung mặt => từ chối (client không né được L2)", async () => {
     process.env.LIVENESS_SERVER = "true";
     try {
       const base = await enrollFake((await byCode("NV011")).id, 11);

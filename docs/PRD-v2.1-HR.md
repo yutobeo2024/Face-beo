@@ -151,6 +151,22 @@ Ngoại lệ: ADMIN chỉ tự duyệt được đơn của mình khi không cò
 - Mở khóa xóa bản chụp; tháng đó tính lại theo dữ liệu hiện tại.
 - Chốt và mở khóa đều ghi AuditLog và gửi tin nhóm Zalo.
 
+## 11. Nhận diện khuôn mặt phía server (v1.3)
+
+**Vấn đề:** mô hình `faceres` (Human, chạy trên tablet) cho điểm giống giữa những người khác nhau tới 0.79 — ngang mức cùng một người — nên nhận nhầm
+người có nét giống (anh em) và từ chối nhiều lượt quét đúng. Đo trên 16 ảnh chấm công thật: 2 ảnh nhận nhầm, 14 lượt bị từ chối.
+
+**Thay đổi:**
+- Kiosk và trang enroll chỉ: phát hiện mặt (BlazeFace), facemesh, liveness L1; gửi **snapshot + 5 điểm mốc** (mắt trái, mắt phải, mũi, khóe miệng trái/phải) theo pixel của snapshot. Không còn embedding trên máy.
+- Server (`src/lib/face-embed.ts`): căn chỉnh mặt theo mẫu ArcFace 112×112 (phép tương tự từ 5 điểm), chuẩn hóa (x−127.5)/127.5, chạy InsightFace
+  `w600k_r50` (mặc định) hoặc `w600k_mbf` bằng onnxruntime → vector 512 chiều chuẩn hóa L2. Ảnh enroll không được lưu.
+- Phiên bản template: `insightface-w600k_r50-v1` / `insightface-w600k_mbf-v1`. Template phiên bản khác bị bỏ qua → danh sách nhân viên hiện "Enroll lại".
+- Ngưỡng mặc định: khớp 0.45, chênh lệch top-1/top-2 0.08 (đo được: cùng người ≥ 0.51, anh em ≤ 0.35).
+- Enroll: 5 mẫu phải giống nhau (cosine ≥ 0.4, chống lẫn người khác vào khung); giống nhân viên khác ≥ ngưỡng thì cảnh báo, ≥ 0.65 thì
+  **chỉ Quản trị** mới được ghi đè.
+- Hồi chiêu ở kiosk theo vị trí khung mặt thay cho embedding: thoát khi mặt biến mất 8 khung, hoặc có mặt ở vị trí khác hẳn 3 khung.
+- Thiếu mô hình: kiosk trả 503 "máy chủ chưa sẵn sàng", Cấu hình hiện cảnh báo, log boot báo rõ.
+
 ## 10. Nhắc đơn quá hạn (v1.2)
 
 Job `request-overdue` chạy mỗi 30 phút.

@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { averageEmbedding, beep, boxToSnapshot, captureSnapshot, checkGate, engineInfo, loadEngine, meshFlatness, openCamera, stopCamera } from "@/lib/face/engine";
+import { beep, boxToSnapshot, captureSnapshot, checkGate, engineInfo, landmarks5, landmarksToSnapshot, loadEngine, meshFlatness, openCamera, stopCamera } from "@/lib/face/engine";
 import { cooldownStep, startCooldown, type CooldownState } from "@/lib/face/cooldown";
 import { DeviceRevokedError, NetworkError, queue, sendScan, type QueuedScan, type ScanResponse } from "@/lib/face/offline-queue";
 import { Icon } from "@/components/icons";
@@ -61,6 +61,8 @@ export default function KioskPage() {
   const syncing = useRef(false);
   // Sau mỗi kết quả: chờ người vừa chấm rời đi (hoặc người khác bước vào) mới quét tiếp.
   const cooldownRef = useRef<CooldownState | null>(null);
+  /** Khung mặt (tọa độ video) của lượt quét vừa gửi — dùng cho hồi chiêu. */
+  const lastVideoBoxRef = useRef<[number, number, number, number] | null>(null);
 
   const go = (p: Phase) => {
     phaseRef.current = p;
@@ -169,7 +171,7 @@ export default function KioskPage() {
       setTimeout(() => {
         setCard(null);
         setProgress(0);
-        cooldownRef.current = startCooldown(recognized ? item.embedding : null, Date.now());
+        cooldownRef.current = startCooldown(recognized ? lastVideoBoxRef.current : null, Date.now());
         setHint(recognized ? "Mời người tiếp theo" : "Vui lòng thử lại");
         go("cooldown");
       }, RESULT_MS);
@@ -191,7 +193,6 @@ export default function KioskPage() {
         const video = videoRef.current!;
         let stable = 0;
         let frames: { real: number; live: number }[] = [];
-        let embeds: number[][] = [];
         let flat: number | undefined;
         let size = 0;
         while (!stop) {
@@ -206,7 +207,7 @@ export default function KioskPage() {
             const faces = res.face.filter((x) => x.faceScore > 0.6 || x.score > 0.6);
             const step = cooldownStep(cooldownRef.current ?? startCooldown(null, 0), {
               faceCount: faces.length,
-              embedding: faces.length === 1 ? (faces[0].embedding ?? null) : null,
+              box: faces.length === 1 ? (faces[0].box as [number, number, number, number]) : null,
               now: Date.now(),
             });
             cooldownRef.current = step.state;
@@ -214,7 +215,6 @@ export default function KioskPage() {
               cooldownRef.current = null;
               stable = 0;
               frames = [];
-              embeds = [];
               setHint("Hãy nhìn vào camera");
               go("ready");
             }
@@ -224,7 +224,6 @@ export default function KioskPage() {
           if (!g.ok) {
             stable = 0;
             frames = [];
-            embeds = [];
             setProgress(0);
             if (phaseRef.current === "collecting") go("ready");
             setHint(g.reason ?? "Hãy nhìn vào camera");
@@ -239,17 +238,22 @@ export default function KioskPage() {
           }
           const f = g.face!;
           frames.push({ real: f.real ?? 0, live: f.live ?? 0 });
-          embeds.push(f.embedding!);
           flat = meshFlatness(f) ?? flat;
           size = Math.round(f.box[2]);
           setProgress(frames.length / FRAMES);
           setHint("Đang xác minh…");
           if (frames.length >= FRAMES) {
+            const pts = landmarks5(f);
+            if (!pts) {
+              frames = [];
+              continue;
+            }
             const snap = captureSnapshot(video, snapRef.current!);
+            lastVideoBoxRef.current = [f.box[0], f.box[1], f.box[2], f.box[3]];
             const item: QueuedScan = {
               clientEventId: crypto.randomUUID(),
               capturedAt: new Date().toISOString(),
-              embedding: averageEmbedding(embeds),
+              landmarks: landmarksToSnapshot(pts, snap),
               frames,
               snapshot: snap.url,
               faceBox: boxToSnapshot(f.box, snap),
@@ -258,7 +262,6 @@ export default function KioskPage() {
             };
             stable = 0;
             frames = [];
-            embeds = [];
             await submit(item);
           }
         }

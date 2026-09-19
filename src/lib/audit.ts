@@ -21,6 +21,7 @@ export type AuditAction =
   | "PATTERN_UPDATE"
   | "SHIFT_UPDATE"
   | "SHIFT_WEIGHT_UPDATE"
+  | "FACE_MODEL_ERROR"
   | "PAYROLL_LOCK"
   | "PAYROLL_UNLOCK"
   | "HOLIDAY_UPDATE"

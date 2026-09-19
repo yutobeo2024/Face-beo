@@ -13,8 +13,8 @@ export const settingsSchema = z.object({
 export type AppSettings = z.infer<typeof settingsSchema>;
 
 export const DEFAULT_APP_SETTINGS: AppSettings = {
-  matchThreshold: 0.55,
-  matchMargin: 0.05,
+  matchThreshold: 0.45,
+  matchMargin: 0.08,
   livenessThreshold: 0.5,
   livenessServerThreshold: 0.5,
   absentAfterMinutes: 30,

@@ -30,7 +30,8 @@ export const SESSION_COOKIE = "fb_session";
 export const KIOSK_COOKIE = "fb_kiosk";
 
 /** Phiên bản mô hình embedding khuôn mặt. Đổi mô hình => tăng số, template cũ bị bỏ qua. */
-export const FACE_MODEL_VERSION = "human-3.3-faceres-v1";
+/** Phiên bản mô hình nhận diện (InsightFace phía server). Template khác phiên bản bị bỏ qua => phải enroll lại. */
+export const FACE_MODEL_VERSION = process.env.FACE_EMBED_MODEL === "mbf" ? "insightface-w600k_mbf-v1" : "insightface-w600k_r50-v1";
 
 /** Vai trò đặc quyền: chỉ người có quyền `roles.assignPrivileged` (ADMIN) mới gán hoặc sửa tài khoản mang vai trò này. */
 export const PRIVILEGED_ROLES: readonly Role[] = ["ADMIN", "HR"];

@@ -127,10 +127,15 @@ export const manualLogSchema = z.object({
 
 const frameScore = z.object({ real: z.number().min(0).max(1), live: z.number().min(0).max(1) });
 
+const point = z.tuple([z.number().finite().min(0), z.number().finite().min(0)]);
+/** 5 điểm mốc theo pixel của snapshot: mắt trái, mắt phải, mũi, khóe miệng trái, khóe miệng phải. */
+export const landmarks5Schema = z.tuple([point, point, point, point, point]);
+const jpegDataUrl = z.string().max(1_500_000).regex(/^data:image\/jpeg;base64,/, "snapshot phải là JPEG data URL");
+
 export const kioskScanSchema = z.object({
-  embedding: z.array(z.number().finite()).min(64).max(2048),
+  landmarks: landmarks5Schema,
   frames: z.array(frameScore).min(1).max(10),
-  snapshot: z.string().max(1_500_000).optional(),
+  snapshot: jpegDataUrl,
   clientEventId: z.string().uuid(),
   capturedAt: isoDateTime,
   meshFlatness: z.number().finite().optional(), // chỉ ghi log, không dùng để quyết định
@@ -143,7 +148,8 @@ export const enrollSchema = z.object({
   samples: z
     .array(
       z.object({
-        descriptor: z.array(z.number().finite()).min(64).max(2048),
+        snapshot: jpegDataUrl,
+        landmarks: landmarks5Schema,
         pose: z.enum(["FRONT", "LEFT", "RIGHT", "UP", "DOWN"]),
         faceSize: z.number().min(0),
       }),

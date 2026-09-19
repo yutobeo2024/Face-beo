@@ -20,3 +20,12 @@ if (process.env.LIVENESS_SERVER === "true") {
     })
     .catch((e) => console.error("[boot] L2 liveness KHÔNG sẵn sàng:", e.message));
 }
+
+// Nhận diện khuôn mặt (InsightFace, ONNX): nạp sẵn để lượt quét đầu không chậm; thiếu mô hình => kiosk trả 503, cần chạy `npm run models:face`.
+import("./lib/face-embed")
+  .then(async ({ loadFaceModel, faceModelStatus }) => {
+    await loadFaceModel();
+    const s = faceModelStatus();
+    console.log(`[boot] Nhận diện khuôn mặt sẵn sàng: ${s.label} (${s.modelPath})`);
+  })
+  .catch((e) => console.error("[boot] Nhận diện khuôn mặt KHÔNG sẵn sàng:", e.message));

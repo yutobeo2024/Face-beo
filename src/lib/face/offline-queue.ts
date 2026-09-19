@@ -1,14 +1,15 @@
 "use client";
 /**
- * Hàng đợi offline của kiosk (IndexedDB). Chỉ chứa embedding + điểm liveness + snapshot + capturedAt,
+ * Hàng đợi offline của kiosk (IndexedDB). Chỉ chứa snapshot + 5 điểm mốc + điểm liveness + capturedAt,
  * KHÔNG chứa template hay danh sách nhân viên. Bản ghi bị xóa ngay khi đồng bộ thành công.
  */
 export type QueuedScan = {
   clientEventId: string;
   capturedAt: string;
-  embedding: number[];
+  /** 5 điểm mốc theo pixel của snapshot (mắt trái, mắt phải, mũi, khóe miệng trái, phải). */
+  landmarks: [number, number][];
   frames: { real: number; live: number }[];
-  snapshot?: string;
+  snapshot: string;
   meshFlatness?: number;
   faceSize?: number;
   faceBox?: [number, number, number, number];
@@ -78,7 +79,7 @@ export async function sendScan(s: QueuedScan, timeoutMs = 8000): Promise<ScanRes
       headers: { "Content-Type": "application/json" },
       credentials: "same-origin",
       body: JSON.stringify({
-        embedding: s.embedding,
+        landmarks: s.landmarks,
         frames: s.frames,
         snapshot: s.snapshot,
         clientEventId: s.clientEventId,

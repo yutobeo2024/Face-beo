@@ -3,7 +3,7 @@ import Link from "next/link";
 import { use, useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError, useApi } from "@/lib/client/api";
 import { fmtDateTime } from "@/lib/client/format";
-import { checkGate, loadEngine, openCamera, stopCamera, beep } from "@/lib/face/engine";
+import { beep, captureSnapshot, checkGate, landmarks5, landmarksToSnapshot, loadEngine, openCamera, stopCamera } from "@/lib/face/engine";
 import { Badge, Button, Card, cx, ErrorBox, Loading, Modal, PageHeader } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { useToast } from "@/components/toast";
@@ -17,7 +17,7 @@ const POSES: { pose: Pose; label: string; hint: string }[] = [
   { pose: "UP", label: "Hơi ngẩng", hint: "Ngẩng mặt lên một chút" },
   { pose: "DOWN", label: "Hơi cúi", hint: "Cúi mặt xuống một chút" },
 ];
-type Sample = { pose: Pose; descriptor: number[]; faceSize: number; thumb: string; yaw: number; pitch: number };
+type Sample = { pose: Pose; snapshot: string; landmarks: [number, number][]; faceSize: number; thumb: string; yaw: number; pitch: number };
 type Emp = { employee: { id: number; code: string; name: string; biometricConsentAt: string | null; faceCount: number; department: { name: string } } };
 
 const CONSENT_TEXT = [
@@ -59,6 +59,7 @@ export default function EnrollPage({ params }: { params: Promise<{ id: string }>
   const videoRef = useRef<HTMLVideoElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
   const scratchRef = useRef<HTMLCanvasElement>(null);
+  const snapRef = useRef<HTMLCanvasElement>(null);
   const samplesRef = useRef<Sample[]>([]);
   const streak = useRef(0);
   const running = useRef(false);
@@ -117,7 +118,18 @@ export default function EnrollPage({ params }: { params: Promise<{ id: string }>
         t.width = 96;
         t.height = 96;
         t.getContext("2d")!.drawImage(video, f.box[0], f.box[1], f.box[2], f.box[3], 0, 0, 96, 96);
-        const s: Sample = { pose: step.pose, descriptor: Array.from(f.embedding!), faceSize: Math.round(f.box[2]), thumb: t.toDataURL("image/jpeg", 0.6), yaw: g.yawDeg, pitch: g.pitchDeg };
+        const pts = landmarks5(f);
+        if (!pts) continue;
+        const snap = captureSnapshot(video, snapRef.current!);
+        const s: Sample = {
+          pose: step.pose,
+          snapshot: snap.url,
+          landmarks: landmarksToSnapshot(pts, snap),
+          faceSize: Math.round(f.box[2]),
+          thumb: t.toDataURL("image/jpeg", 0.6),
+          yaw: g.yawDeg,
+          pitch: g.pitchDeg,
+        };
         samplesRef.current = [...samplesRef.current, s];
         setSamples(samplesRef.current);
         streak.current = 0;
@@ -161,7 +173,7 @@ export default function EnrollPage({ params }: { params: Promise<{ id: string }>
     setBusy(true);
     try {
       await api(`/api/employees/${id}/faces`, {
-        body: { samples: samplesRef.current.map(({ pose, descriptor, faceSize }) => ({ pose, descriptor, faceSize })), force },
+        body: { samples: samplesRef.current.map(({ pose, snapshot, landmarks, faceSize }) => ({ pose, snapshot, landmarks, faceSize })), force },
       });
       toast.success("Đã lưu 5 mẫu khuôn mặt");
       setDup(null);
@@ -226,7 +238,7 @@ export default function EnrollPage({ params }: { params: Promise<{ id: string }>
                 <p className="text-sm text-white/85">{status}</p>
               </div>
             </div>
-            <canvas ref={scratchRef} className="hidden" />
+            <canvas ref={scratchRef} className="hidden" /><canvas ref={snapRef} className="hidden" />
           </Card>
           <Card className="p-4">
             <h3 className="mb-3 font-semibold text-slate-800">Mẫu đã chụp</h3>
@@ -266,7 +278,7 @@ export default function EnrollPage({ params }: { params: Promise<{ id: string }>
                   Chụp lại từ đầu
                 </Button>
               )}
-              <p className="text-xs text-slate-500">Chỉ gửi vector đặc trưng lên máy chủ, ảnh xem trước không được lưu.</p>
+              <p className="text-xs text-slate-500">Ảnh chụp chỉ dùng để máy chủ tính vector đặc trưng rồi bỏ đi — không lưu ảnh enroll.</p>
             </div>
           </Card>
         </div>
@@ -297,7 +309,7 @@ export default function EnrollPage({ params }: { params: Promise<{ id: string }>
             <Button variant="secondary" onClick={() => (setDup(null), retake(0))}>
               Chụp lại
             </Button>
-            <Button variant="danger" loading={busy} onClick={() => submit(true)}>
+            <Button variant="danger" loading={busy} disabled={!!dup?.includes("Chỉ Quản trị")} onClick={() => submit(true)}>
               Vẫn lưu
             </Button>
           </>

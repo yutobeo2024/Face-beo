@@ -1,8 +1,8 @@
 "use client";
 /**
  * Engine khuôn mặt phía trình duyệt dựa trên @vladmandic/human.
- * Kiosk chỉ phát hiện mặt, chấm liveness (antispoof + liveness) và trích embedding (faceres);
- * so khớp danh tính + kết luận liveness cuối cùng thuộc về server.
+ * Kiosk chỉ phát hiện mặt, chấm liveness (antispoof + liveness) và lấy 5 điểm mốc từ facemesh;
+ * embedding (InsightFace), so khớp danh tính và kết luận liveness cuối cùng đều thuộc về server (v1.3).
  * KHÔNG dùng tọa độ Z của mesh làm tiêu chí quyết định — chỉ tính "độ phẳng" để ghi log.
  */
 import type { Config, FaceResult, Human as HumanT } from "@vladmandic/human";
@@ -21,7 +21,7 @@ const CONFIG: Partial<Config> = {
     mesh: { enabled: true },
     iris: { enabled: false },
     attention: { enabled: false },
-    description: { enabled: true }, // faceres => embedding 1024 chiều
+    description: { enabled: false }, // không dùng faceres nữa — embedding tính trên server
     emotion: { enabled: false },
     antispoof: { enabled: true },
     liveness: { enabled: true },
@@ -53,7 +53,7 @@ export function loadEngine(onStatus?: (s: string) => void): Promise<HumanT> {
     onStatus?.("Đang tải mô hình…");
     await human.load();
     const loaded = human.models.loaded().map((m) => m.toLowerCase());
-    const missing = ["blazeface", "facemesh", "faceres", "antispoof", "liveness"].filter((m) => !loaded.some((l) => l.includes(m)));
+    const missing = ["blazeface", "facemesh", "antispoof", "liveness"].filter((m) => !loaded.some((l) => l.includes(m)));
     if (missing.length) throw new Error(`Không tải được mô hình: ${missing.join(", ")} — kiểm tra thư mục public/models`);
     onStatus?.("Đang warm-up…");
     await human.warmup();
@@ -138,7 +138,7 @@ export function checkGate(
   if (opts.checkLight && q.brightness < 60) return { ...r, reason: "Thiếu sáng — bật thêm đèn" };
   if (opts.checkLight && q.brightness > 225) return { ...r, reason: "Quá chói — tránh ngược sáng" };
   if (opts.checkLight && q.sharpness < 35) return { ...r, reason: "Ảnh bị nhòe — giữ yên" };
-  if (!f.embedding?.length) return { ...r, reason: "Đang phân tích…" };
+  if (!f.mesh?.length) return { ...r, reason: "Đang phân tích…" };
   return { ...r, ok: true, reason: null };
 }
 
@@ -150,16 +150,22 @@ export function meshFlatness(f: FaceResult): number | undefined {
   return Math.sqrt(zs.reduce((s, z) => s + (z - m) ** 2, 0) / zs.length);
 }
 
-export function averageEmbedding(list: number[][]): number[] {
-  const n = list[0].length;
-  const out = new Array<number>(n).fill(0);
-  for (const e of list) {
-    let norm = 0;
-    for (let i = 0; i < n; i++) norm += e[i] * e[i];
-    norm = Math.sqrt(norm) || 1;
-    for (let i = 0; i < n; i++) out[i] += e[i] / norm / list.length;
-  }
-  return out;
+export type Landmarks5 = [[number, number], [number, number], [number, number], [number, number], [number, number]];
+
+/**
+ * 5 điểm mốc theo tọa độ video từ facemesh (MediaPipe): mắt bên trái ảnh (33/133), mắt bên phải ảnh (362/263), mũi (1),
+ * khóe miệng trái (61), phải (291). Thứ tự khớp mẫu ArcFace phía server.
+ */
+export function landmarks5(f: FaceResult): Landmarks5 | null {
+  const m = f.mesh;
+  if (!m || m.length < 300) return null;
+  const mid = (a: number, b: number): [number, number] => [(m[a][0] + m[b][0]) / 2, (m[a][1] + m[b][1]) / 2];
+  return [mid(33, 133), mid(362, 263), [m[1][0], m[1][1]], [m[61][0], m[61][1]], [m[291][0], m[291][1]]];
+}
+
+/** Điểm mốc (tọa độ video) → tọa độ pixel của snapshot. */
+export function landmarksToSnapshot(pts: Landmarks5, snap: { scale: number; width: number; height: number }): Landmarks5 {
+  return pts.map(([x, y]) => [Math.min(snap.width, Math.max(0, x * snap.scale)), Math.min(snap.height, Math.max(0, y * snap.scale))]) as Landmarks5;
 }
 
 /** Snapshot toàn khung, tối đa 1280×720, JPEG chất lượng 0.7; tự hạ chất lượng nếu > 1MB. `scale` = tỉ lệ snapshot/video. */

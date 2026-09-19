@@ -4,6 +4,9 @@ import { signSession } from "@/lib/session";
 import { SESSION_COOKIE, KIOSK_COOKIE, FACE_MODEL_VERSION, type Role } from "@/lib/roles";
 import { encryptDescriptor, randomToken, sha256 } from "@/lib/crypto";
 import { invalidateFaceCache } from "@/lib/face-matcher";
+import { __setFaceEmbedTestHook } from "@/lib/face-embed";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 export const BASE = "http://localhost:3000";
 
@@ -33,7 +36,7 @@ export async function byCode(code: string) {
 }
 
 /** Vector embedding giả lập ổn định theo seed. */
-export function fakeEmbedding(seed: number, dim = 1024): number[] {
+export function fakeEmbedding(seed: number, dim = 512): number[] {
   let s = seed * 9301 + 49297;
   return Array.from({ length: dim }, () => {
     s = (s * 1103515245 + 12345) % 2147483648;
@@ -51,6 +54,20 @@ export async function enrollFake(employeeId: number, seed: number) {
   }
   invalidateFaceCache();
   return base;
+}
+
+/** Snapshot JPEG mẫu (ảnh có sẵn trong gói Human) + 5 điểm mốc giả — đủ để qua validator. */
+export const SAMPLE_LANDMARKS: [number, number][] = [[560, 400], [620, 400], [590, 440], [565, 480], [615, 480]];
+export const sampleJpegDataUrl = () =>
+  "data:image/jpeg;base64," + readFileSync(join(process.cwd(), "node_modules", "@vladmandic", "human", "assets", "samples.jpg")).toString("base64");
+
+/**
+ * Body quét kiosk giả lập: mô hình nhận diện được thay bằng hook trả về `embedding` cho mọi snapshot.
+ * (Bài test nghiệp vụ chấm công không phụ thuộc mô hình ONNX.)
+ */
+export function scanPayload(embedding: number[] | null) {
+  __setFaceEmbedTestHook(embedding ? () => Float32Array.from(embedding) : null);
+  return { landmarks: SAMPLE_LANDMARKS, snapshot: sampleJpegDataUrl() };
 }
 
 export async function pairedDevice(name = "Kiosk test") {
