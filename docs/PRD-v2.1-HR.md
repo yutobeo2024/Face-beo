@@ -66,8 +66,8 @@ Ngoại lệ: ADMIN chỉ tự duyệt được đơn của mình khi không cò
   - `ROTATING`: làm theo lịch tuần `WorkSchedule` **đã đăng ký**.
 - **Thứ tự ưu tiên khi xác định ca của một ngày:**
   1. Lịch ngày trong tuần đã đăng ký.
-  2. Nhân viên xoay ca mà tuần chưa đăng ký → **"Chưa có lịch"**.
-  3. Ngày lễ → nghỉ.
+  2. Ngày lễ → nghỉ.
+  3. Nhân viên xoay ca mà tuần chưa đăng ký → **"Chưa có lịch"**.
   4. Mẫu tuần.
   5. Ca mặc định, nghỉ Chủ nhật.
 - **"Chưa có lịch":**
