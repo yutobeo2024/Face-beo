@@ -29,3 +29,11 @@ import("./lib/face-embed")
     console.log(`[boot] Nhận diện khuôn mặt sẵn sàng: ${s.label} (${s.modelPath})`);
   })
   .catch((e) => console.error("[boot] Nhận diện khuôn mặt KHÔNG sẵn sàng:", e.message));
+
+// Zalo OA: biết DB đã có token chưa để bật chế độ gửi thật (token trong .env chỉ dùng khởi tạo).
+import("./lib/zalo-token")
+  .then(async ({ primeZaloToken, isZaloSimulated }) => {
+    await primeZaloToken();
+    console.log(`[boot] Zalo OA: ${isZaloSimulated() ? "MÔ PHỎNG (thiếu App ID / Secret / token)" : "gửi thật"}`);
+  })
+  .catch((e) => console.error("[boot] Zalo OA:", e.message));

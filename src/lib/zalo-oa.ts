@@ -6,9 +6,12 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "./db";
 import { renderMessage, type MessageType } from "./zalo-templates";
-import { TokenInvalidError, getAccessToken, groupTransport, isZaloSimulated, refreshZaloToken, sleep, transport } from "./zalo-token";
+import { TokenInvalidError, getAccessToken, groupTransport, isZaloSimulated, refreshZaloToken, sleep, transport, ZaloApiError } from "./zalo-token";
 
-type SendResult = { status: "SENT" | "SIMULATED" | "FAILED" | "SKIPPED_NO_ZALO" | "DUPLICATE" | "ERROR"; id?: number };
+/** Giá trị giữ chỗ khi Quản trị chưa nhập ID nhóm — ở chế độ thật sẽ ghi FAILED với lý do rõ ràng. */
+export const UNCONFIGURED_GROUP = "chua-cau-hinh";
+
+type SendResult = { status: "SENT" | "SIMULATED" | "FAILED" | "SKIPPED_NO_ZALO" | "DUPLICATE" | "ERROR"; id?: number; error?: string };
 
 function printSimulated(to: string, type: string, text: string) {
   const c = { cyan: "\x1b[36m", yellow: "\x1b[33m", dim: "\x1b[2m", reset: "\x1b[0m", bold: "\x1b[1m" };
@@ -41,7 +44,7 @@ export async function sendZaloMessage(args: {
       : null;
     if (!emp && !isGroup) return { status: "ERROR" };
     const text = renderMessage(args.messageType, args.data);
-    let logId: number;
+    let logId = 0;
     try {
       const row = await prisma.notificationLog.create({
         data: {
@@ -69,6 +72,7 @@ export async function sendZaloMessage(args: {
       return finish(isGroup || emp!.zaloUserId ? "SIMULATED" : "SKIPPED_NO_ZALO");
     }
     if (!isGroup && !emp!.zaloUserId) return finish("SKIPPED_NO_ZALO");
+    if (isGroup && args.toGroupId === UNCONFIGURED_GROUP) return finish("FAILED", "Chưa cấu hình ID nhóm Zalo (Cấu hình → Zalo)");
 
     const deliver = (accessToken: string) =>
       isGroup ? groupTransport({ groupId: args.toGroupId!, text, accessToken }) : transport({ zaloUserId: emp!.zaloUserId!, text, accessToken });
@@ -90,12 +94,15 @@ export async function sendZaloMessage(args: {
             lastErr = (e2 as Error).message;
           }
         }
-        if (attempt < 2) await sleep(500 * 2 ** attempt);
+        // Lỗi cấu hình / dữ liệu (sai group_id, app chưa được cấp quyền…): thử lại vô ích.
+        if (e instanceof ZaloApiError && !e.retryable) break;
+        if (attempt < 2) await sleep(e instanceof ZaloApiError ? 2000 : 500 * 2 ** attempt);
       }
     }
     return finish("FAILED", lastErr.slice(0, 500));
   } catch (e) {
-    console.error("[zalo] sendZaloMessage lỗi:", (e as Error).message);
-    return { status: "ERROR" };
+    const msg = (e as Error).message;
+    console.error("[zalo] sendZaloMessage lỗi:", msg);
+    return { status: "ERROR", error: msg };
   }
 }

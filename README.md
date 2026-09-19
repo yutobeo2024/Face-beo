@@ -184,27 +184,49 @@ Mở `/kiosk/benchmark` trên tablet thật và bấm **Bắt đầu 50 lượt*
 
 ## Cấu hình Zalo OA
 
-Thiếu **bất kỳ** biến `ZALO_*` nào thì hệ thống chạy ở **chế độ mô phỏng**: tin nhắn được in ra console trong một khung màu và ghi `NotificationLog` với trạng thái `SIMULATED`/`SKIPPED_NO_ZALO`. Mọi luồng khác vẫn hoạt động.
+Thiếu `ZALO_OA_APP_ID`, `ZALO_OA_SECRET` hoặc chưa có token thì hệ thống chạy ở **chế độ mô phỏng**: tin nhắn in ra console và ghi
+`NotificationLog` với trạng thái `SIMULATED`. Trạng thái hiện tại xem ở **Cấu hình → Zalo OA** (chỉ Quản trị).
 
-1. Tạo ứng dụng tại [developers.zalo.me](https://developers.zalo.me) và liên kết với OA. Lấy `ZALO_OA_APP_ID`, `ZALO_OA_SECRET`.
-2. Cấp quyền OA để lấy cặp access token / refresh token ban đầu, rồi điền `ZALO_OA_ACCESS_TOKEN`, `ZALO_OA_REFRESH_TOKEN`. Hai biến này **chỉ dùng để khởi tạo** bảng `ZaloToken`. Sau đó hệ thống tự refresh và lưu cặp token mới vào DB. Refresh token chỉ dùng được một lần, nên không chép lại giá trị cũ vào `.env`.
-3. Cấu hình webhook `POST https://<máy-chủ>/api/zalo/webhook`, bật sự kiện `user_send_text`, và điền `ZALO_WEBHOOK_SECRET`. Chữ ký được kiểm tra theo `X-ZEvent-Signature`.
-4. Nhân viên vào `/me/zalo`, lấy mã 6 ký tự (hạn 15 phút) rồi nhắn mã đó cho OA để liên kết.
+### Giai đoạn 1 (v1.4): nhóm minh bạch
 
-### Nhóm Zalo minh bạch
+Mọi thao tác duyệt/sửa của Nhân sự và Quản trị (đơn, chấm tay, nhân viên, khuôn mặt, ca, chốt công…) và báo cáo của hệ thống được gửi vào
+**một nhóm chat GMF do OA quản lý** — miễn phí, gửi 24/7. Tin nhắn cá nhân tới nhân viên để giai đoạn sau (xem `docs/OPEN-DECISIONS.md` D4).
 
-Mọi thao tác duyệt/sửa của HR và ADMIN được gửi vào một nhóm Zalo do OA quản lý (nhóm GMF, cần OA gói Doanh nghiệp), gồm:
-- duyệt/từ chối đơn, chấm tay theo đơn;
-- nhân viên (thêm, sửa, cho nghỉ, đặt lại mật khẩu), khuôn mặt;
-- đăng ký và sửa ca tuần;
-- phân quyền, mẫu tuần;
-- báo cáo phòng chưa đăng ký ca.
+Điều kiện: OA đã xác thực và đang dùng gói dịch vụ OA (để có tính năng Nhóm chat GMF); ứng dụng trên developers.zalo.me đã liên kết OA.
 
-**Không** gửi các lần quét chấm công và thao tác ngang quyền nhân viên (HR tự làm đơn của mình).
+**Các bước làm thật** (không cần lập trình):
+1. Tạo nhóm GMF trong OA Manager (Chat → tạo nhóm → chọn loại GMF-10/50/100), thêm Quản trị/HR vào nhóm.
+2. Trên developers.zalo.me → ứng dụng → **Official Account → cấp quyền**: chọn OA và bật ít nhất *Quyền: Gửi tin nhắn*, *Quản lý thông tin OA*,
+   *Quản lý Nhóm Chat - GMF*. Lấy **App ID** và **Secret key** ở phần Cài đặt.
+3. **Lấy token lần đầu** bằng công cụ **API Explorer** (developers.zalo.me/tools/explorer → "Lấy Access Token", Version 4, chọn ứng dụng và OA):
+   sao chép *Access token* và *Refresh token*. Access token hiệu lực 25 giờ, refresh token 3 tháng và **chỉ dùng được một lần**; hệ thống tự refresh
+   và lưu cặp mới vào bảng `ZaloToken` — không chép lại giá trị cũ vào `.env`.
+4. Điền `.env`: `ZALO_OA_APP_ID`, `ZALO_OA_SECRET`, `ZALO_OA_ACCESS_TOKEN`, `ZALO_OA_REFRESH_TOKEN` (hai token chỉ dùng để khởi tạo DB),
+   `ZALO_OA_NAME` (tên hiển thị), `APP_BASE_URL` (địa chỉ mà link trong tin nhắn trỏ tới). Khởi động lại server.
+5. Vào **Cấu hình → Zalo OA**: thấy "Đang gửi thật · OA <tên>". Chọn nhóm trong danh sách *Nhóm đã dò* (nếu đã bật webhook, nhóm tạo mới tự
+   xuất hiện) hoặc dán ID nhóm, bấm **Kết nối** — hệ thống kiểm tra nhóm đang `enabled` rồi gửi một tin xác nhận vào nhóm. Có thể bấm thêm **Gửi tin thử vào nhóm**. Thẻ này cũng hiện trạng thái nhóm (`enabled` = OA gửi được) và
+   10 tin gần nhất kèm mã lỗi.
 
-ADMIN nhập **ID nhóm** tại Cấu hình → Zalo. Ở chế độ mô phỏng, tin nhóm được in ra console và ghi `NotificationLog` (`toGroupId`). Khi chạy thật mà chưa nhập ID thì tin bị bỏ qua, kèm cảnh báo trong log server. **Cần xác minh** endpoint `/v3.0/oa/group/message` và payload theo tài liệu GMF trước khi chạy thật (`groupTransport` trong `src/lib/zalo-token.ts`).
+API đã đối chiếu tài liệu (19/09/2026): `POST https://openapi.zalo.me/v3.0/oa/group/message` body `{recipient:{group_id}, message:{text}}`;
+`GET /v3.0/oa/group/getgroup?group_id=`; refresh `POST https://oauth.zaloapp.com/v4/oa/access_token` (form, header `secret_key`).
+Mã lỗi tạm thời (quá nhiều request) được thử lại tối đa 3 lần; lỗi cấu hình (sai group_id, thiếu quyền) ghi `FAILED` kèm mã, không thử lại.
 
-Nếu refresh token thất bại, dashboard ADMIN hiện cảnh báo đỏ. **Cần xác minh trước khi chạy thật:** chính sách tin tư vấn (chỉ gửi được trong một khoảng thời gian sau khi người dùng tương tác), tin giao dịch và ZNS có phí. Phần gửi tin được tách thành `transport` trong `src/lib/zalo-token.ts`, nên có thể đổi loại tin mà không phải sửa nghiệp vụ.
+### Webhook và Cloudflare Tunnel (chuẩn bị cho liên kết nhân viên)
+
+Webhook `POST /api/zalo/webhook` nhận sự kiện `user_send_text` để nhân viên nhắn mã 6 ký tự (tạo ở `/me/zalo`) và liên kết Zalo.
+Chữ ký `X-ZEvent-Signature = mac=sha256(appId + body + timestamp + OAsecretKey)` với secret lấy ở phần Webhook của ứng dụng → `ZALO_WEBHOOK_SECRET`.
+Sự kiện `create_group` (OA vừa tạo nhóm GMF) được lưu lại để **Cấu hình → Zalo OA** hiện nhóm đó kèm nút *Kết nối* — không cần tìm ID nhóm bằng tay. Các sự kiện khác (`oa_send_text`, `user_received_message`…) được trả 200 và bỏ qua.
+
+Zalo chỉ gọi webhook tới **HTTPS công khai**. Máy chủ trong LAN có thể dùng Cloudflare Tunnel (miễn phí, không mở port):
+```bash
+winget install Cloudflare.cloudflared
+cloudflared tunnel --url http://localhost:3000     # in ra https://<ngẫu-nhiên>.trycloudflare.com (đổi mỗi lần chạy — dùng để test)
+```
+Có tên miền riêng thì tạo tunnel có tên (`cloudflared tunnel create` + `route dns`) để địa chỉ cố định. Đặt `APP_BASE_URL` bằng địa chỉ đó
+và khai báo `https://<host>/api/zalo/webhook` ở developers.zalo.me → Webhook. Webhook có rate limit 120 yêu cầu/phút/IP và **từ chối** khi chưa
+đặt `ZALO_WEBHOOK_SECRET` ở môi trường production.
+
+Nếu refresh token thất bại, dashboard ADMIN và Cấu hình → Zalo OA hiện cảnh báo đỏ.
 
 ## Job nền
 

@@ -2,13 +2,49 @@
 import { prisma } from "./db";
 import { audit } from "./audit";
 
-const ZALO_ENV = ["ZALO_OA_APP_ID", "ZALO_OA_SECRET", "ZALO_OA_ACCESS_TOKEN", "ZALO_OA_REFRESH_TOKEN", "ZALO_WEBHOOK_SECRET"] as const;
 const REFRESH_URL = "https://oauth.zaloapp.com/v4/oa/access_token";
 const SEND_URL = "https://openapi.zalo.me/v3.0/oa/message/cs";
+const OA_INFO_URL = "https://openapi.zalo.me/v3.0/oa/getoa";
 const LOCK_KEY = "zaloRefreshLock";
 
+/** Đã thấy token trong DB (nạp lúc khởi động hoặc lần đầu dùng) — để công tắc mô phỏng không phụ thuộc token trong .env. */
+let dbTokenKnown = false;
+
+/**
+ * Mô phỏng khi thiếu App ID / Secret, hoặc chưa có token nào (cả .env lẫn DB).
+ * ZALO_WEBHOOK_SECRET KHÔNG ảnh hưởng công tắc này — chỉ webhook cần nó.
+ */
 export function isZaloSimulated(): boolean {
-  return ZALO_ENV.some((k) => !process.env[k]);
+  if (!process.env.ZALO_OA_APP_ID || !process.env.ZALO_OA_SECRET) return true;
+  return !process.env.ZALO_OA_REFRESH_TOKEN && !dbTokenKnown;
+}
+
+/** Gọi lúc khởi động: kiểm tra DB đã có token chưa (bật chế độ thật kể cả khi .env không còn token). */
+export async function primeZaloToken(): Promise<boolean> {
+  const t = await prisma.zaloToken.findUnique({ where: { id: 1 } }).catch(() => null);
+  dbTokenKnown = !!t;
+  return dbTokenKnown;
+}
+
+/** Lỗi API Zalo có mã; `retryable` = nên thử lại (quá tải, hạn mức tạm thời), ngược lại là lỗi cấu hình / dữ liệu. */
+export class ZaloApiError extends Error {
+  constructor(
+    message: string,
+    public code: number,
+    public retryable: boolean,
+  ) {
+    super(message);
+  }
+}
+/** Mã lỗi tạm thời theo tài liệu OA API (quá nhiều request / hệ thống bận). */
+const RETRYABLE_CODES = new Set([-32, -210, -201, -500]);
+
+/** Đọc JSON trả về của OA API và ném lỗi có phân loại. */
+function checkZaloResponse(res: { ok: boolean; status: number }, j: { error?: number; message?: string }, what: string): void {
+  const code = typeof j.error === "number" ? j.error : 0;
+  if (code && INVALID_TOKEN_CODES.has(code)) throw new TokenInvalidError(j.message ?? "token không hợp lệ");
+  if (code !== 0) throw new ZaloApiError(`Zalo ${what} lỗi ${code}: ${j.message ?? ""}`.trim(), code, RETRYABLE_CODES.has(code));
+  if (!res.ok) throw new ZaloApiError(`Zalo ${what} HTTP ${res.status}`, res.status, res.status >= 500 || res.status === 429);
 }
 
 // ---- Có thể thay thế trong test ----
@@ -30,12 +66,15 @@ export class TokenInvalidError extends Error {}
 async function seedTokenFromEnv() {
   const at = process.env.ZALO_OA_ACCESS_TOKEN;
   const rt = process.env.ZALO_OA_REFRESH_TOKEN;
-  if (!at || !rt) return null;
-  return prisma.zaloToken.upsert({
+  if (!rt) return null;
+  // Chỉ có refresh token: đặt hết hạn ngay để lần dùng đầu tự refresh. Access token Zalo hiệu lực 25 giờ.
+  const row = await prisma.zaloToken.upsert({
     where: { id: 1 },
-    create: { id: 1, accessToken: at, refreshToken: rt, expiresAt: new Date(Date.now() + 60 * 60_000) },
+    create: { id: 1, accessToken: at ?? "", refreshToken: rt, expiresAt: at ? new Date(Date.now() + 60 * 60_000) : new Date(0) },
     update: {},
   });
+  dbTokenKnown = true;
+  return row;
 }
 
 let inflight: Promise<string> | null = null;
@@ -69,6 +108,7 @@ export function refreshZaloToken(force = false): Promise<string> {
 async function doRefresh(force: boolean): Promise<string> {
   const current = (await prisma.zaloToken.findUnique({ where: { id: 1 } })) ?? (await seedTokenFromEnv());
   if (!current) throw new Error("Chưa có token Zalo trong DB");
+  dbTokenKnown = true;
   if (!force && current.expiresAt.getTime() - Date.now() > 60 * 60_000) return current.accessToken;
 
   if (!(await acquireLock())) {
@@ -129,8 +169,36 @@ async function doRefresh(force: boolean): Promise<string> {
 export async function getAccessToken(): Promise<string> {
   const t = (await prisma.zaloToken.findUnique({ where: { id: 1 } })) ?? (await seedTokenFromEnv());
   if (!t) throw new Error("Chưa có token Zalo");
+  dbTokenKnown = true;
   if (t.expiresAt.getTime() - Date.now() < 60 * 60_000) return refreshZaloToken();
   return t.accessToken;
+}
+
+/** Trạng thái token để hiển thị ở Cấu hình (không lộ giá trị token). */
+export async function getZaloTokenStatus() {
+  const t = await prisma.zaloToken.findUnique({ where: { id: 1 }, select: { expiresAt: true, updatedAt: true } });
+  return t ? { exists: true, expiresAt: t.expiresAt, updatedAt: t.updatedAt } : { exists: false, expiresAt: null, updatedAt: null };
+}
+
+/** Thông tin OA (tên, id) — kiểm tra token có gọi API được không. */
+export async function getOaInfo(accessToken: string): Promise<{ oaId: string; name: string }> {
+  const res = await fetchImpl(OA_INFO_URL, { method: "GET", headers: { access_token: accessToken } });
+  const j = (await res.json().catch(() => ({}))) as { error?: number; message?: string; data?: { oa_id?: string | number; name?: string } };
+  checkZaloResponse(res, j, "getoa");
+  return { oaId: String(j.data?.oa_id ?? ""), name: j.data?.name ?? "" };
+}
+
+/** Thông tin nhóm GMF: tên, trạng thái (enabled = OA gửi tin được), số thành viên. */
+export async function getGroupInfo(accessToken: string, groupId: string): Promise<{ name: string; status: string; totalMember: number; link: string }> {
+  const res = await fetchImpl(`${GROUP_INFO_URL}?group_id=${encodeURIComponent(groupId)}`, { method: "GET", headers: { access_token: accessToken } });
+  const j = (await res.json().catch(() => ({}))) as {
+    error?: number;
+    message?: string;
+    data?: { group_info?: { name?: string; status?: string; total_member?: number; group_link?: string } };
+  };
+  checkZaloResponse(res, j, "getgroup");
+  const g = j.data?.group_info ?? {};
+  return { name: g.name ?? "", status: g.status ?? "", totalMember: Number(g.total_member ?? 0), link: g.group_link ?? "" };
 }
 
 export async function getZaloRefreshError(): Promise<{ at: string; msg: string } | null> {
@@ -157,8 +225,7 @@ export const csTransport: Transport = async ({ zaloUserId, text, accessToken }) 
     body: JSON.stringify({ recipient: { user_id: zaloUserId }, message: { text } }),
   });
   const j = (await res.json().catch(() => ({}))) as { error?: number; message?: string };
-  if (j.error && INVALID_TOKEN_CODES.has(j.error)) throw new TokenInvalidError(j.message ?? "token không hợp lệ");
-  if (!res.ok || (j.error && j.error !== 0)) throw new Error(`Zalo lỗi ${j.error ?? res.status}: ${j.message ?? ""}`);
+  checkZaloResponse(res, j, "tin tư vấn");
 };
 
 let transportImpl: Transport = csTransport;
@@ -167,10 +234,11 @@ export function setZaloTransport(t: Transport) {
   transportImpl = t;
 }
 
-// ---- Tin nhắn nhóm GMF (nhóm chat do OA quản lý — cần OA Doanh nghiệp) ----
-// Tài liệu: https://developers.zalo.me/docs/official-account/nhom-chat-gmf/tin-nhan/condition
-// Cần xác minh endpoint/payload với tài liệu Zalo hiện hành trước khi chạy thật.
+// ---- Tin nhắn nhóm GMF (nhóm chat do OA quản lý — cần OA có gói dịch vụ) ----
+// Đã đối chiếu tài liệu 19/09/2026: POST /v3.0/oa/group/message, body {recipient:{group_id}, message:{text}},
+// trả {data:{message_id, group_id}, error:0}. App phải được cấp quyền "Gửi tin nhắn" và "Quản lý Nhóm Chat - GMF".
 const GROUP_SEND_URL = "https://openapi.zalo.me/v3.0/oa/group/message";
+const GROUP_INFO_URL = "https://openapi.zalo.me/v3.0/oa/group/getgroup";
 
 export type GroupTransport = (args: { groupId: string; text: string; accessToken: string }) => Promise<void>;
 
@@ -181,8 +249,7 @@ export const gmfTransport: GroupTransport = async ({ groupId, text, accessToken 
     body: JSON.stringify({ recipient: { group_id: groupId }, message: { text } }),
   });
   const j = (await res.json().catch(() => ({}))) as { error?: number; message?: string };
-  if (j.error && INVALID_TOKEN_CODES.has(j.error)) throw new TokenInvalidError(j.message ?? "token không hợp lệ");
-  if (!res.ok || (j.error && j.error !== 0)) throw new Error(`Zalo nhóm lỗi ${j.error ?? res.status}: ${j.message ?? ""}`);
+  checkZaloResponse(res, j, "tin nhóm");
 };
 
 let groupTransportImpl: GroupTransport = gmfTransport;

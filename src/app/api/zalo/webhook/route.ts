@@ -2,7 +2,10 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { handle, HttpError } from "@/lib/api";
-import { getAccessToken, isZaloSimulated, transport } from "@/lib/zalo-token";
+import { getAccessToken, getGroupInfo, isZaloSimulated, transport } from "@/lib/zalo-token";
+import { audit } from "@/lib/audit";
+import { rateLimit } from "@/lib/rate-limit";
+import { clientIp } from "@/lib/api";
 
 /**
  * Webhook Zalo OA. Chữ ký: header X-ZEvent-Signature = "mac=" + sha256(appId + rawBody + timestamp + secret).
@@ -11,7 +14,7 @@ import { getAccessToken, isZaloSimulated, transport } from "@/lib/zalo-token";
 function verify(raw: string, timestamp: string, header: string | null): boolean {
   const secret = process.env.ZALO_WEBHOOK_SECRET;
   const appId = process.env.ZALO_OA_APP_ID ?? "";
-  if (!secret) return process.env.NODE_ENV !== "production"; // chỉ cho phép không ký khi dev/mô phỏng
+  if (!secret) return process.env.NODE_ENV === "test" || !!process.env.VITEST; // chỉ cho phép không ký trong bộ test
   if (!header) return false;
   const expected = "mac=" + createHash("sha256").update(appId + raw + timestamp + secret).digest("hex");
   const a = Buffer.from(expected);
@@ -32,8 +35,10 @@ async function reply(zaloUserId: string, text: string) {
 }
 
 export const POST = handle(async (req) => {
+  if (!rateLimit(`zalo-webhook:${clientIp(req)}`, 120).ok) throw new HttpError(429, "Quá nhiều yêu cầu");
+  if (!process.env.ZALO_WEBHOOK_SECRET && process.env.NODE_ENV === "production") throw new HttpError(503, "Chưa cấu hình ZALO_WEBHOOK_SECRET");
   const raw = await req.text();
-  let body: { event_name?: string; timestamp?: string | number; sender?: { id?: string }; message?: { text?: string } };
+  let body: { event_name?: string; timestamp?: string | number; sender?: { id?: string }; message?: { text?: string }; group_id?: string; oa_id?: string };
   try {
     body = JSON.parse(raw);
   } catch {
@@ -41,6 +46,21 @@ export const POST = handle(async (req) => {
   }
   if (!verify(raw, String(body.timestamp ?? ""), req.headers.get("x-zevent-signature"))) {
     throw new HttpError(401, "Chữ ký webhook không hợp lệ");
+  }
+  // Nhóm GMF vừa được tạo trong OA Manager: lưu lại để Quản trị chọn nhóm nhận tin minh bạch ngay trên giao diện.
+  if (body.event_name === "create_group" && body.group_id) {
+    const groupId = String(body.group_id);
+    await prisma.zaloGroup.upsert({ where: { groupId }, create: { groupId, oaId: body.oa_id ? String(body.oa_id) : null, source: "WEBHOOK" }, update: {} });
+    if (!isZaloSimulated()) {
+      try {
+        const info = await getGroupInfo(await getAccessToken(), groupId);
+        await prisma.zaloGroup.update({ where: { groupId }, data: { name: info.name, status: info.status, totalMember: info.totalMember } });
+      } catch (e) {
+        console.warn("[zalo webhook] create_group: không lấy được thông tin nhóm:", (e as Error).message);
+      }
+    }
+    await audit({ action: "ZALO_GROUP_DISCOVERED", entity: "ZaloGroup", entityId: groupId, detail: { oaId: body.oa_id ?? null } });
+    return NextResponse.json({ ok: true, group: groupId });
   }
   if (body.event_name !== "user_send_text" || !body.sender?.id) return NextResponse.json({ ok: true, ignored: true });
 

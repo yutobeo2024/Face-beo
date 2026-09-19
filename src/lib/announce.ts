@@ -7,8 +7,7 @@ import { randomUUID } from "node:crypto";
 import { DateTime } from "luxon";
 import { TZ } from "./attendance";
 import { getStringSetting } from "./settings";
-import { sendZaloMessage } from "./zalo-oa";
-import { isZaloSimulated } from "./zalo-token";
+import { sendZaloMessage, UNCONFIGURED_GROUP } from "./zalo-oa";
 import { ROLE_LABEL, type Role } from "./roles";
 
 type Actor = { id: number; name: string; role: Role | string };
@@ -24,12 +23,9 @@ export async function announce(
   try {
     if (!opts.always && !ANNOUNCED_ROLES.has(actor.role)) return;
     const groupId = (await getStringSetting("zaloGroupId")).trim();
-    if (!groupId && !isZaloSimulated()) {
-      console.warn("[announce] chưa cấu hình ID nhóm Zalo (Cấu hình → Zalo) — bỏ qua:", action);
-      return;
-    }
+    // Chưa cấu hình ID nhóm: vẫn ghi NotificationLog (FAILED ở chế độ thật) để Quản trị thấy trong Cấu hình → Zalo.
     await sendZaloMessage({
-      toGroupId: groupId || "chua-cau-hinh",
+      toGroupId: groupId || UNCONFIGURED_GROUP,
       messageType: "GROUP_EVENT",
       dedupeKey: `grp:${opts.key}`,
       data: {

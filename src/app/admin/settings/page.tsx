@@ -93,7 +93,6 @@ export default function SettingsPage() {
           Liveness L2 server: {!s.data.system.livenessServer ? "tắt" : !s.data.system.l2.modelExists ? "bật nhưng thiếu mô hình" : s.data.system.l2.error ? "lỗi" : "bật (MiniFASNetV2)"}
         </Badge>
         <Badge tone="neutral">Mô hình: {s.data.system.faceModelVersion}</Badge>
-        <Badge tone={s.data.zaloGroupId ? "ontime" : "late"}>Nhóm Zalo minh bạch: {s.data.zaloGroupId ? "đã cấu hình" : "chưa cấu hình"}</Badge>
       </div>
       )}
 
@@ -113,13 +112,6 @@ export default function SettingsPage() {
                 {(id) => <input id={id} type="number" step={f.step} className="input tabular-nums" value={form[f.key]} onChange={(e) => setForm({ ...form, [f.key]: Number(e.target.value) })} />}
               </Field>
             ))}
-            <Field
-              className="sm:col-span-2"
-              label="ID nhóm Zalo OA (GMF) nhận tin minh bạch"
-              hint="Mọi thao tác duyệt/sửa của Nhân sự và Quản trị được gửi vào nhóm này. Nhóm phải do OA Doanh nghiệp tạo và quản lý."
-            >
-              {(id) => <input id={id} className="input font-mono" value={groupId} onChange={(e) => setGroupId(e.target.value)} placeholder="VD: 1234567890123456789" />}
-            </Field>
             <div className="sm:col-span-2">
               <Button type="submit" loading={busy}>
                 Lưu cấu hình
@@ -128,6 +120,7 @@ export default function SettingsPage() {
           </form>
         </Card>
         )}
+        {sys && <ZaloCard groupId={groupId} setGroupId={setGroupId} busy={busy} run={run} />}
 
         {org && (
           <>
@@ -477,4 +470,151 @@ export default function SettingsPage() {
       </Modal>
     </>
   );
+}
+
+type ZaloStatus = {
+  simulated: boolean;
+  env: { appId: boolean; secret: boolean; refreshTokenEnv: boolean; webhookSecret: boolean; appBaseUrl: string };
+  token: { exists: boolean; expiresAt: string | null; updatedAt: string | null };
+  refreshError: { at: string; msg: string } | null;
+  oa: { oaId: string; name: string } | null;
+  oaError: string | null;
+  groupId: string;
+  group: { name: string; status: string; totalMember: number; link: string } | null;
+  groupError: string | null;
+  recent: { id: number; at: string; status: string; error: string | null; type: string; text: string }[];
+};
+
+/** Cấu hình → Zalo OA: trạng thái kết nối thật, nhóm minh bạch, gửi tin thử, 10 tin nhóm gần nhất. */
+function ZaloCard({ groupId, setGroupId, busy, run }: { groupId: string; setGroupId: (v: string) => void; busy: boolean; run: (fn: () => Promise<unknown>, ok: string, after?: () => void) => Promise<void> }) {
+  const z = useApi<ZaloStatus>("/api/settings/zalo");
+  const groups = useApi<{ connected: string; groups: { groupId: string; name: string | null; status: string | null; totalMember: number | null; source: string }[] }>("/api/settings/zalo/groups");
+  const [testResult, setTestResult] = useState<{ status: string; error: string | null } | null>(null);
+  const connect = (id: string) =>
+    run(() => api("/api/settings/zalo/groups", { body: { groupId: id } }), "Đã kết nối nhóm — kiểm tra tin xác nhận trong nhóm Zalo", () => (setGroupId(id), z.reload(), groups.reload()));
+  const d = z.data;
+  const tone = (ok: boolean) => (ok ? "ontime" : "late");
+  return (
+    <Card>
+      <CardHeader title="Zalo OA — nhóm minh bạch" actions={<IconButton icon="refresh" label="Tải lại" onClick={() => (z.reload(), groups.reload())} />} />
+      {!d ? (
+        <div className="p-4">
+          <Loading />
+        </div>
+      ) : (
+        <div className="space-y-3 p-4 sm:p-5">
+          <div className="flex flex-wrap gap-2">
+            <Badge tone={d.simulated ? "late" : "ontime"}>{d.simulated ? "MÔ PHỎNG — tin chỉ in ra console" : "Đang gửi thật"}</Badge>
+            <Badge tone={tone(d.env.appId && d.env.secret)}>App ID / Secret: {d.env.appId && d.env.secret ? "có" : "thiếu"}</Badge>
+            <Badge tone={tone(d.token.exists)}>Token: {d.token.exists ? `có, hết hạn ${d.token.expiresAt ? fmtDateTimeSafe(d.token.expiresAt) : "?"}` : "chưa có"}</Badge>
+            <Badge tone={d.env.webhookSecret ? "ontime" : "neutral"}>Webhook secret: {d.env.webhookSecret ? "có" : "chưa (chỉ cần khi liên kết nhân viên)"}</Badge>
+          </div>
+          {d.refreshError && <p className="rounded-lg bg-rose-50 px-3 py-2 text-xs text-rose-800">Refresh token lỗi lúc {fmtDateTimeSafe(d.refreshError.at)}: {d.refreshError.msg}</p>}
+          {!d.simulated && (
+            <p className="text-sm text-slate-700">
+              OA: {d.oa ? <b>{d.oa.name}</b> : <span className="text-rose-700">không gọi được API ({d.oaError})</span>}
+            </p>
+          )}
+          <div>
+            <p className="mb-1 text-sm font-semibold text-slate-700">Nhóm nhận tin minh bạch</p>
+            <p className="mb-2 text-xs text-slate-500">
+              Nhóm GMF tạo trong OA Manager sẽ tự xuất hiện ở đây (qua webhook <code>create_group</code>). Chưa có webhook thì dán ID nhóm rồi bấm Kết nối.
+            </p>
+            {groups.data?.groups.length ? (
+              <ul className="mb-2 divide-y divide-slate-100 rounded-lg border border-slate-100 text-sm">
+                {groups.data.groups.map((g) => (
+                  <li key={g.groupId} className="flex flex-wrap items-center gap-2 px-3 py-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-slate-800">
+                        {g.name || "(chưa có tên)"}{" "}
+                        {g.groupId === groups.data!.connected && <Badge tone="ontime">đang kết nối</Badge>}
+                        {g.status && g.status !== "enabled" && <Badge tone="absent">{g.status}</Badge>}
+                      </p>
+                      <p className="font-mono text-xs text-slate-500">
+                        {g.groupId}
+                        {g.totalMember != null ? ` · ${g.totalMember} thành viên` : ""} · {g.source === "WEBHOOK" ? "dò qua webhook" : "nhập tay"}
+                      </p>
+                    </div>
+                    {g.groupId !== groups.data!.connected && (
+                      <Button size="sm" loading={busy} onClick={() => connect(g.groupId)}>
+                        Kết nối
+                      </Button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mb-2 text-xs text-slate-500">Chưa dò được nhóm nào.</p>
+            )}
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <input className="input flex-1 font-mono" value={groupId} onChange={(e) => setGroupId(e.target.value)} placeholder="Dán ID nhóm (VD: f414c8f76fa586fbdfb4)" />
+              <Button variant="secondary" loading={busy} disabled={groupId.trim().length < 4} onClick={() => connect(groupId.trim())}>
+                Kết nối nhóm này
+              </Button>
+            </div>
+          </div>
+          {!d.simulated && d.groupId && (
+            <p className="text-sm text-slate-700">
+              Nhóm:{" "}
+              {d.group ? (
+                <>
+                  <b>{d.group.name}</b> · {d.group.totalMember} thành viên ·{" "}
+                  <Badge tone={d.group.status === "enabled" ? "ontime" : "absent"}>{d.group.status === "enabled" ? "OA gửi tin được" : `trạng thái ${d.group.status}`}</Badge>
+                </>
+              ) : (
+                <span className="text-rose-700">không lấy được thông tin nhóm ({d.groupError})</span>
+              )}
+            </p>
+          )}
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              variant="secondary"
+              loading={busy}
+              onClick={() =>
+                run(
+                  async () => {
+                    const r = await api<{ status: string; error: string | null }>("/api/settings/zalo/test", { method: "POST" });
+                    setTestResult(r);
+                  },
+                  "Đã gửi tin thử — xem kết quả bên dưới",
+                  () => z.reload(),
+                )
+              }
+            >
+              Gửi tin thử vào nhóm
+            </Button>
+            {testResult && (
+              <Badge tone={testResult.status === "SENT" ? "ontime" : testResult.status === "SIMULATED" ? "neutral" : "absent"}>
+                {testResult.status}
+                {testResult.error ? ` — ${testResult.error}` : ""}
+              </Badge>
+            )}
+          </div>
+          {d.recent.length > 0 && (
+            <div>
+              <p className="mb-1 text-xs font-semibold text-slate-500">10 tin nhóm gần nhất</p>
+              <ul className="divide-y divide-slate-100 rounded-lg border border-slate-100 text-xs">
+                {d.recent.map((r) => (
+                  <li key={r.id} className="flex gap-2 px-2 py-1.5">
+                    <span className="shrink-0 tabular-nums text-slate-400">{fmtDateTimeSafe(r.at)}</span>
+                    <Badge tone={r.status === "SENT" ? "ontime" : r.status === "SIMULATED" ? "neutral" : "absent"}>{r.status}</Badge>
+                    <span className="min-w-0 flex-1 truncate text-slate-700">{r.error ? `${r.error} · ` : ""}{r.text}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function fmtDateTimeSafe(iso: string) {
+  try {
+    return new Date(iso).toLocaleString("vi-VN", { hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Asia/Ho_Chi_Minh" });
+  } catch {
+    return iso;
+  }
 }

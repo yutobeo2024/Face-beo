@@ -289,3 +289,15 @@ model LockedDay {
   @@id([employeeId, workDate])
   @@index([month])
 }
+
+// Nhóm chat GMF của OA đã dò được (webhook create_group) hoặc Quản trị nhập tay; nhóm đang nhận tin minh bạch = AppSetting zaloGroupId.
+model ZaloGroup {
+  groupId      String   @id
+  oaId         String?
+  name         String?
+  status       String? // enabled | disabled (theo API getgroup)
+  totalMember  Int?
+  source       String   @default("WEBHOOK") // WEBHOOK | MANUAL
+  discoveredAt DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}

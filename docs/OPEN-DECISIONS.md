@@ -4,7 +4,17 @@ Ghi lại những điểm đã phát hiện trong quá trình làm và test, c�
 
 ## Đang mở
 
-_(hiện không có mục nào đang mở)_
+### D4. Tin nhắn Zalo cá nhân tới nhân viên (báo vắng, duyệt đơn, nhắc ca…)
+
+- **Ghi nhận:** 19/09/2026, khi nối Zalo OA thật.
+- **Ràng buộc Zalo:** OA chỉ gửi *tin tư vấn* miễn phí trong 48 giờ sau khi nhân viên nhắn cho OA; qua OpenAPI tối đa 7 ngày (có phí); quá 7 ngày
+  không gửi được. Nhân viên ít nhắn OA nên phần lớn tin sẽ không tới.
+- **Phương án:**
+  - **ZNS** (tin theo mẫu, gửi theo số điện thoại, không cần liên kết): ổn định, ~200–800đ/tin, phải đăng ký ~6 mẫu và được Zalo duyệt, nạp tiền ZBS.
+  - **Tin tư vấn + quy ước nhân viên nhắn OA hằng ngày**: miễn phí, không đảm bảo tới.
+  - **Kết hợp**: tư vấn khi còn trong 48 giờ, không thì ZNS.
+- **Trạng thái:** chờ quyết định. Giai đoạn 1 (v1.4) chỉ gửi tin vào nhóm minh bạch; tin cá nhân vẫn ở chế độ hiện có (gửi tin tư vấn nếu nhân viên
+  đã liên kết, không thì ghi `SKIPPED_NO_ZALO`).
 
 ## Đã chốt (19/09/2026, xem `PRD-v2.1-HR.md`)
 
@@ -23,6 +33,11 @@ _(hiện không có mục nào đang mở)_
   - Quyết định này thay quyết định cũ "chấm theo ca mặc định".
 - **OT ngày không có ca:** tính theo đơn tăng ca đã duyệt.
 - **Minh bạch:** thao tác duyệt/sửa của HR và ADMIN được gửi vào nhóm Zalo OA. Không gửi lần quét chấm công, cũng như thao tác ngang quyền nhân viên.
+
+## Đã chốt v1.4 (19/09/2026)
+
+- **Zalo OA giai đoạn 1: chỉ nhóm minh bạch (GMF).** OA có gói dịch vụ, nhóm đã tạo. Tin cá nhân để D4.
+- **Webhook mở bằng Cloudflare Tunnel** khi cần liên kết nhân viên.
 
 ## Đã chốt v1.3 (19/09/2026)
 
