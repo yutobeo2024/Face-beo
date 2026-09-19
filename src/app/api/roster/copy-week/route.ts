@@ -15,10 +15,10 @@ export const POST = handle(async (req) => {
   if (from === to) throw badRequest("Tuần nguồn và tuần đích trùng nhau");
   const emps = await prisma.employee.findMany({
     where: {
-      ...employeeScopeWhere(u, body.departmentId),
+      // Dùng AND: bộ lọc phạm vi có thể là { id: -1 } — không để employeeIds ghi đè lên nó.
+      AND: [employeeScopeWhere(u, body.departmentId), body.employeeIds ? { id: { in: body.employeeIds } } : {}],
       active: true,
       scheduleType: "ROTATING",
-      ...(body.employeeIds ? { id: { in: body.employeeIds } } : {}),
     },
     select: { id: true },
   });

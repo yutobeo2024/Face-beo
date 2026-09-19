@@ -27,9 +27,9 @@ export const GET = handle(async (req) => {
   if ((Date.parse(to) - Date.parse(from)) / 86_400_000 > 31) throw badRequest("Tối đa 31 ngày mỗi lần xem");
   const emps = await prisma.employee.findMany({
     where: {
-      ...employeeScopeWhere(u, q.departmentId),
+      // Dùng AND: bộ lọc phạm vi có thể là { id: -1 } (phòng ngoài phạm vi) — không để employeeId ghi đè lên nó.
+      AND: [employeeScopeWhere(u, q.departmentId), q.employeeId ? { id: q.employeeId } : {}],
       OR: [{ active: true }, { leftAt: { gte: vnDayRange(from).start } }],
-      ...(q.employeeId ? { id: q.employeeId } : {}),
     },
     orderBy: [{ departmentId: "asc" }, { code: "asc" }],
     select: {

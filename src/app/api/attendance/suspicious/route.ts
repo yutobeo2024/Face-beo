@@ -3,23 +3,29 @@ import { prisma } from "@/lib/db";
 import { handle, json, parseQuery } from "@/lib/api";
 import { getSettings } from "@/lib/settings";
 import { requirePerm } from "@/lib/permissions";
+import { deptScope } from "@/lib/auth";
 
 /**
- * "Lần quét đáng ngờ" + phân bố matchScore để hiệu chỉnh ngưỡng trong pilot (PRD mục 6). Chỉ ADMIN.
+ * "Lần quét đáng ngờ" + phân bố matchScore để hiệu chỉnh ngưỡng trong pilot (PRD mục 6).
+ * Quyền `suspicious.view` có thể được cấp cho Quản lý: khi đó chỉ thấy log của các phòng mình quản lý; các sự kiện
+ * quét thất bại (không gắn phòng ban, có thể chứa ứng viên khớp gần nhất) chỉ hiện với phạm vi toàn công ty.
  */
 export const GET = handle(async (req) => {
-  await requirePerm(req, "suspicious.view");
+  const u = await requirePerm(req, "suspicious.view");
   const { days } = parseQuery(req, z.object({ days: z.coerce.number().int().min(1).max(90).default(14) }));
   const since = new Date(Date.now() - days * 86_400_000);
+  const scope = deptScope(u);
   const settings = await getSettings();
   const [audits, logs, devices] = await Promise.all([
-    prisma.auditLog.findMany({
-      where: { action: { in: ["SCAN_SPOOF_REJECTED", "SCAN_NO_MATCH"] }, createdAt: { gte: since } },
-      orderBy: { createdAt: "desc" },
-      take: 300,
-    }),
+    scope === null
+      ? prisma.auditLog.findMany({
+          where: { action: { in: ["SCAN_SPOOF_REJECTED", "SCAN_NO_MATCH"] }, createdAt: { gte: since } },
+          orderBy: { createdAt: "desc" },
+          take: 300,
+        })
+      : Promise.resolve([]),
     prisma.attendanceLog.findMany({
-      where: { source: "KIOSK", checkTime: { gte: since } },
+      where: { source: "KIOSK", checkTime: { gte: since }, ...(scope ? { employee: { departmentId: { in: scope } } } : {}) },
       select: { id: true, matchScore: true, livenessScore: true, checkTime: true, snapshotUrl: true, employee: { select: { code: true, name: true } } },
       orderBy: { checkTime: "desc" },
     }),

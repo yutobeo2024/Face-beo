@@ -65,6 +65,8 @@ export const PATCH = handle<{ id: string }>(async (req, ctx) => {
   // Nhân viên xoay ca không dùng mẫu tuần.
   if ((fields.scheduleType ?? e.scheduleType) === "ROTATING") data.workPatternId = null;
   if (fields.workPatternId && !(await prisma.workPattern.findUnique({ where: { id: fields.workPatternId } }))) throw badRequest("Mẫu tuần không tồn tại");
+  if (fields.defaultShiftId && !(await prisma.shift.findUnique({ where: { id: fields.defaultShiftId } }))) throw badRequest("Ca mặc định không tồn tại");
+  if (fields.departmentId && !(await prisma.department.findUnique({ where: { id: fields.departmentId } }))) throw badRequest("Phòng ban không tồn tại");
   // Mật khẩu tạm ngẫu nhiên (không dùng mật khẩu mặc định đoán được), bắt buộc đổi ở lần đăng nhập sau.
   const tempPassword = resetPassword ? randomTempPassword() : null;
   if (resetPassword) {
@@ -77,12 +79,13 @@ export const PATCH = handle<{ id: string }>(async (req, ctx) => {
     data.zaloUserId = null;
     data.zaloLinkedAt = null;
   }
-  // Đổi vai trò khỏi MANAGER: gỡ khỏi vị trí quản lý phòng.
-  if (fields.role && fields.role !== "MANAGER" && e.role === "MANAGER") {
-    await prisma.department.updateMany({ where: { managerId: id }, data: { managerId: null } });
-  }
+  // Đổi vai trò khỏi MANAGER: gỡ khỏi vị trí quản lý phòng — cùng giao dịch với cập nhật hồ sơ (cập nhật lỗi thì không gỡ).
+  const detachManager = (!!fields.role && fields.role !== "MANAGER" && e.role === "MANAGER") || fields.active === false;
   await ensureBaseline([id]);
-  await prisma.employee.update({ where: { id }, data });
+  await prisma.$transaction([
+    ...(detachManager ? [prisma.department.updateMany({ where: { managerId: id }, data: { managerId: null } })] : []),
+    prisma.employee.update({ where: { id }, data }),
+  ]);
   // Đổi cấu hình lịch: chỉ có hiệu lực từ hôm nay (công đã qua giữ nguyên).
   const deptChanged = fields.departmentId !== undefined && fields.departmentId !== e.departmentId;
   const scheduleChanged =
@@ -96,10 +99,9 @@ export const PATCH = handle<{ id: string }>(async (req, ctx) => {
     if (dropped.count) await audit({ actorId: u.id, action: "ROSTER_CHANGE", entity: "Employee", entityId: id, detail: { reason: "department-change", droppedFutureCells: dropped.count } });
   }
   if (scheduleChanged) await applyScheduleChangeFromToday([id]);
-  // Nghỉ việc: xóa dữ liệu khuôn mặt (PRD mục 9).
+  // Nghỉ việc: xóa dữ liệu khuôn mặt (PRD mục 9). Gỡ khỏi vị trí quản lý phòng đã làm trong giao dịch ở trên.
   if (fields.active === false) {
     const del = await prisma.faceTemplate.deleteMany({ where: { employeeId: id } });
-    await prisma.department.updateMany({ where: { managerId: id }, data: { managerId: null } });
     if (del.count) {
       invalidateFaceCache();
       await audit({ actorId: u.id, action: "FACE_DELETE", entity: "Employee", entityId: id, detail: { reason: "inactive", count: del.count } });

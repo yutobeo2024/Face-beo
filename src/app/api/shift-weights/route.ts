@@ -4,11 +4,16 @@ import { requirePerm } from "@/lib/permissions";
 import { shiftWeightsSchema } from "@/lib/validators";
 import { audit } from "@/lib/audit";
 import { announce, onceKey } from "@/lib/announce";
+import { assertDept, deptScope } from "@/lib/auth";
 
-/** Hệ số công riêng theo phòng ban (ghi đè hệ số chung của ca). */
+/** Hệ số công riêng theo phòng ban (ghi đè hệ số chung của ca). Quản lý được cấp `org.manage` chỉ thấy phòng mình. */
 export const GET = handle(async (req) => {
-  await requirePerm(req, "org.manage");
-  const weights = await prisma.departmentShiftWeight.findMany({ orderBy: [{ departmentId: "asc" }, { shiftId: "asc" }] });
+  const u = await requirePerm(req, "org.manage");
+  const scope = deptScope(u);
+  const weights = await prisma.departmentShiftWeight.findMany({
+    where: scope ? { departmentId: { in: scope } } : {},
+    orderBy: [{ departmentId: "asc" }, { shiftId: "asc" }],
+  });
   return json({ weights });
 });
 
@@ -17,6 +22,7 @@ export const PUT = handle(async (req) => {
   const u = await requirePerm(req, "org.manage");
   const { weights } = await parseJson(req, shiftWeightsSchema);
   const deptIds = [...new Set(weights.map((w) => w.departmentId))];
+  for (const d of deptIds) assertDept(u, d);
   const shiftIds = [...new Set(weights.map((w) => w.shiftId))];
   const [depts, shifts, before] = await Promise.all([
     prisma.department.findMany({ where: { id: { in: deptIds } }, select: { id: true, name: true } }),

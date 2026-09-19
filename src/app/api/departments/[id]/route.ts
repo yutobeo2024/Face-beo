@@ -20,7 +20,8 @@ export const PATCH = handle<{ id: string }>(async (req, ctx) => {
   const d = await prisma.department.findUnique({ where: { id } });
   if (!d) throw notFound();
   assertDept(u, id);
-  let promoted: { code: string; name: string } | null = null;
+  if (body.name && body.name !== d.name && (await prisma.department.findUnique({ where: { name: body.name } }))) throw badRequest("Tên phòng ban đã tồn tại");
+  let promoted: { id: number; code: string; name: string } | null = null;
   if (body.managerId) {
     const m = await prisma.employee.findUnique({ where: { id: body.managerId } });
     if (!m || !m.active) throw badRequest("Quản lý không hợp lệ");
@@ -29,13 +30,16 @@ export const PATCH = handle<{ id: string }>(async (req, ctx) => {
     assertDept(u, m.departmentId);
     if (m.role === "EMPLOYEE") {
       await assertCanModify(u, m, { role: "MANAGER" });
-      await prisma.employee.update({ where: { id: m.id }, data: { role: "MANAGER" } });
       promoted = m;
     } else if (m.role !== "MANAGER" && !(await can(u, "roles.assignPrivileged"))) {
       throw forbidden("Chỉ Quản trị được gán Nhân sự / Quản trị làm quản lý phòng");
     }
   }
-  await prisma.department.update({ where: { id }, data: body });
+  // Nâng vai trò và cập nhật phòng trong cùng giao dịch: cập nhật phòng lỗi thì không để lại nhân viên đã bị nâng thành Quản lý.
+  await prisma.$transaction([
+    ...(promoted ? [prisma.employee.update({ where: { id: promoted.id }, data: { role: "MANAGER" } })] : []),
+    prisma.department.update({ where: { id }, data: body }),
+  ]);
   await audit({ actorId: u.id, action: "SETTINGS_UPDATE", entity: "Department", entityId: id, detail: body });
   if (body.managerId !== undefined) {
     const m = body.managerId ? await prisma.employee.findUnique({ where: { id: body.managerId }, select: { code: true, name: true } }) : null;

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { handle, json, parseQuery } from "@/lib/api";
-import { employeeScopeWhere } from "@/lib/auth";
+import { deptScope, employeeScopeWhere } from "@/lib/auth";
 import { optId } from "@/lib/validators";
 import { summarizeRange } from "@/lib/attendance-service";
 import { addDays, startOfWeek, todayVN, vnTime } from "@/lib/attendance";
@@ -119,7 +119,8 @@ export const GET = handle(async (req) => {
         }
         return n;
       }),
-    seeSuspicious
+    // Sự kiện quét giả không gắn phòng ban → chỉ đếm với phạm vi toàn công ty (nhất quán với trang "lần quét đáng ngờ").
+    seeSuspicious && deptScope(u) === null
       ? prisma.auditLog.count({
           where: {
             action: "SCAN_SPOOF_REJECTED",
