@@ -187,6 +187,9 @@ Mở `/kiosk/benchmark` trên tablet thật và bấm **Bắt đầu 50 lượt*
 
 ## Cấu hình Zalo OA
 
+Tài liệu đầy đủ (sơ đồ cho người không kỹ thuật, 13 loại tin, job nền, cài đặt, xử lý sự cố, tham chiếu mã/API, link tài liệu Zalo):
+[`docs/zalo-oa.html`](docs/zalo-oa.html).
+
 Thiếu `ZALO_OA_APP_ID`, `ZALO_OA_SECRET` hoặc chưa có token thì hệ thống chạy ở **chế độ mô phỏng**: tin nhắn in ra console và ghi
 `NotificationLog` với trạng thái `SIMULATED`. Trạng thái hiện tại xem ở **Cấu hình → Zalo OA** (chỉ Quản trị).
 

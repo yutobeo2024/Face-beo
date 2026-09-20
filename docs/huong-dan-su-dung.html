@@ -1,3 +1,4 @@
+<meta charset="utf-8">
 <title>Cẩm nang Face Beo</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -783,7 +784,7 @@ stateDiagram-v2
 
   <h3>15.1 Nhóm minh bạch nhận tin gì</h3>
   <div class="grid">
-    <div class="card"><h4>✅ Có gửi</h4><ul><li>Duyệt đơn, chấm tay của HR/Quản trị</li><li>Thêm/sửa nhân viên, khuôn mặt, mật khẩu</li><li>Đăng ký/sửa ca, mẫu tuần, phòng ban</li><li>Phân quyền, chốt/mở khóa công</li><li>Phòng chưa đăng ký ca, đơn quá 48 giờ</li></ul></div>
+    <div class="card"><h4>✅ Có gửi</h4><ul><li>Duyệt đơn, chấm tay của HR/Quản trị</li><li>Thêm/sửa nhân viên, khuôn mặt, mật khẩu</li><li>Đăng ký/sửa ca tuần, hệ số công, mẫu tuần, gán quản lý/xóa phòng</li><li>Phân quyền, chốt/mở khóa công</li><li>Phòng chưa đăng ký ca, đơn quá 48 giờ</li></ul></div>
     <div class="card"><h4>❌ Không gửi</h4><ul><li>Từng lần quét chấm công</li><li>Việc cá nhân như HR tự gửi / hủy đơn của mình</li></ul></div>
   </div>
 
@@ -795,7 +796,7 @@ stateDiagram-v2
     <li>Bấm <b>Gửi tin thử vào nhóm</b>. Bảng bên dưới hiện 10 tin gần nhất và lỗi (nếu có).</li>
   </ol>
   <div class="callout"><b>Tin nhắn Zalo cá nhân cho từng nhân viên</b>
-    <p>Chưa bật ở bản này (đang chờ quyết định dùng ZNS hay tin tư vấn). Nhân viên xem thông báo tại <code>/me</code> → <b>Thông báo gần đây</b>.</p>
+    <p>Hệ thống có gửi tin riêng (nhắc trễ, đơn được duyệt, thiếu giờ ra…) cho người <b>đã liên kết Zalo</b> ở trang cá nhân, nhưng Zalo chỉ cho OA nhắn miễn phí trong 48 giờ sau khi người đó nhắn cho OA — nên tin riêng là "có thì tốt", chưa đảm bảo (đang chờ quyết định dùng ZNS trả phí). Nhân viên luôn xem được thông báo tại <code>/me</code> → <b>Thông báo gần đây</b>. Chi tiết kỹ thuật và sơ đồ: <a href="https://claude.ai/artifact/KwxtwjjshvwgYp8F9T64gh" target="_blank" rel="noopener noreferrer">Tài liệu Zalo OA</a> (<code>docs/zalo-oa.html</code>).</p>
   </div>
 </section>
 

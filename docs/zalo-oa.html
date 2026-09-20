@@ -1,0 +1,500 @@
+<meta charset="utf-8">
+<title>Zalo OA Face Beo</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap&subset=vietnamese" rel="stylesheet">
+<style>
+:root{
+  --bg:#f7f8fa; --surface:#ffffff; --surface-2:#f1f4f8; --text:#1c2430; --muted:#5b6778; --line:#e2e7ee;
+  --brand:#0f766e; --brand-soft:#e6f4f2; --accent:#b45309; --accent-soft:#fdf3e6;
+  --ok:#15803d; --ok-soft:#e8f6ec; --warn:#b45309; --warn-soft:#fdf3e6; --bad:#b91c1c; --bad-soft:#fdecec;
+  --info:#1d4ed8; --info-soft:#eaf0fd; --code:#eef2f6;
+  --shadow:0 1px 2px rgba(16,24,40,.05),0 1px 3px rgba(16,24,40,.06);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1419; --surface:#161d25; --surface-2:#1c2530; --text:#e3e8ee; --muted:#9aa7b6; --line:#2a3542;
+    --brand:#2dd4bf; --brand-soft:#123330; --accent:#f59e0b; --accent-soft:#3a2a10;
+    --ok:#4ade80; --ok-soft:#10301c; --warn:#fbbf24; --warn-soft:#382a0c; --bad:#f87171; --bad-soft:#3a1616;
+    --info:#93b4ff; --info-soft:#17243f; --code:#1f2a36; --shadow:none;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1419; --surface:#161d25; --surface-2:#1c2530; --text:#e3e8ee; --muted:#9aa7b6; --line:#2a3542;
+  --brand:#2dd4bf; --brand-soft:#123330; --accent:#f59e0b; --accent-soft:#3a2a10;
+  --ok:#4ade80; --ok-soft:#10301c; --warn:#fbbf24; --warn-soft:#382a0c; --bad:#f87171; --bad-soft:#3a1616;
+  --info:#93b4ff; --info-soft:#17243f; --code:#1f2a36; --shadow:none;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:16px}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.65 "Be Vietnam Pro",system-ui,sans-serif;-webkit-text-size-adjust:100%}
+a{color:var(--brand)}
+code,kbd{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:.86em;background:var(--code);padding:.1em .35em;border-radius:4px}
+kbd{border:1px solid var(--line);border-bottom-width:2px}
+.layout{display:grid;grid-template-columns:270px minmax(0,1fr);max-width:1280px;margin:0 auto}
+nav.toc{position:sticky;top:0;height:100vh;overflow:auto;padding:24px 16px 40px;border-right:1px solid var(--line)}
+nav.toc .brand{font-weight:700;font-size:1.1rem;margin-bottom:4px}
+nav.toc .sub{color:var(--muted);font-size:.85rem;margin-bottom:18px}
+nav.toc ol{list-style:none;margin:0;padding:0;counter-reset:t}
+nav.toc li a{display:block;padding:5px 10px;border-radius:6px;text-decoration:none;color:var(--text);font-size:.92rem}
+nav.toc li a:hover{background:var(--surface-2)}
+nav.toc li a.active{background:var(--brand-soft);color:var(--brand);font-weight:600}
+nav.toc .grp{margin:14px 10px 4px;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+main{padding:32px 40px 80px;min-width:0}
+header.hero{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:28px 28px 22px;box-shadow:var(--shadow);margin-bottom:28px}
+header.hero h1{margin:0 0 6px;font-size:1.9rem;line-height:1.25}
+header.hero p{margin:6px 0;color:var(--muted)}
+.theme-btn{float:right;border:1px solid var(--line);background:var(--surface-2);color:var(--text);border-radius:8px;padding:6px 10px;font:inherit;font-size:.85rem;cursor:pointer}
+section{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:26px 28px;margin-bottom:24px;box-shadow:var(--shadow)}
+section>h2{margin:0 0 4px;font-size:1.45rem;line-height:1.3}
+section>h2 .num{color:var(--brand);margin-right:8px}
+.lead{color:var(--muted);margin:0 0 16px}
+h3{font-size:1.1rem;margin:26px 0 8px}
+h4{font-size:1rem;margin:18px 0 6px}
+table{width:100%;border-collapse:collapse;font-size:.92rem;margin:10px 0 16px}
+th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+th{background:var(--surface-2);font-weight:600}
+.tw{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.tw table{min-width:560px}
+.callout{border-left:4px solid var(--info);background:var(--info-soft);padding:12px 16px;border-radius:0 10px 10px 0;margin:14px 0}
+.callout.ok{border-color:var(--ok);background:var(--ok-soft)}
+.callout.warn{border-color:var(--warn);background:var(--warn-soft)}
+.callout.bad{border-color:var(--bad);background:var(--bad-soft)}
+.callout b:first-child{display:block;margin-bottom:2px}
+.callout p{margin:4px 0}
+.steps{counter-reset:s;list-style:none;padding:0;margin:10px 0 16px}
+.steps>li{position:relative;padding:4px 0 10px 44px}
+.steps>li::before{counter-increment:s;content:counter(s);position:absolute;left:0;top:2px;width:30px;height:30px;border-radius:50%;background:var(--brand);color:#fff;display:grid;place-items:center;font-weight:700;font-size:.9rem}
+:root[data-theme="dark"] .steps>li::before{color:#062a27}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .steps>li::before{color:#062a27}}
+.grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));margin:14px 0}
+.card{border:1px solid var(--line);border-radius:12px;padding:14px 16px;background:var(--surface-2)}
+.card h4{margin:0 0 6px}
+.card p,.card ul{margin:4px 0;font-size:.93rem}
+.card ul{padding-left:18px}
+.pill{display:inline-block;padding:1px 9px;border-radius:999px;font-size:.78rem;font-weight:600;background:var(--brand-soft);color:var(--brand);margin-right:4px}
+.pill.a{background:var(--bad-soft);color:var(--bad)}.pill.h{background:var(--accent-soft);color:var(--accent)}.pill.m{background:var(--info-soft);color:var(--info)}.pill.e{background:var(--ok-soft);color:var(--ok)}
+.y{color:var(--ok);font-weight:700}.n{color:var(--muted)}
+.diagram{border:1px solid var(--line);border-radius:12px;background:var(--surface);padding:14px;margin:14px 0;overflow-x:auto}
+.diagram .cap{font-size:.82rem;color:var(--muted);margin-top:6px}
+pre.mermaid{margin:0;background:transparent;text-align:center;font-family:inherit;white-space:pre}
+.ex{border:1px dashed var(--line);border-radius:12px;padding:14px 16px;margin:12px 0;background:var(--surface-2)}
+.ex .t{font-weight:700;color:var(--accent);font-size:.85rem;text-transform:uppercase;letter-spacing:.04em}
+.formula{font-family:"JetBrains Mono",monospace;background:var(--code);border-radius:10px;padding:12px 14px;font-size:.9rem;overflow-x:auto;white-space:pre}
+details{border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin:8px 0;background:var(--surface-2)}
+details summary{cursor:pointer;font-weight:600}
+details[open] summary{margin-bottom:6px}
+.check li{list-style:none;position:relative;padding-left:26px;margin:4px 0}
+.check{padding-left:0}
+.check li::before{content:"☐";position:absolute;left:0;color:var(--brand)}
+.menu-mobile{display:none}
+footer{color:var(--muted);font-size:.85rem;text-align:center;padding:10px}
+@media (max-width:900px){
+  .layout{display:block}
+  nav.toc{position:static;height:auto;border-right:0;padding:16px}
+  nav.toc ol{display:none}
+  nav.toc.open ol{display:block}
+  .menu-mobile{display:inline-block;border:1px solid var(--line);background:var(--surface);color:var(--text);border-radius:8px;padding:6px 12px;font:inherit;font-size:.9rem;cursor:pointer}
+  main{padding:0 16px 60px}
+  section{padding:18px 16px}
+  header.hero{padding:20px 16px}
+  header.hero h1{font-size:1.5rem}
+}
+</style>
+
+<div class="layout">
+<nav class="toc" id="toc">
+  <div class="brand">💬 Zalo OA trong Face Beo</div>
+  <div class="sub">Tài liệu tích hợp · bản v1.5.3</div>
+  <button class="menu-mobile" onclick="document.getElementById('toc').classList.toggle('open')">☰ Mục lục</button>
+  <ol>
+    <li class="grp">Cho mọi người</li>
+    <li><a href="#tong-quan">1. Zalo OA là gì, Face Beo dùng để làm gì</a></li>
+    <li><a href="#luong">2. Bốn luồng hoạt động (sơ đồ)</a></li>
+    <li><a href="#tin">3. 13 loại tin nhắn</a></li>
+    <li><a href="#cron">4. Lịch tự động (job nền)</a></li>
+    <li class="grp">Quản trị</li>
+    <li><a href="#cai-dat">5. Cài đặt &amp; vận hành</a></li>
+    <li><a href="#su-co">6. Xử lý sự cố</a></li>
+    <li class="grp">Kỹ thuật</li>
+    <li><a href="#ky-thuat">7. Tham chiếu mã nguồn &amp; API</a></li>
+    <li><a href="#tai-lieu">8. Tài liệu Zalo chính thức</a></li>
+  </ol>
+</nav>
+<main>
+<header class="hero">
+  <button class="theme-btn" id="themeBtn" type="button">🌓 Giao diện</button>
+  <h1>Zalo OA trong Face Beo</h1>
+  <p>Toàn bộ những gì Face Beo làm với Zalo Official Account: gửi tin vào nhóm minh bạch, nhắn riêng cho nhân viên, liên kết tài khoản, làm mới token, cùng các lệnh, biến cấu hình và mã nguồn liên quan.</p>
+  <p>Mục 1–4 viết cho <b>người không kỹ thuật</b> (có sơ đồ). Mục 5–6 cho <b>Quản trị vận hành</b>. Mục 7–8 là tham chiếu kỹ thuật kèm link tài liệu chính thức của Zalo.</p>
+  <p><span class="pill a">Quản trị</span><span class="pill h">Nhân sự</span><span class="pill m">Quản lý</span><span class="pill e">Nhân viên</span></p>
+</header>
+
+<!-- 1 -->
+<section id="tong-quan">
+  <h2><span class="num">1.</span>Zalo OA là gì, Face Beo dùng để làm gì</h2>
+  <p class="lead">Zalo OA (Official Account) là "tài khoản doanh nghiệp" trên Zalo. Face Beo đứng sau OA đó để gửi và nhận tin thay công ty.</p>
+  <div class="grid">
+    <div class="card"><h4>📣 Nhóm minh bạch</h4><p>Mỗi khi Nhân sự / Quản trị duyệt đơn, sửa hồ sơ, xếp ca, chốt công… OA đăng một dòng "ai làm gì, lúc nào" vào <b>một nhóm chat Zalo</b> (nhóm GMF do OA quản lý). Cả công ty thấy, không ai sửa lén được.</p></div>
+    <div class="card"><h4>📩 Tin riêng cho từng người</h4><p>Nhắc đi trễ, chưa chấm công, thiếu giờ ra, đơn được duyệt, nhắc quản lý đăng ký ca… gửi thẳng vào Zalo cá nhân — <b>chỉ khi</b> người đó đã liên kết Zalo với tài khoản Face Beo.</p></div>
+    <div class="card"><h4>🔗 Liên kết tài khoản</h4><p>Nhân viên lấy mã 6 ký tự trong trang cá nhân, nhắn mã cho OA. Zalo báo lại cho Face Beo qua <b>webhook</b>, hệ thống ghi nhớ "Zalo này là của nhân viên nào".</p></div>
+    <div class="card"><h4>🔑 Chìa khóa (token)</h4><p>Muốn gửi tin thay OA, Face Beo phải cầm một "chìa khóa" do Zalo cấp, hết hạn sau 25 giờ. Hệ thống tự đổi chìa khóa mới trước khi hết hạn — Quản trị chỉ cần cấp lần đầu.</p></div>
+  </div>
+  <div class="diagram">
+<pre class="mermaid">
+flowchart LR
+  subgraph FB["Face Beo (máy chủ trong công ty)"]
+    A["Thao tác của HR/Quản trị<br/>duyệt đơn, xếp ca, chốt công…"]
+    J["Job nền<br/>5 phút / 30 phút / thứ Sáu / thứ Hai"]
+    W["Webhook<br/>/api/zalo/webhook"]
+    T["Bảng ZaloToken<br/>(chìa khóa, tự làm mới)"]
+  end
+  OA["Zalo OA<br/>(tài khoản doanh nghiệp)"]
+  G["Nhóm Zalo minh bạch"]
+  P["Zalo cá nhân nhân viên / quản lý"]
+  A -- "tin nhóm" --> OA
+  J -- "tin riêng + tin nhóm" --> OA
+  T -. "access_token" .-> OA
+  OA --> G
+  OA --> P
+  P -- "nhắn mã liên kết" --> OA
+  OA -- "sự kiện user_send_text,<br/>create_group" --> W
+</pre>
+    <div class="cap">Hình 1. Face Beo chỉ nói chuyện với Zalo qua OA; OA chuyển tin tới nhóm hoặc từng người, và báo ngược lại qua webhook.</div>
+  </div>
+  <div class="callout"><b>Hai chế độ: "mô phỏng" và "gửi thật"</b>
+    <p>Chưa cấu hình App ID / Secret / token thì hệ thống chạy <b>mô phỏng</b>: tin chỉ in ra màn hình console máy chủ và ghi nhật ký với trạng thái <code>SIMULATED</code>, không ai trên Zalo nhận được. Cấu hình đủ thì chuyển sang <b>gửi thật</b>. Quản trị xem trạng thái ở <b>Cấu hình → Zalo OA</b> (badge "mô phỏng" / "đang gửi thật").</p>
+  </div>
+  <div class="callout warn"><b>Tin riêng cho nhân viên: có trong mã, nhưng phụ thuộc quy định của Zalo</b>
+    <p>Zalo chỉ cho OA nhắn "tin tư vấn" miễn phí trong <b>48 giờ</b> sau khi người dùng nhắn cho OA (tối đa 7 ngày nếu dùng gói trả phí). Quá cửa sổ đó tin bị từ chối (mã lỗi <code>-213</code>) và ghi <code>FAILED</code>. Công ty chưa chốt dùng tin ZNS trả phí (xem <code>docs/OPEN-DECISIONS.md</code> mục D4), nên hiện tại <b>nhóm minh bạch là kênh chắc chắn</b>; tin riêng là "có thì tốt". Nhân viên luôn xem được thông báo trong trang cá nhân → Thông báo gần đây.</p>
+  </div>
+</section>
+
+<!-- 2 -->
+<section id="luong">
+  <h2><span class="num">2.</span>Bốn luồng hoạt động</h2>
+  <p class="lead">Mỗi luồng một sơ đồ trình tự, đọc từ trên xuống. Tên trong ngoặc là hàm / bảng dữ liệu để người kỹ thuật tra cứu.</p>
+
+  <h3>2.1 Tin nhóm minh bạch</h3>
+  <div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant HR as Nhân sự / Quản trị
+  participant App as Face Beo (announce → sendZaloMessage)
+  participant DB as NotificationLog
+  participant Z as Zalo OA API
+  participant G as Nhóm Zalo
+  HR->>App: Duyệt đơn / sửa hồ sơ / chốt công…
+  App->>App: Chỉ HR & ADMIN mới đăng nhóm (ANNOUNCED_ROLES) — trừ thao tác gắn cờ always
+  App->>DB: Ghi tin trạng thái PENDING (dedupeKey duy nhất)
+  Note over App,DB: Trùng dedupeKey ⇒ DUPLICATE, không gửi lại
+  App->>Z: POST /v3.0/oa/group/message {group_id, text}
+  alt Thành công
+    Z-->>G: Tin hiện trong nhóm
+    Z-->>App: error = 0
+    App->>DB: SENT
+  else Token hết hạn (-216 / -124 / -220)
+    Z-->>App: lỗi token
+    App->>Z: Làm mới token (1 lần) rồi gửi lại
+  else Lỗi tạm (-32 quá tải)
+    App->>Z: Thử lại, tối đa 3 lần
+  else Lỗi cấu hình (sai nhóm, thiếu quyền, -213…)
+    App->>DB: FAILED + mã lỗi (không thử lại)
+  end
+</pre>
+    <div class="cap">Hình 2. Gửi tin nhóm không bao giờ làm hỏng nghiệp vụ: lỗi Zalo chỉ ghi nhật ký, thao tác của HR vẫn thành công.</div>
+  </div>
+  <div class="ex"><div class="t">Ví dụ tin trong nhóm</div>
+    <p>🔔 <b>Nhân sự Trần Thị Bích</b> đã DUYỆT đơn Nghỉ phép #128 của NV007 — Đặng Thị Lan<br/>08:00 22/09/2026 → 17:00 22/09/2026<br/>Lý do: Đồng ý, đã bố trí người thay<br/>🕒 09:41 20/09/2026</p>
+  </div>
+
+  <h3>2.2 Nhân viên liên kết Zalo</h3>
+  <div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant E as Nhân viên
+  participant Me as Trang cá nhân /me/zalo
+  participant DB as ZaloLinkCode / Employee
+  participant Z as Zalo (OA)
+  participant W as Webhook /api/zalo/webhook
+  E->>Me: Bấm "Lấy mã liên kết"
+  Me->>DB: Tạo mã 6 ký tự, hạn 15 phút
+  Me-->>E: Hiện mã (vd. K7M2PX) + đếm ngược
+  E->>Z: Quan tâm OA rồi nhắn mã cho OA
+  Z->>W: Sự kiện user_send_text (ký X-ZEvent-Signature)
+  W->>W: Kiểm chữ ký sha256(appId + body + timestamp + secret)
+  W->>DB: Tìm mã còn hạn → ghi zaloUserId, zaloLinkedAt; xóa mã
+  W->>Z: Trả lời "✅ Đã liên kết Zalo với tài khoản NV007 — Đặng Thị Lan"
+  Z-->>E: Nhận tin xác nhận
+  Me-->>E: Trang tự đổi sang "Đã liên kết" (tự tải lại mỗi 5 giây)
+</pre>
+    <div class="cap">Hình 3. Zalo chỉ gọi webhook tới địa chỉ HTTPS công khai, nên máy chủ trong LAN cần Cloudflare Tunnel (mục 5.3).</div>
+  </div>
+  <p>OA trả lời đầy đủ: "✅ Đã liên kết Zalo với tài khoản NV007 — Đặng Thị Lan. Bạn sẽ nhận thông báo chấm công và đơn từ tại đây." Nhắn mã sai hoặc hết hạn thì OA đáp "Mã liên kết không đúng hoặc đã hết hạn…" (người đã liên kết rồi nhắn lại thì hệ thống bỏ qua im lặng, vì Zalo có thể gửi lặp sự kiện). Hủy liên kết: nhân viên tự bấm "Hủy liên kết" ở trang cá nhân, hoặc Nhân sự bấm "Hủy liên kết Zalo" trong hộp Sửa nhân viên. Mã hết hạn được job <code>snapshot-cleanup</code> dọn lúc 02:00.</p>
+
+  <h3>2.3 Vòng đời "chìa khóa" (token)</h3>
+  <div class="diagram">
+<pre class="mermaid">
+flowchart TD
+  S["Quản trị lấy cặp token lần đầu<br/>API Explorer v4 trên developers.zalo.me"] --> E[".env: ZALO_OA_ACCESS_TOKEN + ZALO_OA_REFRESH_TOKEN<br/>(chỉ dùng để khởi tạo)"]
+  E --> T["Bảng ZaloToken (id = 1)<br/>accessToken · refreshToken · expiresAt"]
+  T --> U{"Sắp hết hạn?<br/>(còn < 60 phút)"}
+  U -- "Không" --> Send["Dùng accessToken để gửi tin"]
+  U -- "Có, hoặc cron 6 giờ,<br/>hoặc gặp lỗi -216" --> R["POST oauth.zaloapp.com/v4/oa/access_token<br/>header secret_key, body refresh_token"]
+  R -- "OK" --> N["Lưu cặp token MỚI vào ZaloToken<br/>(refresh token cũ hết giá trị — dùng 1 lần)"]
+  N --> T
+  R -- "Lỗi" --> X["AppSetting zaloRefreshError<br/>Cảnh báo đỏ ở Tổng quan & Cấu hình → Zalo<br/>Audit ZALO_TOKEN_REFRESH_FAILED"]
+  X --> S
+</pre>
+    <div class="cap">Hình 4. Access token sống 25 giờ, refresh token khoảng 3 tháng và chỉ dùng được một lần. Vì vậy không bao giờ chép lại token cũ vào <code>.env</code>; khi hỏng hẳn thì lấy cặp mới, <b>xóa dòng cũ trong bảng ZaloToken</b> rồi khởi động lại (token trong .env chỉ được nạp khi bảng trống).</div>
+  </div>
+  <div class="callout ok"><b>Chống làm mới trùng</b><p>Nhiều tin gửi cùng lúc chỉ tạo <b>một</b> lần làm mới: trong tiến trình dùng "singleflight", giữa các tiến trình dùng khóa <code>AppSetting.zaloRefreshLock</code> (hạn 60 giây) và so-sánh-rồi-ghi trên <code>refreshToken</code> hiện tại.</p></div>
+
+  <h3>2.4 Dò nhóm và kết nối nhóm minh bạch</h3>
+  <div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant A as Quản trị
+  participant OAM as OA Manager (oa.zalo.me)
+  participant Z as Zalo
+  participant W as Webhook
+  participant DB as ZaloGroup / AppSetting
+  participant UI as Cấu hình → Zalo OA
+  A->>OAM: Tạo nhóm chat GMF, thêm HR/Quản trị vào nhóm
+  Z->>W: Sự kiện create_group
+  W->>DB: Lưu ZaloGroup (source = WEBHOOK), hỏi tên/số thành viên qua getgroup
+  A->>UI: Thấy nhóm trong "Nhóm đã dò" (hoặc dán ID nhóm tay)
+  A->>UI: Bấm "Kết nối"
+  UI->>Z: GET /v3.0/oa/group/getgroup?group_id=…
+  alt status = enabled
+    UI->>DB: Lưu AppSetting zaloGroupId; ZaloGroup source = MANUAL nếu nhập tay
+    UI->>Z: Gửi tin xác nhận vào nhóm (announce, always = true)
+  else disabled / không thấy
+    UI-->>A: Báo lỗi 400 "nhóm chưa enabled", không lưu
+  end
+</pre>
+    <div class="cap">Hình 5. Nhóm phải ở trạng thái <code>enabled</code> (OA còn quyền gửi) mới kết nối được. Nút "Gửi tin thử vào nhóm" dùng để kiểm tra bất cứ lúc nào (giới hạn 5 lần/phút).</div>
+  </div>
+</section>
+
+<!-- 3 -->
+<section id="tin">
+  <h2><span class="num">3.</span>13 loại tin nhắn</h2>
+  <p class="lead">Nội dung tin lấy từ <code>src/lib/zalo-templates.ts</code>. Mỗi tin có link mở đúng màn hình trong Face Beo (địa chỉ gốc lấy từ <code>APP_BASE_URL</code>).</p>
+  <h3>3.1 Tin gửi vào nhóm minh bạch</h3>
+  <div class="tw"><table>
+    <tr><th>Loại</th><th>Khi nào</th><th>Nội dung mẫu</th></tr>
+    <tr><td><code>GROUP_EVENT</code></td><td>HR/Quản trị: duyệt/từ chối đơn, chấm tay bổ sung công, thêm/sửa/xóa nhân viên (kể cả đặt lại mật khẩu, cho nghỉ việc), enroll/xóa khuôn mặt, hệ số công (chung của ca và theo phòng), mẫu tuần, gán/gỡ quản lý phòng, xóa phòng, liên kết Thông tin. <b>Bất kể vai trò</b> (cờ <code>always</code>): đăng ký/sửa ca tuần (kể cả Quản lý), chốt/mở khóa công, phân quyền, kết nối nhóm, gửi tin thử. Hệ thống: báo cáo thứ Hai, đơn quá 48 giờ.</td><td>🔔 <i>Vai trò Tên</i> đã … <br/>Chi tiết (nếu có) · Lý do/ghi chú của người thao tác <br/>🕒 HH:mm dd/MM/yyyy</td></tr>
+  </table></div>
+  <p><b>Không</b> gửi vào nhóm: lần quét chấm công của từng người; thao tác ngang quyền nhân viên (tự làm đơn, tự liên kết Zalo, tự đổi mật khẩu); thao tác thường ngày của Quản lý (duyệt đơn, xem báo cáo); sửa giờ ca, thêm/đổi tên phòng, ngày lễ (chỉ ghi nhật ký). Ngoại lệ được đăng bất kể vai trò: đăng ký/sửa ca tuần, chốt/mở khóa công, phân quyền, kết nối nhóm, tin thử.</p>
+
+  <h3>3.2 Tin riêng (cần nhân viên đã liên kết Zalo)</h3>
+  <div class="tw"><table>
+    <tr><th>Loại</th><th>Ai nhận</th><th>Khi nào</th><th>Nội dung mẫu</th></tr>
+    <tr><td><code>REQUEST_CREATED</code></td><td>Người duyệt (quản lý phòng, hoặc HR/Quản trị); HR nhận bản "theo dõi" với đơn bổ sung công</td><td>Nhân viên gửi đơn</td><td>📝 Đơn mới cần duyệt — Lan (NV007) gửi đơn Nghỉ phép. Thời gian … Lý do … Duyệt tại: /admin/requests</td></tr>
+    <tr><td><code>REQUEST_DECIDED</code></td><td>Người gửi đơn</td><td>Đơn được duyệt / từ chối</td><td>✅ Đơn của bạn đã được duyệt · Loại … · Người xử lý … · Xem: /me/requests</td></tr>
+    <tr><td><code>CORRECTION_READY</code></td><td>HR / Quản trị (người chấm tay)</td><td>Đơn bổ sung công vừa được duyệt</td><td>🛠️ Đơn bổ sung công #… đã được duyệt — chờ chấm tay</td></tr>
+    <tr><td><code>CORRECTION_DONE</code></td><td>Nhân viên</td><td>HR chấm tay xong</td><td>✅ Đã bổ sung giờ ra lúc 17:05 theo đơn #…</td></tr>
+    <tr><td><code>LATE_REMINDER</code></td><td>Nhân viên</td><td>Ngay sau lần quét vào bị trễ ở kiosk</td><td>⏰ Nhắc đi trễ — Bạn chấm vào 08:17, trễ 12 phút so với ca Hành chính…</td></tr>
+    <tr><td><code>ABSENT_WARNING</code></td><td>Nhân viên</td><td>Job 5 phút: quá "tính vắng sau N phút" mà chưa chấm vào</td><td>⚠️ Chưa ghi nhận chấm công — Ca … bắt đầu 08:00 nhưng chưa thấy bạn chấm vào</td></tr>
+    <tr><td><code>ABSENT_DIGEST</code></td><td>Quản lý phòng (không có thì người duyệt dự phòng)</td><td>Cùng job trên, gộp theo phòng</td><td>📋 Tổng hợp vắng mặt — ca … ngày … (Kinh doanh) 1. … 2. …</td></tr>
+    <tr><td><code>MISSING_OUT_NUDGE</code></td><td>Nhân viên</td><td>Job 30 phút: có giờ vào, ca đã kết thúc mà không có giờ ra</td><td>🔔 Thiếu giờ ra ngày … — link tạo sẵn đơn bổ sung công</td></tr>
+    <tr><td><code>ROSTER_REMINDER</code></td><td>Quản lý phòng đang làm việc và có quyền xếp ca (không có thì HR / Quản trị)</td><td>Thứ Sáu 15:00, phòng có nhân viên xoay ca chưa đăng ký tuần sau</td><td>🗓️ Nhắc đăng ký ca tuần … Hạn chót trước 00:00 thứ Hai</td></tr>
+    <tr><td><code>ROSTER_UNREGISTERED</code></td><td>Mọi Nhân sự (+ nhóm)</td><td>Thứ Hai 07:00</td><td>⚠️ Tuần … còn N phòng chưa đăng ký ca</td></tr>
+    <tr><td><code>REQUEST_OVERDUE</code></td><td>Người phải duyệt / chấm tay</td><td>Job 30 phút, đơn chờ quá 24 giờ</td><td>⏰ Đơn #… đang chờ bạn duyệt đã quá 24 giờ</td></tr>
+    <tr><td><code>REQUEST_ESCALATED</code></td><td>Mọi Quản trị (+ nhóm)</td><td>Đơn chờ quá 48 giờ</td><td>🚨 Đơn #… chờ duyệt đã quá 48 giờ — cần Quản trị xem xét</td></tr>
+  </table></div>
+  <div class="callout"><b>Trạng thái trong nhật ký (NotificationLog)</b>
+    <p>Trạng thái lưu trong bảng: <code>PENDING</code> vừa ghi, đang gửi · <code>SENT</code> đã gửi · <code>SIMULATED</code> chế độ mô phỏng · <code>SKIPPED_NO_ZALO</code> người nhận chưa liên kết Zalo · <code>FAILED</code> Zalo từ chối (kèm mã lỗi). Hai kết quả chỉ trả về cho nơi gọi, <b>không</b> ghi dòng mới: <code>DUPLICATE</code> (trùng dedupeKey — dòng cũ giữ nguyên, không gửi lại) và <code>ERROR</code> (lỗi nội bộ, dòng có thể còn <code>PENDING</code>). Quản trị xem 10 tin nhóm gần nhất ở Cấu hình → Zalo OA; nhân viên xem tin của mình ở trang cá nhân.</p>
+  </div>
+</section>
+
+<!-- 4 -->
+<section id="cron">
+  <h2><span class="num">4.</span>Lịch tự động (job nền)</h2>
+  <p class="lead">Chạy trong tiến trình máy chủ (<code>node-cron</code>, múi giờ Việt Nam). Tắt bằng <code>DISABLE_CRON=true</code> khi muốn gọi từ lịch ngoài.</p>
+  <div class="tw"><table>
+    <tr><th>Job</th><th>Lịch</th><th>Gửi Zalo?</th></tr>
+    <tr><td><code>absence-check</code></td><td>5 phút/lần</td><td>Riêng: <code>ABSENT_WARNING</code> cho từng người; <code>ABSENT_DIGEST</code> cho quản lý phòng</td></tr>
+    <tr><td><code>missing-checkout</code></td><td>30 phút/lần</td><td>Riêng: <code>MISSING_OUT_NUDGE</code></td></tr>
+    <tr><td><code>roster-reminder</code></td><td>Thứ Sáu 15:00</td><td>Riêng: <code>ROSTER_REMINDER</code> cho quản lý</td></tr>
+    <tr><td><code>roster-report</code></td><td>Thứ Hai 07:00</td><td>Riêng: <code>ROSTER_UNREGISTERED</code> cho HR · <b>Nhóm</b>: báo cáo phòng chưa đăng ký</td></tr>
+    <tr><td><code>request-overdue</code></td><td>30 phút/lần</td><td>Riêng: <code>REQUEST_OVERDUE</code> (24 h), <code>REQUEST_ESCALATED</code> (48 h) · <b>Nhóm</b>: leo thang 48 h</td></tr>
+    <tr><td><code>zalo-token-refresh</code></td><td>6 giờ/lần</td><td>Không gửi tin — chủ động làm mới token (bỏ qua khi mô phỏng)</td></tr>
+    <tr><td><code>snapshot-cleanup</code></td><td>02:00</td><td>Không — dọn mã liên kết Zalo hết hạn, ảnh quá hạn</td></tr>
+    <tr><td><code>db-backup</code></td><td>03:00</td><td>Không</td></tr>
+  </table></div>
+  <p>Chạy tay một job (cần <code>CRON_SECRET</code>):</p>
+  <div class="formula">curl -X POST -H "x-cron-secret: $CRON_SECRET" https://&lt;máy-chủ&gt;/api/cron/absence-check</div>
+</section>
+
+<!-- 5 -->
+<section id="cai-dat">
+  <h2><span class="num">5.</span>Cài đặt &amp; vận hành</h2>
+  <p class="lead"><span class="pill a">Quản trị</span> Làm một lần khi đưa vào dùng thật. Không cần lập trình, nhưng cần quyền quản trị OA và ứng dụng trên developers.zalo.me.</p>
+  <h3>5.1 Điều kiện</h3>
+  <ul>
+    <li>OA đã <b>xác thực</b> và đang dùng gói dịch vụ OA (để có tính năng Nhóm chat GMF).</li>
+    <li>Đã tạo <b>ứng dụng</b> trên developers.zalo.me và liên kết với OA.</li>
+    <li>Máy chủ Face Beo có địa chỉ HTTPS công khai nếu muốn dùng webhook (liên kết nhân viên, tự dò nhóm) — mục 5.3.</li>
+  </ul>
+  <h3>5.2 Năm bước thiết lập</h3>
+  <ol class="steps">
+    <li><b>Tạo nhóm GMF</b> trong OA Manager (Chat → tạo nhóm → loại GMF-10/50/100), thêm Quản trị và HR vào nhóm.</li>
+    <li>Trên developers.zalo.me → ứng dụng → <b>Official Account → cấp quyền</b>: chọn OA, bật <i>Gửi tin nhắn</i>, <i>Quản lý thông tin OA</i>, <i>Quản lý Nhóm Chat – GMF</i>. Ghi lại <b>App ID</b> và <b>Secret key</b> (phần Cài đặt).</li>
+    <li><b>Lấy token lần đầu</b> bằng <b>API Explorer</b> (developers.zalo.me/tools/explorer → "Lấy Access Token", Version 4, chọn ứng dụng và OA): sao chép <i>Access token</i> và <i>Refresh token</i>.</li>
+    <li>Điền <code>.env</code> (bảng 5.4) rồi <b>khởi động lại</b> máy chủ. Hai token trong <code>.env</code> chỉ dùng để khởi tạo bảng <code>ZaloToken</code>; sau đó hệ thống tự làm mới, <b>không</b> chép lại giá trị cũ vào <code>.env</code>.</li>
+    <li>Vào <b>Cấu hình → Zalo OA</b>: thấy "Đang gửi thật · OA &lt;tên&gt;". Chọn nhóm trong <i>Nhóm đã dò</i> hoặc dán ID nhóm, bấm <b>Kết nối</b>, rồi <b>Gửi tin thử vào nhóm</b> để chắc chắn tin đến.</li>
+  </ol>
+  <h3>5.3 Webhook qua Cloudflare Tunnel (máy chủ trong LAN)</h3>
+  <p>Zalo chỉ gọi webhook tới HTTPS công khai. Cloudflare Tunnel miễn phí, không cần mở cổng trên router:</p>
+  <div class="formula">winget install Cloudflare.cloudflared
+cloudflared tunnel --url http://localhost:3000
+# in ra https://&lt;ngẫu-nhiên&gt;.trycloudflare.com — đổi mỗi lần chạy, chỉ để thử
+# Có tên miền riêng: cloudflared tunnel create face-beo  →  cloudflared tunnel route dns face-beo zalo.tencongty.vn</div>
+  <p>Sau đó: đặt <code>APP_BASE_URL</code> bằng địa chỉ HTTPS đó; trên developers.zalo.me → <b>Webhook</b> khai báo <code>https://&lt;host&gt;/api/zalo/webhook</code>, chọn sự kiện <i>user_send_text</i> và <i>create_group</i>; sao chép <b>OA Secret Key</b> của phần Webhook vào <code>ZALO_WEBHOOK_SECRET</code>. Ở môi trường production, thiếu biến này webhook trả 503 (từ chối nhận).</p>
+  <h3>5.4 Biến môi trường (chỉ tên — không ghi giá trị vào tài liệu)</h3>
+  <div class="tw"><table>
+    <tr><th>Biến</th><th>Bắt buộc?</th><th>Dùng để</th></tr>
+    <tr><td><code>ZALO_OA_APP_ID</code></td><td>Có (gửi thật)</td><td>Mã ứng dụng trên developers.zalo.me; dùng khi làm mới token và kiểm chữ ký webhook</td></tr>
+    <tr><td><code>ZALO_OA_SECRET</code></td><td>Có (gửi thật)</td><td>Secret key của ứng dụng; gửi trong header <code>secret_key</code> khi làm mới token</td></tr>
+    <tr><td><code>ZALO_OA_ACCESS_TOKEN</code></td><td>Không</td><td>Chỉ có refresh token là đủ: hệ thống làm mới ngay lần gửi đầu. Có điền cũng chỉ dùng để khởi tạo bảng <code>ZaloToken</code> khi bảng trống</td></tr>
+    <tr><td><code>ZALO_OA_REFRESH_TOKEN</code></td><td>Lần đầu</td><td>Khởi tạo bảng <code>ZaloToken</code> khi bảng trống; sau đó hệ thống tự lưu cặp mới, giá trị trong <code>.env</code> không dùng nữa</td></tr>
+    <tr><td><code>ZALO_WEBHOOK_SECRET</code></td><td>Khi dùng webhook</td><td>Kiểm chữ ký <code>X-ZEvent-Signature</code>; không ảnh hưởng chế độ mô phỏng</td></tr>
+    <tr><td><code>ZALO_OA_NAME</code></td><td>Không</td><td>Tên OA hiển thị cho nhân viên ở trang liên kết (mặc định "Face Beo")</td></tr>
+    <tr><td><code>APP_BASE_URL</code></td><td>Nên có</td><td>Địa chỉ gốc cho link trong tin nhắn (mặc định http://localhost:3000)</td></tr>
+    <tr><td><code>CRON_SECRET</code>, <code>DISABLE_CRON</code></td><td>Không</td><td>Gọi job từ lịch ngoài / tắt cron nội bộ</td></tr>
+  </table></div>
+  <div class="callout warn"><b>Quy tắc "mô phỏng"</b><p>Mô phỏng khi thiếu <code>ZALO_OA_APP_ID</code> hoặc <code>ZALO_OA_SECRET</code>, <b>hoặc</b> vừa không có <code>ZALO_OA_REFRESH_TOKEN</code> trong <code>.env</code> vừa trống bảng <code>ZaloToken</code>. Không có biến "bật/tắt mô phỏng" riêng.</p></div>
+  <h3>5.5 Màn hình Cấu hình → Zalo OA</h3>
+  <ul>
+    <li><b>Badge</b>: mô phỏng / đang gửi thật; App ID/Secret có hay thiếu; token có và hạn; webhook secret có hay chưa.</li>
+    <li><b>Cảnh báo đỏ</b> khi làm mới token thất bại (cũng hiện ở Tổng quan).</li>
+    <li><b>Nhóm đã dò</b>: tên, ID, số thành viên, nguồn (dò qua webhook / nhập tay) và nút <b>Kết nối</b>; ô dán ID nhóm thủ công.</li>
+    <li><b>Nhóm đang nhận tin</b> với trạng thái ("OA gửi tin được" = enabled), nút <b>Gửi tin thử vào nhóm</b> và kết quả.</li>
+    <li><b>10 tin nhóm gần nhất</b> kèm trạng thái và mã lỗi.</li>
+  </ul>
+</section>
+
+<!-- 6 -->
+<section id="su-co">
+  <h2><span class="num">6.</span>Xử lý sự cố</h2>
+  <div class="tw"><table>
+    <tr><th>Triệu chứng</th><th>Kiểm tra</th><th>Cách sửa</th></tr>
+    <tr><td>Nhóm không nhận tin, nhật ký ghi <code>SIMULATED</code></td><td>Cấu hình → Zalo OA hiện "mô phỏng"</td><td>Điền đủ App ID, Secret, cặp token rồi khởi động lại (mục 5.2)</td></tr>
+    <tr><td>Tin nhóm <code>FAILED</code> "Chưa cấu hình ID nhóm"</td><td>Chưa bấm Kết nối nhóm</td><td>Cấu hình → Zalo OA → chọn nhóm → Kết nối</td></tr>
+    <tr><td>Kết nối báo "nhóm chưa enabled" / <code>FAILED</code> sai group_id</td><td>Trạng thái nhóm trong OA Manager; OA còn trong nhóm không</td><td>Bật lại nhóm hoặc tạo nhóm GMF mới, kết nối lại</td></tr>
+    <tr><td>Cảnh báo đỏ "Refresh token lỗi"</td><td>Refresh token đã hết hạn (~3 tháng) hoặc bị dùng ở nơi khác</td><td>Lấy cặp token mới bằng API Explorer, điền <code>.env</code>, <b>xóa dòng id = 1 trong bảng <code>ZaloToken</code></b> (bắt buộc — hệ thống không ghi đè dòng cũ; token trong <code>.env</code> chỉ được nạp khi bảng trống), khởi động lại</td></tr>
+    <tr><td>Tin riêng <code>SKIPPED_NO_ZALO</code></td><td>Người nhận chưa liên kết Zalo</td><td>Nhân viên vào trang cá nhân → Zalo → lấy mã → nhắn cho OA</td></tr>
+    <tr><td>Tin riêng <code>FAILED</code> mã <code>-213</code></td><td>Ngoài cửa sổ 48 giờ tin tư vấn</td><td>Nhân viên nhắn bất kỳ cho OA để mở lại cửa sổ; hoặc cân nhắc ZNS (D4)</td></tr>
+    <tr><td>Nhắn mã mà không được liên kết</td><td>Webhook có tới máy chủ không (tunnel còn chạy? URL webhook đúng?); nhật ký 401 = sai chữ ký</td><td>Kiểm tra tunnel và <code>ZALO_WEBHOOK_SECRET</code>; mã hết hạn sau 15 phút thì lấy mã mới</td></tr>
+    <tr><td>Webhook trả 503</td><td>Production thiếu <code>ZALO_WEBHOOK_SECRET</code></td><td>Thêm biến, khởi động lại</td></tr>
+    <tr><td>Thao tác lặp lại nhưng không có tin mới</td><td>Cùng dedupeKey (vd. cùng đơn, cùng ngày) → kết quả <code>DUPLICATE</code>, không ghi dòng mới</td><td>Đúng thiết kế — chống gửi lặp khi thử lại</td></tr>
+  </table></div>
+</section>
+
+<!-- 7 -->
+<section id="ky-thuat">
+  <h2><span class="num">7.</span>Tham chiếu mã nguồn &amp; API</h2>
+  <h3>7.1 File và hàm chính</h3>
+  <div class="tw"><table>
+    <tr><th>File</th><th>Vai trò</th><th>Hàm / hằng đáng chú ý</th></tr>
+    <tr><td><code>src/lib/zalo-oa.ts</code></td><td>Điểm gửi tin duy nhất, không bao giờ ném lỗi</td><td><code>sendZaloMessage({toEmployeeId?, toGroupId?, messageType, data, dedupeKey})</code>; <code>UNCONFIGURED_GROUP</code>; thử lại 3 lần, làm mới token 1 lần</td></tr>
+    <tr><td><code>src/lib/zalo-token.ts</code></td><td>Token + gọi HTTP Zalo</td><td><code>refreshZaloToken(force)</code>, <code>getAccessToken()</code>, <code>isZaloSimulated()</code>, <code>getOaInfo()</code>, <code>getGroupInfo()</code>, <code>getZaloTokenStatus()</code>, <code>getZaloRefreshError()</code>, <code>transport</code>/<code>groupTransport</code> (thay được trong test)</td></tr>
+    <tr><td><code>src/lib/zalo-templates.ts</code></td><td>Nội dung 13 loại tin</td><td><code>renderMessage(type, data)</code>, <code>zaloTemplates</code></td></tr>
+    <tr><td><code>src/lib/announce.ts</code></td><td>Luật tin nhóm minh bạch</td><td><code>announce(actor, action, {key, detail, reason, always})</code>, <code>announceSystem</code>, <code>ANNOUNCED_ROLES = {HR, ADMIN}</code>, <code>onceKey()</code></td></tr>
+    <tr><td><code>src/lib/notify.ts</code></td><td>Chọn người nhận tin riêng (người duyệt, HR, quản lý phòng…)</td><td>hàm cho REQUEST_*, CORRECTION_*, LATE_REMINDER</td></tr>
+    <tr><td><code>src/lib/jobs.ts</code>, <code>src/lib/cron.ts</code></td><td>Job nền (mục 4)</td><td><code>OVERDUE_REMIND_HOURS = 24</code>, <code>OVERDUE_ESCALATE_HOURS = 48</code></td></tr>
+    <tr><td><code>src/app/api/zalo/webhook/route.ts</code></td><td>Nhận sự kiện Zalo</td><td>Kiểm chữ ký, <code>create_group</code>, <code>user_send_text</code>; rate limit 120/phút/IP</td></tr>
+    <tr><td><code>src/app/api/me/zalo/route.ts</code>, <code>src/app/me/zalo/page.tsx</code></td><td>Liên kết Zalo của nhân viên</td><td>GET trạng thái, POST tạo mã (TTL 15 phút), DELETE hủy liên kết</td></tr>
+    <tr><td><code>src/app/api/settings/zalo/route.ts</code>, <code>…/groups/route.ts</code>, <code>…/test/route.ts</code></td><td>Màn hình Quản trị</td><td>Trạng thái, danh sách/kết nối nhóm, gửi tin thử (quyền <code>settings.system</code>)</td></tr>
+    <tr><td><code>src/app/admin/settings/page.tsx</code> (<code>ZaloCard</code>)</td><td>Giao diện thẻ Zalo OA</td><td></td></tr>
+    <tr><td><code>src/app/api/cron/[job]/route.ts</code></td><td>Chạy job thủ công</td><td>header <code>x-cron-secret</code></td></tr>
+    <tr><td><code>tests/integration/zalo-live.test.ts</code>, <code>qc-zalo.test.ts</code></td><td>Test không cần mạng (giả lập HTTP)</td><td>Payload GMF, mã lỗi, làm mới token, chữ ký webhook, kết nối nhóm</td></tr>
+  </table></div>
+
+  <h3>7.2 Endpoint Zalo đã dùng</h3>
+  <div class="tw"><table>
+    <tr><th>Mục đích</th><th>Phương thức &amp; URL</th><th>Header / body</th></tr>
+    <tr><td>Làm mới token</td><td><code>POST https://oauth.zaloapp.com/v4/oa/access_token</code></td><td>header <code>secret_key</code>; body form <code>refresh_token, app_id, grant_type=refresh_token</code>; timeout 20 s</td></tr>
+    <tr><td>Gửi tin nhóm (GMF)</td><td><code>POST https://openapi.zalo.me/v3.0/oa/group/message</code></td><td>header <code>access_token</code>; JSON <code>{recipient:{group_id}, message:{text}}</code></td></tr>
+    <tr><td>Thông tin nhóm</td><td><code>GET https://openapi.zalo.me/v3.0/oa/group/getgroup?group_id=…</code></td><td>header <code>access_token</code></td></tr>
+    <tr><td>Gửi tin riêng (tin tư vấn)</td><td><code>POST https://openapi.zalo.me/v3.0/oa/message/cs</code></td><td>header <code>access_token</code>; JSON <code>{recipient:{user_id}, message:{text}}</code></td></tr>
+    <tr><td>Thông tin OA</td><td><code>GET https://openapi.zalo.me/v2.0/oa/getoa</code></td><td>header <code>access_token</code> (bản v3.0 trả 404 khi đối chiếu 19/09/2026)</td></tr>
+  </table></div>
+  <p><b>Mã lỗi</b>: <code>-216</code>, <code>-124</code>, <code>-220</code> → token không hợp lệ, làm mới rồi gửi lại một lần; <code>-32</code> (quá tải) hoặc thân phản hồi không phải JSON hợp lệ (vd. trang lỗi của proxy) → thử lại, tối đa 3 lượt, chờ 2 giây; lỗi mạng chờ 0,5 s rồi 1 s; <code>-213</code>, <code>-201</code>, <code>-210</code>… → lỗi cấu hình/điều kiện, ghi <code>FAILED</code> ngay. HTTP 200 nhưng thân không phải JSON hợp lệ cũng bị coi là lỗi (không tính SENT).</p>
+
+  <h3>7.3 Chữ ký webhook</h3>
+  <div class="formula">X-ZEvent-Signature: mac=sha256( appId + rawBody + timestamp + ZALO_WEBHOOK_SECRET )
+# chấp nhận cả dạng "mac=&lt;hex&gt;" và hex trần, không phân biệt hoa/thường; so sánh timing-safe</div>
+
+  <h3>7.4 Dữ liệu</h3>
+  <div class="tw"><table>
+    <tr><th>Bảng / cột</th><th>Nội dung</th></tr>
+    <tr><td><code>ZaloToken</code> (id = 1)</td><td><code>accessToken</code>, <code>refreshToken</code>, <code>expiresAt</code>, <code>updatedAt</code></td></tr>
+    <tr><td><code>ZaloLinkCode</code></td><td><code>code</code> (khóa chính, 6 ký tự từ bộ A–Z bỏ I, O và 2–9), <code>employeeId</code>, <code>expiresAt</code></td></tr>
+    <tr><td><code>ZaloGroup</code></td><td><code>groupId</code>, <code>oaId</code>, <code>name</code>, <code>status</code> (enabled/disabled), <code>totalMember</code>, <code>source</code> (WEBHOOK/MANUAL)</td></tr>
+    <tr><td><code>NotificationLog</code></td><td><code>dedupeKey</code> (duy nhất), <code>toEmployeeId</code> / <code>toGroupId</code>, <code>messageType</code>, <code>payload</code> (JSON có text), <code>status</code>, <code>error</code></td></tr>
+    <tr><td><code>Employee.zaloUserId</code>, <code>zaloLinkedAt</code></td><td>Liên kết Zalo cá nhân (duy nhất theo người)</td></tr>
+    <tr><td><code>AppSetting</code> khóa</td><td><code>zaloGroupId</code> (nhóm đang nhận tin), <code>zaloRefreshLock</code>, <code>zaloRefreshError</code></td></tr>
+  </table></div>
+  <div class="callout warn"><b>Bảo mật</b><p>Token Zalo lưu trong SQLite không mã hóa ở tầng ứng dụng (khác mẫu khuôn mặt) → bảo vệ file DB và bản sao lưu. API trạng thái chỉ trả cờ có/không, không bao giờ trả giá trị secret/token. Test tự xóa mọi biến <code>ZALO_*</code> thật và giả lập HTTP.</p></div>
+</section>
+
+<!-- 8 -->
+<section id="tai-lieu">
+  <h2><span class="num">8.</span>Tài liệu Zalo chính thức</h2>
+  <p class="lead">Đường dẫn tra cứu ngày 20/09/2026. Zalo hay đổi cấu trúc trang; nếu link chết, vào <a href="https://developers.zalo.me/docs" target="_blank" rel="noopener noreferrer">developers.zalo.me/docs</a> và tìm theo tên mục.</p>
+  <ul>
+    <li><a href="https://developers.zalo.me/docs/api/official-account-api/phu-luc/official-account-access-token-post-4307" target="_blank" rel="noopener noreferrer">Official Account Access Token (OAuth v4)</a> — cách lấy và làm mới access/refresh token cho OA.</li>
+    <li><a href="https://developers.zalo.me/community/detail/8f3011d52d90c4ce9d81" target="_blank" rel="noopener noreferrer">Lấy OA Access Token và Refresh Token V4 bằng API</a> (bài cộng đồng) và <a href="https://developers.zalo.me/community/detail/2f5d59a265e78cb9d5f6" target="_blank" rel="noopener noreferrer">cách lấy token tự động</a>.</li>
+    <li><a href="https://developers.zalo.me/docs/official-account/nhom-chat-gmf/tin-nhan/text_message" target="_blank" rel="noopener noreferrer">Gửi tin nhắn nhóm dạng Text (GMF)</a> — endpoint <code>/v3.0/oa/group/message</code> mà Face Beo dùng.</li>
+    <li><a href="https://developers.zalo.me/docs/official-account/nhom-chat-gmf/tin-nhan/condition" target="_blank" rel="noopener noreferrer">Điều kiện gửi tin nhắn nhóm</a> — quyền cần cấp, gói OA.</li>
+    <li><a href="https://developers.zalo.me/docs/official-account/nhom-chat-gmf/quan-ly/group_conversation" target="_blank" rel="noopener noreferrer">Quản lý nhóm chat GMF</a> — thông tin nhóm, thành viên.</li>
+    <li><a href="https://developers.zalo.me/docs/official-account/webhook/tin-nhan/su-kien-nguoi-dung-gui-tin-nhan" target="_blank" rel="noopener noreferrer">Webhook: sự kiện người dùng gửi tin nhắn</a> (<code>user_send_text</code>) — dùng cho liên kết nhân viên.</li>
+    <li><a href="https://developers.zalo.me/docs/official-account/webhook/nhom-chat-gmf/messgae_webhook" target="_blank" rel="noopener noreferrer">Webhook: sự kiện tin nhắn trong nhóm</a> — tham khảo về sự kiện nhóm (<code>create_group</code>).</li>
+    <li><a href="https://developers.zalo.me/tools/explorer" target="_blank" rel="noopener noreferrer">API Explorer</a> — lấy cặp token lần đầu (Version 4).</li>
+    <li><a href="https://oa.zalo.me/" target="_blank" rel="noopener noreferrer">OA Manager</a> — tạo nhóm GMF, quản lý OA. <a href="https://developers.zalo.me/" target="_blank" rel="noopener noreferrer">Zalo for Developers</a> — ứng dụng, cấp quyền, webhook.</li>
+    <li><a href="https://developers.zalo.me/faq" target="_blank" rel="noopener noreferrer">FAQ Zalo for Developers</a>.</li>
+  </ul>
+  <p>Tài liệu nội bộ liên quan: <code>README.md</code> mục "Cấu hình Zalo OA", <code>docs/PRD-v2-Face-Beo.md</code> §7, <code>docs/PRD-v2.1-HR.md</code> §7, <code>docs/OPEN-DECISIONS.md</code> D4, cẩm nang sử dụng mục 15.</p>
+</section>
+
+<footer>Face Beo · Tài liệu Zalo OA · cập nhật 20/09/2026 (phiên bản ứng dụng v1.5.3)</footer>
+</main>
+</div>
+
+<script>
+(function(){
+  var root=document.documentElement;
+  try{var t=localStorage.getItem("fb-theme");if(t)root.setAttribute("data-theme",t);}catch(e){}
+  document.getElementById("themeBtn").addEventListener("click",function(){
+    var dark=root.getAttribute("data-theme")==="dark"||(!root.getAttribute("data-theme")&&matchMedia("(prefers-color-scheme: dark)").matches);
+    var next=dark?"light":"dark";root.setAttribute("data-theme",next);
+    try{localStorage.setItem("fb-theme",next);}catch(e){}
+  });
+  // Mục lục: tô mục đang xem
+  var links=[].slice.call(document.querySelectorAll("nav.toc a"));
+  var map={};links.forEach(function(a){map[a.getAttribute("href").slice(1)]=a;});
+  if("IntersectionObserver" in window){
+    var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){links.forEach(function(a){a.classList.remove("active")});var a=map[e.target.id];if(a)a.classList.add("active");}});},{rootMargin:"-10% 0px -80% 0px"});
+    document.querySelectorAll("main section").forEach(function(s){io.observe(s)});
+  }
+  links.forEach(function(a){a.addEventListener("click",function(){document.getElementById("toc").classList.remove("open")})});
+  // Sơ đồ: nếu môi trường chưa tự vẽ Mermaid thì tải thư viện
+  setTimeout(function(){
+    var pending=[].slice.call(document.querySelectorAll("pre.mermaid")).filter(function(p){return !p.querySelector("svg")&&!p.getAttribute("data-processed")});
+    if(!pending.length||window.__fbMermaid)return;window.__fbMermaid=1;
+    var s=document.createElement("script");s.src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js";
+    s.onload=function(){
+      var dark=root.getAttribute("data-theme")==="dark"||(!root.getAttribute("data-theme")&&matchMedia("(prefers-color-scheme: dark)").matches);
+      mermaid.initialize({startOnLoad:false,theme:dark?"dark":"default",fontFamily:"Be Vietnam Pro, sans-serif",securityLevel:"strict"});
+      mermaid.run({nodes:pending});
+    };
+    document.head.appendChild(s);
+  },700);
+})();
+</script>
