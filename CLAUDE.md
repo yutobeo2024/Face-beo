@@ -46,5 +46,10 @@ Server production đang được chạy bằng `next start` (không phải dev).
 ## Việc còn mở (20/09/2026)
 - Nhập nhân viên hàng loạt từ Excel (chưa làm; thiết kế: cột Mã NV, Họ tên, SĐT, Phòng ban, Vai trò, Loại lịch, Mẫu tuần, Ca mặc định,
   xem trước lỗi từng dòng, file kết quả có mật khẩu tạm).
-- Chạy thử một phòng; dữ liệu demo NV001–NV015 còn trong DB; ca "hành chính 1/2" hệ số 1 (có thể nên 0.5).
+- Chạy thử một phòng. Dữ liệu hiện có (máy cũ và seed) chỉ là mockup để phát triển/test; máy mới bắt đầu sạch theo `docs/HANDOFF.md`
+  mục 1b. Trước khi vận hành thật: hiện **chưa có** script tạo Quản trị đầu tiên không qua seed (việc mở bên dưới), nên tạm thời
+  `db:seed` → đổi tên/SĐT/mật khẩu tài khoản NV001 thành Quản trị thật → cho nghỉ việc (không xóa được vì seed đã tạo log) hoặc xóa
+  các nhân viên mẫu còn lại; kiểm tra lại hệ số ca (vd. ca nửa ngày nên 0.5).
+- Cần làm: script/lệnh "tạo Quản trị đầu tiên" cho DB trống (vd. `npm run admin:create`) để đưa vào sử dụng thật không kéo theo dữ
+  liệu mẫu; tùy chọn seed chỉ tạo ca/mẫu tuần/ngày lễ mà không tạo nhân viên.
 - D4 tin Zalo cá nhân (ZNS hay tin tư vấn); Cloudflare Tunnel cho webhook; sản xuất: Windows service, HTTPS trong LAN, backup ra ngoài máy.
