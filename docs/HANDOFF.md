@@ -11,7 +11,7 @@ Bị `.gitignore` bỏ qua — **cố ý**, phải chép tay từ máy cũ (USB 
 
 | Đường dẫn | Chứa gì | Nếu không chép |
 |---|---|---|
-| `.env` | mọi bí mật: `BIOMETRIC_KEY`, `JWT_SECRET`, `ZALO_OA_*`, `ZALO_WEBHOOK_SECRET`, `CRON_SECRET`, `APP_BASE_URL`… | Mất `BIOMETRIC_KEY` = **không giải mã được mẫu khuôn mặt**, phải enroll lại toàn bộ. Tạo `.env` mới từ `.env.example` chỉ khi bắt đầu lại từ đầu. |
+| `.env` | mọi bí mật: `BIOMETRIC_KEY`, `SESSION_SECRET`, `ZALO_OA_*`, `ZALO_WEBHOOK_SECRET`, `CRON_SECRET`, `APP_BASE_URL`… | Mất `BIOMETRIC_KEY` = **không giải mã được mẫu khuôn mặt**, phải enroll lại toàn bộ. Tạo `.env` mới từ `.env.example` chỉ khi bắt đầu lại từ đầu. |
 | `data/facebeo.db` (+ `facebeo.db-wal`, `facebeo.db-shm` nếu còn) | DB thật: nhân viên, khuôn mặt, log chấm công, đơn, lịch, token Zalo, phân quyền | Máy mới trống, phải seed lại (`npm run db:seed`) và nhập lại người |
 | `data/backups/` | bản `VACUUM INTO` hằng đêm 03:00 (giữ 14 bản) | Có thể dùng thay `facebeo.db` |
 | `data/snapshots/` | ảnh lần quét (tự xóa sau 90 ngày) | Mất ảnh đối chiếu cũ, không ảnh hưởng công |
@@ -27,7 +27,7 @@ copy .env.example .env      # rồi mở .env điền giá trị (xem dưới)
 npm run db:deploy && npm run db:seed   # DB mới + dữ liệu mẫu NV001…, mật khẩu seed 123456
 ```
 
-Trong `.env` mới: tạo `BIOMETRIC_KEY` và `JWT_SECRET` mới (chuỗi ngẫu nhiên dài; mẫu khuôn mặt sẽ enroll lại từ đầu nên khóa mới
+Trong `.env` mới: tạo `BIOMETRIC_KEY` và `SESSION_SECRET` mới (chuỗi ngẫu nhiên dài; mẫu khuôn mặt sẽ enroll lại từ đầu nên khóa mới
 không sao). Riêng phần Zalo nên **chép lại từ `.env` máy cũ**: `ZALO_OA_APP_ID`, `ZALO_OA_SECRET`, `ZALO_WEBHOOK_SECRET`, `ZALO_OA_NAME`.
 Lưu ý token: cặp token hiện hành nằm trong bảng `ZaloToken` của DB cũ (refresh token trong `.env` cũ rất có thể đã bị dùng một lần
 rồi) → bỏ DB thì phải **lấy cặp token mới** bằng API Explorer (developers.zalo.me/tools/explorer, Version 4) điền vào
