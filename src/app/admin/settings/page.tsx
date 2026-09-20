@@ -268,15 +268,18 @@ export default function SettingsPage() {
               <li key={d.id} className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:px-5">
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold text-slate-800">{d.name}</p>
-                  <p className="text-xs text-slate-500">{d.employeeCount} nhân viên</p>
+                  <p className="text-xs text-slate-500">
+                    {d.employeeCount} nhân viên
+                    {d.totalEmployeeCount > d.employeeCount && <span> · {d.totalEmployeeCount - d.employeeCount} đã nghỉ việc</span>}
+                  </p>
                 </div>
                 <div className="flex shrink-0 sm:order-last">
                   <IconButton icon="edit" label="Đổi tên phòng" onClick={() => setDeptForm({ id: d.id, name: d.name })} />
                   <IconButton
                     icon="trash"
-                    label={d.employeeCount > 0 ? "Phòng còn nhân viên — không xóa được" : "Xóa phòng ban"}
+                    label={d.totalEmployeeCount > 0 ? "Phòng còn nhân viên (kể cả đã nghỉ) — không xóa được" : "Xóa phòng ban"}
                     className="text-rose-600 hover:bg-rose-50"
-                    disabled={d.employeeCount > 0}
+                    disabled={d.totalEmployeeCount > 0}
                     onClick={() =>
                       setConfirmBox({
                         title: "Xóa phòng ban",

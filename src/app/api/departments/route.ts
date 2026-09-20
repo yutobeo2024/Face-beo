@@ -13,7 +13,10 @@ export const GET = handle(async (req) => {
     orderBy: { id: "asc" },
     select: { id: true, name: true, managerId: true, manager: { select: { name: true, code: true } }, _count: { select: { employees: { where: { active: true } } } } },
   });
-  return json({ departments: rows.map(({ _count, ...d }) => ({ ...d, employeeCount: _count.employees })) });
+  // totalEmployeeCount tính cả người đã nghỉ việc (hồ sơ vẫn ghi phòng) — UI dùng để biết phòng có xóa được không.
+  const totals = await prisma.employee.groupBy({ by: ["departmentId"], where: { departmentId: { in: rows.map((r) => r.id) } }, _count: { _all: true } });
+  const total = new Map(totals.map((t) => [t.departmentId, t._count._all]));
+  return json({ departments: rows.map(({ _count, ...d }) => ({ ...d, employeeCount: _count.employees, totalEmployeeCount: total.get(d.id) ?? 0 })) });
 });
 
 export const POST = handle(async (req) => {
