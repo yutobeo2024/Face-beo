@@ -184,6 +184,7 @@ Job `request-overdue` chạy mỗi 30 phút.
 ## 12. Phiên đăng nhập, mật khẩu, liveness (v1.4.4 — theo rà soát bảo mật 20/09/2026)
 
 - **Không có mật khẩu mặc định.** Tạo tài khoản không kèm mật khẩu thì hệ thống sinh mật khẩu tạm ngẫu nhiên, trả về một lần cho người tạo.
+- **Tự đổi mật khẩu** ở `/me/password` (mọi vai trò, cần mật khẩu hiện tại). Quên mật khẩu: Nhân sự đặt lại trong hồ sơ → mật khẩu tạm.
 - **Thu hồi phiên.** `Employee.sessionVersion` được ghi vào JWT; đổi mật khẩu, đặt lại mật khẩu, và **đăng xuất** đều tăng số này nên mọi
   phiên cũ (kể cả cookie bị sao chép) hết hiệu lực ngay. Đăng xuất một nơi = thoát mọi thiết bị.
 - **Đăng nhập.** Sai tài khoản và sai mật khẩu trả cùng một thông báo; bộ đếm sai được tăng nguyên tử trong DB, ≥ 5 lần khóa 15 phút.
