@@ -245,6 +245,9 @@ flowchart LR
     <tr><td>🔒 Cấu hình hệ thống, thiết bị, phân quyền, gán vai trò HR/QT, <b>mở khóa tháng</b></td><td class="y">✔</td><td colspan="3">Luôn chỉ Quản trị, không chỉnh được</td></tr>
   </table></div>
 
+  <div class="callout warn"><b>Không nên cấp quyền "Phòng ban, ngày lễ, định nghĩa ca, mẫu tuần" cho Quản lý</b>
+    <p>Quyền này (<code>org.manage</code>) chạm vào cấu hình <b>chung toàn công ty</b>: giờ ca, hệ số chung của ca, ngày lễ, mẫu tuần. Ca và ngày lễ không thuộc phòng nào nên không giới hạn được "chỉ phòng mình". Ví dụ: Quản lý phòng Kho được cấp quyền này có thể đổi hệ số ca "Sáng thứ Bảy" từ 0.5 thành 1 cho <b>mọi phòng</b>. Phòng nào cần đổi ca hay hệ số thì đề nghị Quản trị làm.</p>
+  </div>
   <div class="callout warn"><b>Các luật không thể tắt</b>
     <p>• Không ai tự duyệt, tự chấm tay đơn của chính mình. • Không tự đổi vai trò, không tự cho mình nghỉ việc.
     • Nhân sự không sửa được tài khoản và khuôn mặt của Nhân sự/Quản trị khác. • Quản lý chỉ thấy dữ liệu các phòng mình quản lý; nhân viên chỉ thấy dữ liệu của mình.</p>

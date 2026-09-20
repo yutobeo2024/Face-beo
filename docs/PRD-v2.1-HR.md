@@ -27,6 +27,9 @@ Bổ sung cho `PRD-v2-Face-Beo.md`, chốt ngày 19/09/2026. Khi hai tài liệu
   - cấu hình hệ thống, thiết bị;
   - phòng ban/gán quản lý, ngày lễ, định nghĩa ca, mẫu tuần (`org.manage`);
   - chấm tay trực tiếp, xóa log.
+- **`org.manage` là quyền toàn công ty** (chốt 20/09/2026): ca, ngày lễ, mẫu tuần không thuộc phòng nào nên không giới hạn được theo phòng.
+  Giữ quyền này cho Quản trị như mặc định, không cấp cho Quản lý. Các phần có phạm vi phòng (hệ số riêng theo phòng, gán quản lý,
+  log chấm công, hệ số ca, lần quét đáng ngờ) đã kiểm tra `assertDept`/`deptScope` từ v1.4.3.
 
 ## 3. Tuyến duyệt đơn (mọi loại đơn)
 

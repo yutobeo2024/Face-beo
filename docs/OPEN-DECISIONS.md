@@ -34,6 +34,11 @@ Ghi lại những điểm đã phát hiện trong quá trình làm và test, c�
 - **OT ngày không có ca:** tính theo đơn tăng ca đã duyệt.
 - **Minh bạch:** thao tác duyệt/sửa của HR và ADMIN được gửi vào nhóm Zalo OA. Không gửi lần quét chấm công, cũng như thao tác ngang quyền nhân viên.
 
+## Đã chốt v1.4.3 (20/09/2026)
+
+- **Giữ `org.manage` là quyền gộp toàn công ty**, không tách quyền "hệ số công của phòng mình" cho Quản lý. Ghi chú trong cẩm nang
+  (mục 3) và PRD mục 2: không cấp `org.manage` cho Quản lý.
+
 ## Đã chốt v1.4 (19/09/2026)
 
 - **Zalo OA giai đoạn 1: chỉ nhóm minh bạch (GMF).** OA có gói dịch vụ, nhóm đã tạo. Tin cá nhân để D4.
