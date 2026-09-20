@@ -11,6 +11,7 @@ const NAV: NavItem[] = [
   { href: "/me/requests", label: "Đơn từ", icon: "file", mobile: true },
   { href: "/me/attendance", label: "Lịch sử công", icon: "calendar", mobile: true },
   { href: "/me/zalo", label: "Zalo", icon: "zalo", mobile: true },
+  { href: "/me/info", label: "Thông tin", icon: "info" },
   { href: "/me/password", label: "Đổi mật khẩu", icon: "lock" },
 ];
 

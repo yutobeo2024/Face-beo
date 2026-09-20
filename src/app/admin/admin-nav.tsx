@@ -22,6 +22,7 @@ export function AdminNav({ user, caps, children }: { user: ShellUser & { id: num
     has("attendance.view") && { href: "/admin/attendance", label: "Chấm công", icon: "clock", mobile: true },
     has("reports.view") && { href: "/admin/reports", label: "Báo cáo", icon: "chart" },
     (has("employees.view") || has("employees.manage")) && { href: "/admin/employees", label: "Nhân viên", icon: "users" },
+    has("links.manage") && { href: "/admin/links", label: "Liên kết", icon: "link" },
     has("devices.manage") && { href: "/admin/devices", label: "Thiết bị kiosk", icon: "tablet" },
     (has("org.manage") || has("settings.system")) && { href: "/admin/settings", label: "Cấu hình", icon: "settings", exact: true },
     has("permissions.manage") && { href: "/admin/settings/permissions", label: "Phân quyền", icon: "shield" },

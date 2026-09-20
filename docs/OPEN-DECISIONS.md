@@ -34,6 +34,12 @@ Ghi lại những điểm đã phát hiện trong quá trình làm và test, c�
 - **OT ngày không có ca:** tính theo đơn tăng ca đã duyệt.
 - **Minh bạch:** thao tác duyệt/sửa của HR và ADMIN được gửi vào nhóm Zalo OA. Không gửi lần quét chấm công, cũng như thao tác ngang quyền nhân viên.
 
+## Đã chốt v1.5.0 (20/09/2026)
+
+- **Mục "Thông tin" (thư viện liên kết)** trong trang cá nhân: quyền mới `links.manage`, mặc định Nhân sự; Quản lý chỉ khi được cấp và
+  bị giới hạn theo phòng mình phụ trách (phải chọn ≥ 1 phòng). Hiển thị theo luật giao vai trò ∩ phòng ban, trống = tất cả, không có
+  ngoại lệ cho HR/Quản trị. Trên điện thoại mục này nằm trong ngăn "Thêm" (thanh dưới đã đủ 4 mục). Xem PRD mục 13.
+
 ## Đã chốt v1.4.3 (20/09/2026)
 
 - **Giữ `org.manage` là quyền gộp toàn công ty**, không tách quyền "hệ số công của phòng mình" cho Quản lý. Ghi chú trong cẩm nang

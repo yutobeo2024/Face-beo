@@ -242,6 +242,7 @@ flowchart LR
     <tr><td>Chốt công tháng</td><td class="y">✔</td><td class="y">✔</td><td class="n">–</td><td class="n">–</td></tr>
     <tr><td>Xem / quản lý nhân viên, enroll khuôn mặt</td><td class="y">✔</td><td class="y">✔</td><td>chỉ xem</td><td class="n">–</td></tr>
     <tr><td>Phòng ban, ngày lễ, định nghĩa ca, mẫu tuần</td><td class="y">✔</td><td class="n">–</td><td class="n">–</td><td class="n">–</td></tr>
+    <tr><td>Thông tin: thêm / sửa liên kết nhanh (web app, Google Sheet, Drive…)</td><td class="y">✔</td><td class="y">✔</td><td>chỉ khi được cấp, giới hạn phòng mình</td><td class="n">–</td></tr>
     <tr><td>🔒 Cấu hình hệ thống, thiết bị, phân quyền, gán vai trò HR/QT, <b>mở khóa tháng</b></td><td class="y">✔</td><td colspan="3">Luôn chỉ Quản trị, không chỉnh được</td></tr>
   </table></div>
 
@@ -346,6 +347,24 @@ flowchart TD
   E -- Không --> R5["Ca mặc định,<br/>nghỉ Chủ nhật"]
 </pre>
     <div class="cap">Hình 3. Thứ tự ưu tiên khi xác định ca. Bản nháp lịch tuần không bao giờ được tính.</div>
+  </div>
+
+  <h3 id="lien-ket">5.4 Liên kết nhanh — mục "Thông tin" của trang cá nhân</h3>
+  <p class="lead"><span class="pill h">Nhân sự</span> <span class="pill a">Quản trị</span> Menu <b>Liên kết</b>. Đưa các công cụ dùng chung (web app cũ, Google Sheet đã chia sẻ, thư mục Drive, Google Docs…) thành các ô bấm-là-mở trong <b>Trang cá nhân → Thông tin</b> của nhân viên.</p>
+  <ol class="steps">
+    <li><b>Thêm liên kết</b>: nhập Tiêu đề (vd. "Bảng KPI tháng"), dán đường dẫn bắt đầu bằng <code>https://</code> (link chia sẻ của Google Sheet/Drive/Docs hoặc địa chỉ web app), mô tả ngắn (không bắt buộc).</li>
+    <li><b>Chọn icon</b> trong lưới (bảng tính, thư mục, tài liệu, sách, biểu đồ, video, chat…) và <b>màu ô</b>. Ô "Xem trước" cho thấy ô sẽ hiện thế nào.</li>
+    <li><b>Ai được xem</b>: tích <i>Vai trò được xem</i> và/hoặc <i>Phòng ban được xem</i>. Không tích gì = mọi người đều thấy. Tích cả hai = phải khớp <b>cả hai</b> (vai trò <b>và</b> phòng).</li>
+    <li><b>Thứ tự</b>: số nhỏ hiện trước. <b>Đang hiển thị</b>: bỏ tích để tạm ẩn mà không xóa.</li>
+    <li>Lưu. Thao tác được ghi nhật ký và báo vào nhóm Zalo minh bạch. Bấm <b>Xem như nhân viên</b> để kiểm tra kết quả.</li>
+  </ol>
+  <div class="ex"><div class="t">Ví dụ cấu hình</div>
+    <p>• "Cẩm nang sử dụng" — không tích gì → <b>mọi người</b> thấy.<br/>
+    • "Bảng KPI Kinh doanh" — vai trò <i>Quản lý</i> + phòng <i>Kinh doanh</i> → <b>chỉ quản lý phòng Kinh doanh</b> thấy; nhân viên Kinh doanh không thấy (sai vai trò), quản lý phòng Kho không thấy (sai phòng).<br/>
+    • "Quy trình kho" — chỉ tích phòng <i>Kho vận</i> → mọi vai trò trong phòng Kho vận thấy.</p>
+  </div>
+  <div class="callout"><b>Quản lý cũng có thể được cấp quyền này</b>
+    <p>Quản trị cấp quyền "Thông tin: thêm / sửa liên kết nhanh" cho vai trò Quản lý trong <b>Phân quyền</b>. Khi đó Quản lý chỉ tạo/sửa/xóa được liên kết <b>gắn với phòng mình phụ trách</b> (bắt buộc chọn ít nhất một phòng); liên kết toàn công ty vẫn do Nhân sự / Quản trị quản lý. Danh sách phòng trong biểu mẫu của Quản lý chỉ hiện phòng họ phụ trách.</p>
   </div>
 </section>
 
@@ -754,6 +773,7 @@ stateDiagram-v2
     <div class="card"><h4>🏠 Trang chủ</h4><p>Ca hôm nay, giờ vào/ra, công tháng này (ngày công, phép, trễ, OT), thông báo gần đây.</p></div>
     <div class="card"><h4>🕘 Chấm công</h4><p>Lịch sử từng ngày: ca, giờ vào/ra, trễ/sớm, trạng thái. Thấy sai thì gửi đơn ngay.</p></div>
     <div class="card"><h4>📝 Đơn từ</h4><p>Chọn loại đơn → ngày → giờ → lý do (≥ 10 ký tự) → gửi. Theo dõi trạng thái: Chờ duyệt / Đã duyệt / Từ chối / Đã hủy.</p></div>
+    <div class="card"><h4>🔗 Thông tin</h4><p>Lưới ô liên kết tới công cụ, bảng tính, tài liệu dùng chung (web app, Google Sheet, Drive, Docs…). Bấm ô để mở tab mới. Chỉ thấy các liên kết dành cho vai trò/phòng của mình; thiếu link thì báo HR (mục 5.4). Trên điện thoại: bấm <b>Thêm</b> ở thanh dưới.</p></div>
     <div class="card"><h4>🔒 Đổi mật khẩu</h4><p>Nhập mật khẩu hiện tại và mật khẩu mới (≥ 8 ký tự, có chữ và số). Đổi xong, thiết bị khác đang đăng nhập sẽ bị thoát. Quên mật khẩu thì nhờ HR đặt lại.</p></div>
   </div>
   <div class="ex"><div class="t">Tình huống: hôm qua quên chấm ra</div>
@@ -788,10 +808,11 @@ stateDiagram-v2
   <details><summary>Quản lý muốn đổi ca đã đăng ký</summary><p>Quản lý không sửa được lịch đã đăng ký. Nhờ HR sửa, kèm lý do; thay đổi sẽ báo vào nhóm Zalo.</p></details>
   <details><summary>Nhóm Zalo không nhận tin</summary><p>Quản trị mở thẻ Zalo OA: xem trạng thái (thật/mô phỏng), trạng thái nhóm phải là "enabled", xem lỗi ở bảng 10 tin gần nhất, bấm Gửi tin thử.</p></details>
   <details><summary>Quên mật khẩu / muốn đổi mật khẩu</summary><p><b>Quên:</b> nhờ HR (hoặc Quản trị với tài khoản HR/Quản trị) đặt lại mật khẩu trong hồ sơ nhân viên; HR đưa mật khẩu tạm, đăng nhập xong hệ thống bắt đổi ngay. <b>Còn nhớ, muốn đổi:</b> vào Trang cá nhân → <b>Đổi mật khẩu</b>. Cả hai cách đều làm mọi phiên đăng nhập cũ của người đó bị thoát.</p></details>
+  <details><summary>Không thấy liên kết X trong mục Thông tin</summary><p>Liên kết có thể đang bị giới hạn vai trò/phòng ban hoặc đang tạm ẩn. HR mở <b>Liên kết</b>, xem nhãn bên dưới liên kết (Mọi người / tên vai trò / tên phòng): nhân viên phải khớp <b>cả</b> vai trò lẫn phòng nếu cả hai được tích. Sửa lại bộ lọc hoặc tích "Đang hiển thị".</p></details>
   <details><summary>Đăng xuất trên điện thoại thì máy tính cũng bị thoát?</summary><p>Đúng, có chủ đích: đăng xuất ở bất kỳ đâu sẽ thoát tài khoản trên mọi thiết bị (kể cả phiên lỡ để lại ở máy dùng chung). Đăng nhập lại là được. Đổi mật khẩu cũng vậy.</p></details>
 </section>
 
-<footer>Face Beo · Cẩm nang sử dụng · cập nhật 19/09/2026 (phiên bản ứng dụng v1.4)</footer>
+<footer>Face Beo · Cẩm nang sử dụng · cập nhật 20/09/2026 (phiên bản ứng dụng v1.5.0)</footer>
 </main>
 </div>
 

@@ -191,3 +191,18 @@ Job `request-overdue` chạy mỗi 30 phút.
 - **Ảnh quét bị từ chối** (không gắn log, không rõ phòng) chỉ người có phạm vi toàn công ty và quyền `suspicious.view` xem được.
 - **Liveness L2 lỗi = từ chối** (fail-closed): kiosk nhận 503, giữ lần quét trong hàng đợi (không đếm lần thử) và gửi lại khi mô hình
   chạy; Quản trị được cảnh báo. L2 tắt bằng cấu hình thì chỉ dùng L1 — vận hành thật phải bật `LIVENESS_SERVER=true`.
+
+## 13. Mục "Thông tin" — thư viện liên kết (v1.5.0, 20/09/2026)
+
+- **Mục đích.** Trang cá nhân có mục **Thông tin** (`/me/info`): lưới ô liên kết đều nhau, bo tròn, mở tab mới — trỏ tới web app
+  nội bộ cũ, Google Sheet chia sẻ, thư mục Drive, Google Docs… Mỗi ô có icon (chọn từ bộ icon nội bộ) và màu.
+- **Ai quản lý.** Quyền mới `links.manage` (nhóm Tổ chức): Quản trị luôn có, Nhân sự có mặc định. Quản lý chỉ có khi Quản trị cấp trong
+  Phân quyền; khi đó **chỉ tạo/sửa/xóa được liên kết gắn với phòng mình phụ trách** (bắt buộc chọn ≥ 1 phòng, mọi phòng đều trong
+  phạm vi). Liên kết toàn công ty (không chọn phòng) chỉ Nhân sự / Quản trị thao tác được. Trang quản trị: `/admin/links`.
+- **Ai được thấy.** Mỗi liên kết có hai bộ lọc: *vai trò được xem* và *phòng ban được xem*; để trống = tất cả. Nhân viên thấy liên kết
+  khi đang bật **và** (vai trò khớp hoặc trống) **và** (phòng khớp hoặc trống). Ví dụ "Bảng KPI Kinh doanh" chọn vai trò Quản lý +
+  phòng Kinh doanh → chỉ quản lý phòng Kinh doanh thấy; Nhân sự ở phòng Hành chính không thấy (luật giao, không ngoại lệ cho HR/QT).
+- **Ẩn thay vì xóa.** Bỏ tích "Đang hiển thị" để tạm ẩn; xóa thì mất hẳn. Mọi thao tác ghi audit `INFOLINK_UPDATE` và báo vào nhóm
+  Zalo minh bạch (với HR/Quản trị).
+- **An toàn.** Chỉ nhận URL `http(s)://`; icon và màu phải thuộc danh sách cho phép; mở bằng `rel="noopener noreferrer"`.
+- **Dữ liệu.** Bảng `InfoLink` (SQLite), hai cột JSON `visibleRoles`, `visibleDeptIds`; lọc trong ứng dụng (≤ vài chục dòng).

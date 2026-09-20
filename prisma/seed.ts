@@ -38,6 +38,7 @@ async function wipe() {
     prisma.workPattern.deleteMany(),
     prisma.shift.deleteMany(),
     prisma.holiday.deleteMany(),
+    prisma.infoLink.deleteMany(),
     prisma.auditLog.deleteMany(),
     prisma.appSetting.deleteMany(),
     prisma.rolePermission.deleteMany(),
@@ -143,6 +144,15 @@ async function main() {
   });
 
   await ensureDefaultPermissions();
+
+  // Mục "Thông tin" (trang cá nhân): 2 liên kết mẫu toàn công ty + 1 liên kết chỉ Quản lý phòng Kinh doanh thấy.
+  await prisma.infoLink.createMany({
+    data: [
+      { title: "Cẩm nang sử dụng Face Beo", url: "https://claude.ai/artifact/EiMsP9AtirhXTiNUeKyPXz", description: "Hướng dẫn mọi vai trò", icon: "book", color: "brand", order: 1 },
+      { title: "Lịch họp công ty", url: "https://calendar.google.com/", description: "Google Calendar", icon: "calendar", color: "emerald", order: 2 },
+      { title: "Bảng KPI Kinh doanh", url: "https://docs.google.com/spreadsheets/", description: "Chỉ quản lý phòng Kinh doanh", icon: "table", color: "amber", order: 3, visibleRoles: JSON.stringify(["MANAGER", "HR", "ADMIN"]), visibleDeptIds: JSON.stringify([depts[1].id]) },
+    ],
+  });
 
   for (const [key, value] of Object.entries(DEFAULT_APP_SETTINGS)) {
     await prisma.appSetting.create({ data: { key, value: String(value) } });

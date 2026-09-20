@@ -58,7 +58,8 @@ Seed còn tạo 4 ca (Hành chính 08:00–17:00, Sáng sớm 07:00–17:00, Ca 
 | `/admin/devices` | 🔒 ADMIN | Ghép / thu hồi kiosk |
 | `/admin/settings` | 🔒 ADMIN / `org.manage` | Ca, mẫu tuần, ngày lễ, phòng ban, ngưỡng, ID nhóm Zalo |
 | `/admin/settings/permissions` | 🔒 ADMIN | Ma trận phân quyền |
-| `/me`, `/me/requests`, `/me/attendance`, `/me/zalo` | Mọi người đăng nhập | Lịch tuần, đơn của tôi (nghỉ, về sớm, tăng ca, bổ sung công), lịch sử công, liên kết Zalo |
+| `/admin/links` | `links.manage` (HR mặc định; Quản lý nếu được cấp, giới hạn theo phòng) | Liên kết nhanh của mục "Thông tin": thêm/sửa/ẩn, chọn icon, giới hạn vai trò + phòng ban được xem (v1.5.0) |
+| `/me`, `/me/requests`, `/me/attendance`, `/me/zalo`, `/me/info`, `/me/password` | Mọi người đăng nhập | Lịch tuần, đơn của tôi (nghỉ, về sớm, tăng ca, bổ sung công), lịch sử công, liên kết Zalo, mục Thông tin (ô liên kết web app / Google Sheet / Drive), đổi mật khẩu |
 | `/kiosk`, `/kiosk/pair`, `/kiosk/benchmark` | Thiết bị đã ghép | Chấm công, ghép thiết bị, đo hiệu năng |
 
 ### Vai trò và ma trận phân quyền

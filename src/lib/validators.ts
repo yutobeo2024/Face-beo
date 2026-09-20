@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { REQUEST_TYPES, ROLES } from "./roles";
+import { LINK_COLOR_NAMES, LINK_ICONS } from "@/components/icon-paths";
 
 export const dateStr = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "định dạng YYYY-MM-DD");
 export const timeStr = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "định dạng HH:mm");
@@ -70,6 +71,40 @@ export const shiftWeightsSchema = z.object({
 });
 
 export const holidaySchema = z.object({ date: dateStr, name: z.string().trim().min(2).max(100) });
+
+/** Liên kết trong mục "Thông tin": chỉ nhận http(s); mảng vai trò / phòng rỗng = tất cả. */
+const infoLinkFields = {
+  title: z.string().trim().min(2, "Tiêu đề tối thiểu 2 ký tự").max(80),
+  url: z
+    .string()
+    .trim()
+    .max(500)
+    .refine((s) => /^https?:\/\/[^\s]+$/i.test(s), "Đường dẫn phải bắt đầu bằng http:// hoặc https://"),
+  description: z
+    .string()
+    .trim()
+    .max(200)
+    .nullable()
+    .optional()
+    .transform((s) => (s === undefined ? undefined : s || null)), // "" => null; không gửi => giữ nguyên (PATCH)
+  icon: z.enum(LINK_ICONS as [string, ...string[]]),
+  color: z.enum(LINK_COLOR_NAMES as [string, ...string[]]),
+  order: z.number().int().min(0).max(9999),
+  active: z.boolean(),
+  visibleRoles: z.array(z.enum(ROLES)).max(4),
+  visibleDeptIds: z.array(idNum).max(200),
+};
+export const infoLinkSchema = z.object({
+  ...infoLinkFields,
+  icon: infoLinkFields.icon.default("link"),
+  color: infoLinkFields.color.default("brand"),
+  order: infoLinkFields.order.default(0),
+  active: infoLinkFields.active.default(true),
+  visibleRoles: infoLinkFields.visibleRoles.default([]),
+  visibleDeptIds: infoLinkFields.visibleDeptIds.default([]),
+});
+// Schema sửa KHÔNG có .default(): zod 4 vẫn áp default qua .partial(), sẽ âm thầm xóa phòng/vai trò khi chỉ đổi tiêu đề.
+export const infoLinkPatchSchema = z.object(infoLinkFields).partial();
 
 export const rosterCellSchema = z.object({
   employeeId: idNum,

@@ -98,6 +98,7 @@ const gates: [string, string, Capability[]][] = [
   ["shifts", "POST", ["org.manage"]], ["shifts/[id]", "PATCH", ["org.manage"]], ["shifts/[id]", "DELETE", ["org.manage"]],
   ["work-patterns", "POST", ["org.manage"]], ["work-patterns/[id]", "PATCH", ["org.manage"]], ["work-patterns/[id]", "DELETE", ["org.manage"]],
   ["holidays", "POST", ["org.manage"]], ["holidays/[date]", "DELETE", ["org.manage"]],
+  ["links", "GET", ["links.manage"]], ["links", "POST", ["links.manage"]], ["links/[id]", "PATCH", ["links.manage"]], ["links/[id]", "DELETE", ["links.manage"]],
   ["shift-weights", "GET", ["org.manage"]], ["shift-weights", "PUT", ["org.manage"]],
   ["dashboard", "GET", ["dashboard.view"]], ["attendance", "GET", ["attendance.view"]],
   ["attendance/manual", "POST", ["attendance.manualDirect"]], ["attendance/[id]", "DELETE", ["attendance.delete"]],
@@ -125,7 +126,7 @@ describe("RBAC endpoint matrix: default roles and anonymous", () => {
       else expect(res.status).toBe(403);
     });
   }
-  for (const path of ["departments", "shifts", "work-patterns", "holidays", "requests", "requests/prefill", "me/attendance", "me/overview", "me/notifications", "me/zalo", "auth/me", "employees/[id]", "snapshots/[...path]"]) {
+  for (const path of ["departments", "shifts", "work-patterns", "holidays", "requests", "requests/prefill", "me/attendance", "me/overview", "me/notifications", "me/zalo", "me/links", "auth/me", "employees/[id]", "snapshots/[...path]"]) {
     it(`GET ${path}: anonymous => 401`, async () => {
       expect((await call(path, "GET", undefined, undefined, { id: "0", path: ["invalid"] })).status).toBe(401);
     });

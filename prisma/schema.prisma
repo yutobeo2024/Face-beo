@@ -211,6 +211,24 @@ model RolePermission {
   @@id([role, capability])
 }
 
+// Thư viện liên kết ("Thông tin" trong trang cá nhân): web app, Google Sheet, Drive, Docs…
+// Ai được thấy: giao của visibleRoles và visibleDeptIds; mảng rỗng = tất cả.
+model InfoLink {
+  id             Int      @id @default(autoincrement())
+  title          String
+  url            String
+  description    String?
+  icon           String   @default("link")
+  color          String   @default("brand")
+  order          Int      @default(0)
+  active         Boolean  @default(true)
+  visibleRoles   String   @default("[]") // JSON string[] — rỗng = mọi vai trò
+  visibleDeptIds String   @default("[]") // JSON number[] — rỗng = mọi phòng ban
+  createdById    Int?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
 // Mẫu tuần làm việc cho nhân viên ca cố định: ca theo từng thứ (null = nghỉ).
 model WorkPattern {
   id         Int        @id @default(autoincrement())
