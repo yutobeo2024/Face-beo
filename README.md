@@ -53,7 +53,7 @@ Seed còn tạo 4 ca (Hành chính 08:00–17:00, Sáng sớm 07:00–17:00, Ca 
 | `/admin/roster` | `roster.view` / `roster.edit` | Xếp ca tuần nhóm xoay ca, đăng ký tuần, lịch sử thay đổi |
 | `/admin/requests` | `requests.decide` | Duyệt đơn; tab "Chờ chấm tay" (`attendance.executeCorrection`) |
 | `/admin/attendance` | `attendance.view` | Log theo ngày, snapshot, chấm tay trực tiếp (`attendance.manualDirect`, chỉ ADMIN) |
-| `/admin/reports` | `reports.view` | Bảng công tổng hợp, xuất Excel |
+| `/admin/reports` | `reports.view` | Bảng công tổng hợp, xuất Excel: bảng công (`/api/reports/attendance.xlsx`) và ma trận giờ vào/ra theo ngày (`/api/reports/inout.xlsx`, v1.5.2) |
 | `/admin/employees` | `employees.view` / `employees.manage` | Nhân viên, loại lịch + mẫu tuần, enroll khuôn mặt (`faces.enroll`) |
 | `/admin/devices` | 🔒 ADMIN | Ghép / thu hồi kiosk |
 | `/admin/settings` | 🔒 ADMIN / `org.manage` | Ca, mẫu tuần, ngày lễ, phòng ban, ngưỡng, ID nhóm Zalo |

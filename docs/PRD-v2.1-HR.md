@@ -224,3 +224,16 @@ server là chốt chặn (400 kèm lý do), nút trên UI chỉ mờ đi để g
 Đổi **ngày** của ngày lễ (hoặc thêm/xóa ngày lễ) thay đổi cách tính công của tháng *chưa chốt* ở ngày cũ (thành ngày làm, có thể
 phát sinh vắng) và ngày mới (thành nghỉ lễ). Tháng đã chốt không đổi vì `LockedDay` đã snapshot. Không có bước "tính lại" riêng:
 công được tính trực tiếp từ planner. Quản lý được cấp `org.manage` chỉ xóa được phòng trong phạm vi mình (`assertDept`).
+
+## 15. Mẫu Excel "Giờ vào/ra theo ngày" (v1.5.2, 20/09/2026)
+
+- Trang Báo cáo có hai nút xuất, dùng chung khoảng ngày (Từ–Đến, Tháng này, 7 ngày, Tháng trước) và lọc phòng ban:
+  **Xuất bảng công** (`BangCong_*.xlsx`, sheet Tổng hợp + Chi tiết, giữ nguyên) và **Xuất giờ vào/ra** (`GioVaoRa_*.xlsx`).
+- `GioVaoRa`: sheet "Giờ vào ra" dạng ma trận — dòng = nhân viên (STT, Nhân viên, Bộ phận), cột = từng ngày với 2 cột IN / OUT;
+  3 dòng tiêu đề (ngày dd/MM/yyyy, thứ T2…CN, IN/OUT); cột Chủ nhật tô hồng, ngày lễ tô vàng; cố định 3 dòng + 3 cột. Sheet
+  "Ghi chú" nêu kỳ, quy ước và tên ngày lễ trong kỳ.
+- IN = lần quét đầu tiên trong ngày, OUT = lần quét cuối cùng (`DaySummary.inTime/outTime`); ngày chỉ một lần quét → OUT trống;
+  ô trống = không có lần quét. Giờ VN, định dạng 24h `HH:mm`. Log ngoài ca (làm Chủ nhật không lịch) vẫn hiện theo ngày quét.
+- Cùng route guard với bảng công: `reports.view`, `employeeScopeWhere` (quản lý chỉ thấy phòng mình, phòng ngoài phạm vi → file
+  rỗng), tối đa 62 ngày, danh sách nhân viên và lọc phòng theo ngày dùng chung `listReportEmployees` + `deptOk`; tháng đã chốt lấy
+  từ bản chụp như bảng công.

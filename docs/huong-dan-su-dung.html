@@ -683,13 +683,28 @@ flowchart TD
 <!-- 13 -->
 <section id="bao-cao">
   <h2><span class="num">13.</span>Báo cáo &amp; dùng số liệu để tính lương</h2>
-  <p class="lead"><span class="pill h">Nhân sự</span> Menu <b>Báo cáo</b>: chọn tháng (hoặc khoảng ngày), phòng ban → xem bảng công → <b>Xuất Excel</b>.</p>
+  <p class="lead"><span class="pill h">Nhân sự</span> Menu <b>Báo cáo</b>: chọn tháng (hoặc khoảng ngày), phòng ban → xem bảng công → <b>Xuất bảng công</b> hoặc <b>Xuất giờ vào/ra</b>. Hai nút dùng chung khoảng ngày (Từ–Đến, Tháng này, 7 ngày, Tháng trước) và bộ lọc phòng ban.</p>
 
-  <h3>13.1 File Excel gồm hai sheet</h3>
+  <h3>13.1 Hai mẫu Excel</h3>
+  <p><b>Mẫu 1 — Bảng công</b> (<code>BangCong_…xlsx</code>): để tính lương, gồm hai sheet.</p>
   <div class="grid">
     <div class="card"><h4>Tổng hợp (mỗi người một dòng)</h4><p>Mã NV · Họ tên · Phòng ban · <b>Ngày công</b> · Giờ công · Số lần trễ · Tổng phút trễ · Số lần về sớm · Tổng phút về sớm · <b>Giờ OT</b> · <b>Ngày nghỉ phép</b> · Ngày vắng không phép · Số ngày thiếu giờ ra · Số lần bổ sung công</p></div>
     <div class="card"><h4>Chi tiết (mỗi người mỗi ngày)</h4><p>Mã NV · Họ tên · Phòng ban · Ngày · Ca · Giờ vào · Giờ ra · Phút trễ · Phút sớm · Phút OT · Công · Giờ công · Trạng thái · Ghi chú (đơn liên quan, sửa thủ công, làm ngày lễ, thiếu giờ ra...)</p></div>
   </div>
+  <p><b>Mẫu 2 — Giờ vào/ra theo ngày</b> (<code>GioVaoRa_…xlsx</code>): để đối chiếu, gửi trưởng phòng, hoặc nhập vào phần mềm lương khác. Sheet <b>Giờ vào ra</b> là một ma trận:</p>
+  <div class="tw"><table>
+    <tr><th rowspan="3">STT</th><th rowspan="3">Nhân viên</th><th rowspan="3">Bộ phận</th><th colspan="2">01/09/2026</th><th colspan="2">02/09/2026</th><th colspan="2" style="background:#f4b6b6">06/09/2026</th></tr>
+    <tr><th colspan="2">T3</th><th colspan="2">T4</th><th colspan="2" style="background:#f4b6b6">CN</th></tr>
+    <tr><th>IN</th><th>OUT</th><th>IN</th><th>OUT</th><th style="background:#f4b6b6">IN</th><th style="background:#f4b6b6">OUT</th></tr>
+    <tr><td>1</td><td>Nguyễn Văn An</td><td>Hành chính</td><td>07:58</td><td>17:05</td><td>08:10</td><td></td><td style="background:#fbe3e3"></td><td style="background:#fbe3e3"></td></tr>
+  </table></div>
+  <ul>
+    <li><b>IN</b> = lần quét đầu tiên trong ngày, <b>OUT</b> = lần quét cuối cùng. Giờ Việt Nam, định dạng 24h.</li>
+    <li>Ngày chỉ quét một lần: IN có, OUT trống (thiếu giờ ra — nhân viên gửi đơn Bổ sung công, mục 10). Ô trống hoàn toàn: không có lần quét (nghỉ, chưa chấm, chưa có lịch).</li>
+    <li>Cột <b>hồng</b> = Chủ nhật, cột <b>vàng</b> = ngày lễ (tên lễ ghi ở sheet Ghi chú). Làm Chủ nhật vẫn hiện giờ trong cột hồng.</li>
+    <li>Cố định 3 dòng tiêu đề và 3 cột đầu để cuộn ngang thoải mái; lọc theo Bộ phận bằng nút lọc ở dòng 3.</li>
+    <li>Mẫu này <b>không</b> có số công, phút trễ, OT — cần các số đó thì dùng Mẫu 1. Tháng đã chốt công: giờ lấy từ bản chốt, giống Mẫu 1.</li>
+  </ul>
 
   <h3>13.2 Từ bảng công đến bảng lương</h3>
   <div class="callout warn"><b>Face Beo không tính tiền lương</b>
@@ -820,7 +835,7 @@ stateDiagram-v2
   <details><summary>Đăng xuất trên điện thoại thì máy tính cũng bị thoát?</summary><p>Đúng, có chủ đích: đăng xuất ở bất kỳ đâu sẽ thoát tài khoản trên mọi thiết bị (kể cả phiên lỡ để lại ở máy dùng chung). Đăng nhập lại là được. Đổi mật khẩu cũng vậy.</p></details>
 </section>
 
-<footer>Face Beo · Cẩm nang sử dụng · cập nhật 20/09/2026 (phiên bản ứng dụng v1.5.1)</footer>
+<footer>Face Beo · Cẩm nang sử dụng · cập nhật 20/09/2026 (phiên bản ứng dụng v1.5.2)</footer>
 </main>
 </div>
 

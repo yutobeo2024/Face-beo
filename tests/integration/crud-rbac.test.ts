@@ -107,7 +107,7 @@ const gates: [string, string, Capability[]][] = [
   ["roster", "GET", ["roster.view"]], ["roster", "PUT", ["roster.edit"]], ["roster/history", "GET", ["roster.view"]],
   ["roster/register", "POST", ["roster.edit"]], ["roster/copy-week", "POST", ["roster.edit"]],
   ["requests/[id]/decide", "POST", ["requests.decide"]], ["requests/[id]/execute", "POST", ["attendance.executeCorrection"]],
-  ["reports/summary", "GET", ["reports.view"]], ["reports/attendance.xlsx", "GET", ["reports.view"]],
+  ["reports/summary", "GET", ["reports.view"]], ["reports/attendance.xlsx", "GET", ["reports.view"]], ["reports/inout.xlsx", "GET", ["reports.view"]],
   ["payroll-locks", "GET", ["reports.view", "payroll.lock"]], ["payroll-locks", "POST", ["payroll.lock"]], ["payroll-locks/[month]", "DELETE", ["payroll.unlock"]],
   ["devices", "GET", ["devices.manage"]], ["devices", "POST", ["devices.manage"]], ["devices/[id]/pair-code", "POST", ["devices.manage"]], ["devices/[id]/revoke", "POST", ["devices.manage"]],
   ["settings", "GET", ["settings.system"]], ["settings", "PUT", ["settings.system"]],

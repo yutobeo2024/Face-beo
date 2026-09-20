@@ -55,13 +55,24 @@ export default function ReportsPage() {
         title="Bảng công tổng hợp"
         subtitle={`Từ ${fmtDay(from)} đến ${fmtDay(to)}`}
         actions={
-          <a
-            href={valid ? `/api/reports/attendance.xlsx${params}` : undefined}
-            aria-disabled={!valid}
-            className="inline-flex h-11 items-center gap-2 rounded-xl bg-brand-700 px-4 text-[15px] font-semibold text-white shadow-sm hover:bg-brand-800 aria-disabled:pointer-events-none aria-disabled:opacity-50"
-          >
-            <Icon name="download" /> Xuất Excel
-          </a>
+          <div className="flex flex-wrap gap-2">
+            <a
+              href={valid ? `/api/reports/inout.xlsx${params}` : undefined}
+              aria-disabled={!valid}
+              title="Ma trận giờ vào / giờ ra từng ngày của từng nhân viên (IN = lần quét đầu, OUT = lần quét cuối)"
+              className="inline-flex h-11 items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 text-[15px] font-semibold text-slate-700 hover:bg-slate-50 aria-disabled:pointer-events-none aria-disabled:opacity-50"
+            >
+              <Icon name="clock" /> Xuất giờ vào/ra
+            </a>
+            <a
+              href={valid ? `/api/reports/attendance.xlsx${params}` : undefined}
+              aria-disabled={!valid}
+              title="Bảng công tổng hợp + chi tiết theo ngày (công, trễ, sớm, OT, phép, vắng)"
+              className="inline-flex h-11 items-center gap-2 rounded-xl bg-brand-700 px-4 text-[15px] font-semibold text-white shadow-sm hover:bg-brand-800 aria-disabled:pointer-events-none aria-disabled:opacity-50"
+            >
+              <Icon name="download" /> Xuất bảng công
+            </a>
+          </div>
         }
       />
       <Card className="mb-4 grid gap-2 p-3 sm:grid-cols-2 lg:grid-cols-[auto_auto_1fr_auto] lg:items-center">
