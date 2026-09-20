@@ -92,7 +92,7 @@ afterAll(async () => {
 // not successful CRUD (tested separately below and in the existing domain suites).
 const gates: [string, string, Capability[]][] = [
   ["employees", "GET", ["employees.view", "employees.manage"]], ["employees", "POST", ["employees.manage"]],
-  ["employees/[id]", "PATCH", ["employees.manage"]],
+  ["employees/[id]", "PATCH", ["employees.manage"]], ["employees/[id]", "DELETE", ["employees.manage"]],
   ["employees/[id]/consent", "POST", ["faces.enroll"]], ["employees/[id]/faces", "POST", ["faces.enroll"]], ["employees/[id]/faces", "DELETE", ["faces.enroll"]],
   ["departments", "POST", ["org.manage"]], ["departments/[id]", "PATCH", ["org.manage"]], ["departments/[id]", "DELETE", ["org.manage"]],
   ["holidays/[date]", "PATCH", ["org.manage"]],
@@ -270,6 +270,51 @@ describe("CRUD employees and organization", () => {
     expect((await employee("HR", id, "PATCH", { active: true })).status).toBe(200);
     expect((await prisma.employee.findUniqueOrThrow({ where: { id } })).leftAt).toBeNull();
     expect(await prisma.auditLog.count({ where: { entity: "Employee", entityId: String(id), action: "EMPLOYEE_CREATE" } })).toBe(1);
+  });
+  it("employee DELETE: only an account with no history; refuses with reasons; scope/self/privilege guards; deactivate revokes sessions", async () => {
+    const del = (role: Role, id: number) => employee(role, id, "DELETE");
+    // Cấp employees.manage cho MANAGER để kiểm tra đúng nhánh phạm vi phòng ban (không dừng ở requirePerm).
+    const matrix = defaults(); matrix.MANAGER.push("employees.manage"); await saveMatrix(matrix);
+    // 1) Tài khoản tạo qua API (có dòng baseline ScheduleAssignment + mã Zalo) => xóa được, dọn sạch.
+    const created = await as("HR", "employees", "POST", payload());
+    expect(created.status).toBe(201);
+    const fresh = (await created.json()).employee.id as number;
+    await prisma.zaloLinkCode.create({ data: { employeeId: fresh, code: `${tag}ZL`.slice(0, 6), expiresAt: new Date(Date.now() + 60_000) } });
+    await prisma.department.update({ where: { id: deptB }, data: { managerId: fresh } });
+    expect((await del("MANAGER", fresh)).status).toBe(403); // cùng phòng A nhưng đang quản lý phòng B ngoài phạm vi MANAGER
+    expect((await del("HR", fresh)).status).toBe(200);
+    expect(await prisma.employee.findUnique({ where: { id: fresh } })).toBeNull();
+    expect(await prisma.scheduleAssignment.count({ where: { employeeId: fresh } })).toBe(0);
+    expect(await prisma.zaloLinkCode.count({ where: { employeeId: fresh } })).toBe(0);
+    expect((await prisma.department.findUniqueOrThrow({ where: { id: deptB } })).managerId).toBeNull();
+    expect(await prisma.auditLog.count({ where: { action: "EMPLOYEE_DELETE", entityId: String(fresh) } })).toBe(1);
+    expect((await del("HR", fresh)).status).toBe(404);
+    // 2) Đã có log chấm công => 400 nêu lý do, hàng còn nguyên.
+    const withLog = await createFixture();
+    await prisma.attendanceLog.create({ data: { employeeId: withLog, checkTime: new Date(), workDate: todayVN(), type: "IN", source: "MANUAL" } });
+    const r2 = await del("HR", withLog);
+    expect(r2.status).toBe(400); expect((await r2.json()).error).toMatch(/log chấm công/);
+    expect(await prisma.employee.findUnique({ where: { id: withLog } })).not.toBeNull();
+    // 3) Là người duyệt một đơn => 400.
+    const approver = await createFixture("MANAGER");
+    const requester = await createFixture();
+    await prisma.leaveRequest.create({ data: { employeeId: requester, approverId: approver, type: "NGHI_PHEP", status: "APPROVED", fromTime: new Date(), toTime: new Date(Date.now() + 3_600_000), reason: "Fixture đơn có người duyệt" } });
+    expect((await del("HR", approver)).status).toBe(400);
+    expect((await del("HR", requester)).status).toBe(400);
+    // 4) Tự xóa mình => 400; HR xóa ADMIN => 403; MANAGER xóa người phòng khác => 403.
+    expect((await del("HR", users.HR)).status).toBe(400);
+    expect((await del("HR", users.ADMIN)).status).toBe(403);
+    expect((await del("MANAGER", outsider)).status).toBe(403); // phòng B ngoài phạm vi
+    // Quản lý được cấp quyền xóa được tài khoản trống trong phòng mình.
+    const inScope = await createFixture();
+    expect((await del("MANAGER", inScope)).status).toBe(200);
+    // 5) Cho nghỉ việc thu hồi phiên: cookie cũ 401 ngay cả sau khi kích hoạt lại.
+    const leaver = await createFixture();
+    const cookie = await sessionCookie(leaver);
+    expect((await call("auth/me", "GET", cookie)).status).toBe(200);
+    expect((await employee("HR", leaver, "PATCH", { active: false })).status).toBe(200);
+    expect((await employee("HR", leaver, "PATCH", { active: true })).status).toBe(200);
+    expect((await call("auth/me", "GET", cookie)).status).toBe(401);
   });
   it("employee: duplicate code/phone, malformed body, missing references do not create rows", async () => {
     const existing = await prisma.employee.findUniqueOrThrow({ where: { id: users.EMPLOYEE } });

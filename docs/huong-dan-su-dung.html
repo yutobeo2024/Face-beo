@@ -392,8 +392,19 @@ flowchart TD
     <p>Đổi phòng ban, loại lịch, mẫu tuần, ca mặc định chỉ áp dụng <b>từ hôm nay</b>; công đã qua không bị tính lại. Chuyển phòng thì lịch tương lai do phòng cũ xếp bị hủy — phòng mới cần xếp lại.</p>
   </div>
 
-  <h3>6.2 Cho nghỉ việc</h3>
-  <p>Đặt ngày nghỉ việc. Từ ngày đó nhân viên không còn được tính công, không bị báo vắng. Dữ liệu cũ vẫn giữ để báo cáo. Nếu người nghỉ việc có log trong tháng thì vẫn có trong bảng công và bản chụp khi chốt tháng.</p>
+  <h3>6.2 Cho nghỉ việc — và khi nào mới "Xóa tài khoản"</h3>
+  <p>Mở <b>Sửa</b>, bỏ tích <b>Đang làm việc</b> rồi Lưu. Từ ngày đó nhân viên không còn được tính công, không bị báo vắng; mẫu khuôn mặt bị xóa ngay; bị đăng xuất khỏi mọi thiết bị; kiosk không nhận diện nữa; gỡ khỏi vị trí quản lý phòng. Dữ liệu cũ vẫn giữ để báo cáo: nếu người nghỉ có log trong tháng thì vẫn có trong bảng công và bản chụp khi chốt tháng. Tích "Hiện đã nghỉ việc" để xem lại hồ sơ.</p>
+  <div class="tw"><table>
+    <tr><th></th><th>Nghỉ việc (bỏ tích Đang làm việc)</th><th>Xóa tài khoản (nút đỏ trong hộp Sửa)</th></tr>
+    <tr><td>Dùng khi</td><td>Nhân viên thật sự nghỉ</td><td><b>Tạo nhầm</b> tài khoản, chưa dùng bao giờ</td></tr>
+    <tr><td>Điều kiện</td><td>Luôn được</td><td>Chưa có chấm công, đơn từ, lịch tuần, ngày đã chốt, thao tác nào — nếu có, hệ thống từ chối và nêu lý do</td></tr>
+    <tr><td>Lịch sử công, bảng lương cũ</td><td>Giữ nguyên</td><td>Không có gì để mất (vì chưa có lịch sử)</td></tr>
+    <tr><td>Mã NV, số điện thoại</td><td>Giữ, không ai dùng lại</td><td>Được giải phóng cho người khác</td></tr>
+    <tr><td>Khôi phục</td><td>Tích lại "Đang làm việc" (phải enroll khuôn mặt lại)</td><td>Không</td></tr>
+  </table></div>
+  <div class="callout warn"><b>Vì sao không xóa được nhân viên đã có lịch sử</b>
+    <p>Hồ sơ nhân viên là "chìa khóa" nối tới log chấm công, đơn từ, lịch tuần, ngày đã chốt công và nhật ký. Xóa hẳn sẽ làm bảng công tháng đã chốt mất tên người, nhật ký trỏ vào người không còn tồn tại, và mã NV cũ có thể bị cấp cho người mới khiến file Excel cũ chỉ nhầm người. Vì vậy mọi trường hợp đã có dữ liệu đều dùng <b>Nghỉ việc</b>.</p>
+  </div>
 
   <h3 id="enroll">6.3 Enroll khuôn mặt</h3>
   <ol class="steps">
@@ -831,11 +842,12 @@ stateDiagram-v2
   <details><summary>Quản lý muốn đổi ca đã đăng ký</summary><p>Quản lý không sửa được lịch đã đăng ký. Nhờ HR sửa, kèm lý do; thay đổi sẽ báo vào nhóm Zalo.</p></details>
   <details><summary>Nhóm Zalo không nhận tin</summary><p>Quản trị mở thẻ Zalo OA: xem trạng thái (thật/mô phỏng), trạng thái nhóm phải là "enabled", xem lỗi ở bảng 10 tin gần nhất, bấm Gửi tin thử.</p></details>
   <details><summary>Quên mật khẩu / muốn đổi mật khẩu</summary><p><b>Quên:</b> nhờ HR (hoặc Quản trị với tài khoản HR/Quản trị) đặt lại mật khẩu trong hồ sơ nhân viên; HR đưa mật khẩu tạm, đăng nhập xong hệ thống bắt đổi ngay. <b>Còn nhớ, muốn đổi:</b> vào Trang cá nhân → <b>Đổi mật khẩu</b>. Cả hai cách đều làm mọi phiên đăng nhập cũ của người đó bị thoát.</p></details>
+  <details><summary>Tạo nhầm nhân viên, muốn xóa</summary><p>Nhân viên → Sửa → nút đỏ <b>Xóa tài khoản</b> → xác nhận. Chỉ xóa được khi tài khoản chưa có chấm công / đơn từ / lịch; nếu bị từ chối (đã có dữ liệu) thì bỏ tích <b>Đang làm việc</b> để cho nghỉ việc, hoặc sửa lại hồ sơ đó cho đúng người (mục 6.2).</p></details>
   <details><summary>Không thấy liên kết X trong mục Thông tin</summary><p>Liên kết có thể đang bị giới hạn vai trò/phòng ban hoặc đang tạm ẩn. HR mở <b>Liên kết</b>, xem nhãn trên thẻ (Mọi người / tên vai trò / tên phòng): nhân viên phải khớp <b>cả</b> vai trò lẫn phòng nếu cả hai được tích. Hay gặp: tích vai trò "Nhân viên" + phòng "Hành chính" thì Quản lý/Nhân sự của phòng Hành chính <b>không</b> thuộc diện xem — muốn cả phòng thấy thì chỉ tích phòng, bỏ trống vai trò. Sửa lại bộ lọc hoặc tích "Đang hiển thị".</p></details>
   <details><summary>Đăng xuất trên điện thoại thì máy tính cũng bị thoát?</summary><p>Đúng, có chủ đích: đăng xuất ở bất kỳ đâu sẽ thoát tài khoản trên mọi thiết bị (kể cả phiên lỡ để lại ở máy dùng chung). Đăng nhập lại là được. Đổi mật khẩu cũng vậy.</p></details>
 </section>
 
-<footer>Face Beo · Cẩm nang sử dụng · cập nhật 20/09/2026 (phiên bản ứng dụng v1.5.2)</footer>
+<footer>Face Beo · Cẩm nang sử dụng · cập nhật 20/09/2026 (phiên bản ứng dụng v1.5.3)</footer>
 </main>
 </div>
 

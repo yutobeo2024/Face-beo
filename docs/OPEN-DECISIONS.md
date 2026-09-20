@@ -34,6 +34,12 @@ Ghi lại những điểm đã phát hiện trong quá trình làm và test, c�
 - **OT ngày không có ca:** tính theo đơn tăng ca đã duyệt.
 - **Minh bạch:** thao tác duyệt/sửa của HR và ADMIN được gửi vào nhóm Zalo OA. Không gửi lần quét chấm công, cũng như thao tác ngang quyền nhân viên.
 
+## Đã chốt v1.5.3 (20/09/2026)
+
+- **Không xóa cứng nhân viên đã có lịch sử.** Nút "Xóa tài khoản" chỉ dành cho tài khoản tạo nhầm (server từ chối khi có bất kỳ
+  log/đơn/lịch/ngày chốt/nhật ký); nhân viên nghỉ việc dùng "bỏ tích Đang làm việc". Lý do: giữ bảng công đã chốt, nhật ký, không tái
+  dùng mã NV/SĐT. Xem PRD mục 16.
+
 ## Đã chốt v1.5.1 (20/09/2026)
 
 - **Xóa cấu hình tổ chức chỉ khi chưa đi vào lịch sử**: ca chỉ xóa khi chưa ai dùng; mẫu tuần chỉ xóa khi không nhân viên đang làm

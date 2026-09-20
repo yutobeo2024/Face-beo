@@ -296,7 +296,8 @@ Chạy `npm audit` trước mỗi lần phát hành. Mục tiêu là **0 lỗ h�
 - Snapshot nằm ở `data/snapshots/YYYY/MM/DD/`, ngoài thư mục `public`, chỉ xem được qua `/api/snapshots/*` (ADMIN hoặc quản lý trực tiếp). Tự xóa sau `snapshotRetentionDays` (mặc định 90 ngày).
 - Giới hạn tần suất: đăng nhập 10 lượt/phút/IP; quét kiosk 60 lượt/phút/thiết bị.
 - Mọi input đều được validate bằng zod. Log không chứa embedding, token hay mật khẩu.
-- Phiên đăng nhập (v1.4.4): JWT mang `sessionVersion`; đổi/đặt lại mật khẩu và đăng xuất thu hồi mọi phiên cũ của tài khoản.
+- Phiên đăng nhập (v1.4.4): JWT mang `sessionVersion`; đổi/đặt lại mật khẩu, đăng xuất và cho nghỉ việc (v1.5.3) thu hồi mọi phiên cũ của tài khoản.
+- Nhân viên nghỉ việc: giữ hồ sơ (bảng công, nhật ký), xóa mẫu khuôn mặt ngay. Chỉ xóa hẳn được tài khoản tạo nhầm chưa có lịch sử (v1.5.3).
   Đăng nhập sai trả một thông báo chung, bộ đếm sai tăng nguyên tử, ≥ 5 lần khóa 15 phút. Không có mật khẩu mặc định cho tài khoản mới.
 - Liveness L2 (`LIVENESS_SERVER=true`) lỗi thì **từ chối** quét (503) thay vì hạ xuống điểm L1 của kiosk; kiosk giữ hàng đợi và gửi lại.
   Chi tiết rà soát: `docs/SECURITY-AUDIT-79baa01.md`.

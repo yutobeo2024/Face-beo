@@ -70,6 +70,7 @@ export default function EmployeesPage() {
   const [form, setForm] = useState<Form | null>(null);
   const [busy, setBusy] = useState(false);
   const [tempPw, setTempPw] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<Emp | null>(null);
   const { data, error, loading, reload } = useApi<{ employees: Emp[] }>(`/api/employees${qs({ q, departmentId: dept, includeInactive: inactive ? 1 : "" })}`);
   const depts = useDepartments();
   const shifts = useApi<{ shifts: Shift[] }>("/api/shifts");
@@ -104,6 +105,21 @@ export default function EmployeesPage() {
       void reload();
     } catch (e) {
       toast.error((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function deleteEmployee(id: number) {
+    setBusy(true);
+    try {
+      await api(`/api/employees/${id}`, { method: "DELETE" });
+      toast.success("Đã xóa tài khoản");
+      setDeleting(null);
+      setForm(null);
+      void reload();
+    } catch (e) {
+      toast.error((e as Error).message); // server nêu rõ lý do (đã có log chấm công, đơn từ…)
     } finally {
       setBusy(false);
     }
@@ -328,11 +344,38 @@ export default function EmployeesPage() {
                       Xóa mẫu khuôn mặt
                     </Button>
                   )}
+                  {current.id !== me.id && (
+                    <Button size="sm" variant="danger" icon="trash" disabled={busy} onClick={() => setDeleting(current)}>
+                      Xóa tài khoản
+                    </Button>
+                  )}
                 </div>
+                <p className="text-xs text-slate-500">
+                  <b>Xóa tài khoản</b> chỉ dành cho tài khoản tạo nhầm, chưa có chấm công / đơn từ / lịch. Nhân viên nghỉ việc thì bỏ tích “Đang làm việc” để giữ lịch sử công.
+                </p>
               </div>
             )}
           </div>
         )}
+      </Modal>
+      <Modal
+        open={!!deleting}
+        onClose={() => setDeleting(null)}
+        title="Xóa hẳn tài khoản"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setDeleting(null)}>
+              Hủy
+            </Button>
+            <Button variant="danger" loading={busy} onClick={() => deleting && deleteEmployee(deleting.id)}>
+              Xóa vĩnh viễn
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm text-slate-700">
+          Xóa hẳn <b>{deleting?.code} — {deleting?.name}</b>? Không khôi phục được; mã nhân viên và số điện thoại sẽ được giải phóng cho người khác. Hệ thống chỉ cho xóa khi tài khoản chưa có chấm công, đơn từ, lịch hay ngày đã chốt công — nếu đã có, bạn sẽ thấy lý do và nên dùng “Nghỉ việc”.
+        </p>
       </Modal>
       <Modal open={!!tempPw} onClose={() => setTempPw(null)} title="Mật khẩu tạm thời" footer={<Button onClick={() => setTempPw(null)}>Đã ghi lại</Button>}>
         <p className="text-sm text-slate-600">Gửi mật khẩu này cho nhân viên. Họ bắt buộc phải đổi ở lần đăng nhập tới. Mật khẩu chỉ hiển thị một lần.</p>

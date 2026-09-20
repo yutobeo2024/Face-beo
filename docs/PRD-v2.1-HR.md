@@ -237,3 +237,18 @@ công được tính trực tiếp từ planner. Quản lý được cấp `org.
 - Cùng route guard với bảng công: `reports.view`, `employeeScopeWhere` (quản lý chỉ thấy phòng mình, phòng ngoài phạm vi → file
   rỗng), tối đa 62 ngày, danh sách nhân viên và lọc phòng theo ngày dùng chung `listReportEmployees` + `deptOk`; tháng đã chốt lấy
   từ bản chụp như bảng công.
+
+## 16. Xóa tài khoản tạo nhầm; thu hồi phiên khi nghỉ việc (v1.5.3, 20/09/2026)
+
+- **Vì sao trước đây không có nút Xóa nhân viên.** Hồ sơ nhân viên là khóa của log chấm công, đơn từ, lịch tuần (khóa ngoại RESTRICT)
+  và của lịch sử phân công, ngày đã chốt công, nhật ký, tin Zalo (không có khóa ngoại). Xóa cứng làm bảng công tháng đã chốt mất tên
+  người, nhật ký trỏ vào id không còn, và giải phóng mã NV / SĐT (duy nhất) cho người khác. "Nghỉ việc" (`active=false`) đã đáp ứng
+  mọi yêu cầu: ghi `leftAt`, xóa mẫu khuôn mặt ngay (nghĩa vụ xóa dữ liệu sinh trắc), gỡ vai trò quản lý, chặn đăng nhập/kiosk, không
+  tính vắng sau ngày nghỉ, vẫn xuất hiện trong báo cáo kỳ có `leftAt`.
+- **Nút "Xóa tài khoản"** (hộp Sửa, quyền `employees.manage`, cùng luật chống leo thang với sửa hồ sơ): chỉ xóa được tài khoản
+  **chưa có bất kỳ lịch sử nào** — server đếm log chấm công (của họ hoặc do họ chấm tay), đơn từ (gửi/duyệt/thực hiện), ô lịch tuần,
+  ngày đã chốt, lần chốt lương, tuần đăng ký ca, liên kết Thông tin, mẫu khuôn mặt enroll cho người khác, thao tác nhật ký, thông báo
+  đã gửi; có bất kỳ → 400 kèm danh sách lý do. Xóa được thì dọn: gỡ khỏi quản lý phòng, mã liên kết Zalo, dòng baseline phân công,
+  mẫu khuôn mặt, hồ sơ; audit `EMPLOYEE_DELETE`, báo nhóm Zalo. Không tự xóa mình; HR không xóa được HR/ADMIN.
+- **Thu hồi phiên khi cho nghỉ việc**: `sessionVersion` tăng cùng lúc đặt `leftAt` — cookie cũ không "sống lại" nếu sau này kích hoạt
+  lại tài khoản (tài khoản không active vốn đã bị `loadUser` chặn).
