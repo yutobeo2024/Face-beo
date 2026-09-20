@@ -2,24 +2,17 @@
 import Link from "next/link";
 import { useApi } from "@/lib/client/api";
 import { EmptyState, ErrorBox, Loading, PageHeader } from "@/components/ui";
-import { Icon, LINK_COLORS, type IconName, type LinkColor } from "@/components/icons";
+import { Icon } from "@/components/icons";
+import { LinkTile, type LinkTileItem } from "@/components/link-tile";
 
-type LinkItem = { id: number; title: string; url: string; description: string | null; icon: string; color: string };
-
-/** Rút gọn URL để hiển thị dưới ô: bỏ giao thức, chỉ giữ tên miền. */
-function host(url: string) {
-  try {
-    return new URL(url).hostname.replace(/^www\./, "");
-  } catch {
-    return url;
-  }
-}
+type LinkItem = LinkTileItem & { visibleToMe?: boolean; audience?: string | null };
 
 /** Mục "Thông tin": lưới ô liên kết (web app, Google Sheet, Drive…) do Nhân sự / Quản trị cấu hình, đã lọc theo vai trò + phòng ban. */
 export default function InfoPage() {
   const { data, error, loading, reload } = useApi<{ links: LinkItem[]; canManage: boolean }>("/api/me/links");
   if (error) return <ErrorBox message={error} onRetry={reload} />;
   if (loading || !data) return <Loading />;
+  const restricted = data.links.filter((l) => l.visibleToMe === false).length;
   return (
     <div className="space-y-4">
       <PageHeader
@@ -34,6 +27,11 @@ export default function InfoPage() {
           ) : undefined
         }
       />
+      {data.canManage && restricted > 0 && (
+        <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          Bạn có quyền quản lý liên kết nên thấy mọi ô. Ô có nhãn <b>Chỉ: …</b> đang giới hạn cho vai trò / phòng ban ghi trên nhãn — người ngoài diện đó (kể cả bạn khi không có quyền này) sẽ không thấy.
+        </p>
+      )}
       {data.links.length === 0 ? (
         <EmptyState icon="info" title="Chưa có liên kết nào dành cho bạn">
           Nhân sự / Quản trị sẽ thêm liên kết tại đây. Nếu bạn nghĩ thiếu liên kết, báo Nhân sự.
@@ -41,20 +39,7 @@ export default function InfoPage() {
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           {data.links.map((l) => (
-            <a
-              key={l.id}
-              href={l.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              title={l.description ?? l.url}
-              className="card flex aspect-[4/3] flex-col items-center justify-center gap-2 rounded-2xl p-3 text-center transition hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-md focus:outline-none focus-visible:ring-4 focus-visible:ring-brand-500/20"
-            >
-              <span className={`rounded-2xl p-3 ${LINK_COLORS[l.color as LinkColor] ?? LINK_COLORS.brand}`}>
-                <Icon name={l.icon as IconName} className="size-7" />
-              </span>
-              <span className="line-clamp-2 text-sm font-semibold leading-snug text-slate-800">{l.title}</span>
-              <span className="line-clamp-1 max-w-full text-[11px] text-slate-400">{l.description || host(l.url)}</span>
-            </a>
+            <LinkTile key={l.id} link={l} badge={l.audience} />
           ))}
         </div>
       )}

@@ -80,7 +80,7 @@ export default function LinksAdminPage() {
     <>
       <PageHeader
         title="Liên kết — mục Thông tin"
-        subtitle="Ô liên kết nhân viên thấy trong Trang cá nhân → Thông tin. Để trống vai trò / phòng ban nghĩa là mọi người đều thấy."
+        subtitle="Ô liên kết nhân viên thấy trong Trang cá nhân → Thông tin. Để trống vai trò / phòng ban nghĩa là mọi người đều thấy; tích cả hai thì người xem phải khớp cả vai trò lẫn phòng."
         actions={
           <div className="flex gap-2">
             <Link href="/me/info" className="inline-flex h-9 items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">
@@ -105,23 +105,23 @@ export default function LinksAdminPage() {
             Bấm “Thêm liên kết” để đưa web app, Google Sheet, thư mục Drive… vào mục Thông tin.
           </EmptyState>
         ) : (
-          <ul className="divide-y divide-slate-100">
+          <div className="grid gap-4 p-4 sm:grid-cols-2 sm:p-5 xl:grid-cols-3">
             {list.data.links.map((l) => (
-              <li key={l.id} className={cx("flex items-center gap-3 px-4 py-3 sm:px-5", !l.active && "opacity-60")}>
-                <span className={cx("shrink-0 rounded-xl p-2", LINK_COLORS[l.color as LinkColor] ?? LINK_COLORS.brand)}>
-                  <Icon name={l.icon as IconName} />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                    <span className="font-semibold text-slate-800">{l.title}</span>
-                    <span className="text-xs text-slate-400">#{l.order}</span>
-                    {!l.active && <Badge tone="neutral">Đang ẩn</Badge>}
-                  </p>
-                  <a href={l.url} target="_blank" rel="noopener noreferrer" className="block truncate text-sm text-brand-700 hover:underline">
+              <div key={l.id} className={cx("card flex flex-col overflow-hidden rounded-2xl", !l.active && "opacity-60")}>
+                {/* Nửa trên: ô đúng như nhân viên thấy */}
+                <div className={cx("flex flex-col items-center gap-2 px-4 py-5 text-center", LINK_COLORS[l.color as LinkColor] ?? LINK_COLORS.brand)}>
+                  <span className="rounded-2xl bg-white/80 p-3">
+                    <Icon name={l.icon as IconName} className="size-7" />
+                  </span>
+                  <span className="line-clamp-2 text-sm font-semibold leading-snug">{l.title}</span>
+                </div>
+                {/* Nửa dưới: thông tin quản trị */}
+                <div className="flex flex-1 flex-col gap-2 p-3">
+                  <a href={l.url} target="_blank" rel="noopener noreferrer" className="truncate text-sm text-brand-700 hover:underline">
                     {host(l.url)}
-                    {l.description ? <span className="text-slate-500"> — {l.description}</span> : null}
                   </a>
-                  <p className="mt-1 flex flex-wrap gap-1">
+                  {l.description && <p className="line-clamp-2 text-xs text-slate-500">{l.description}</p>}
+                  <p className="flex flex-wrap gap-1">
                     {l.visibleRoles.length === 0 && l.visibleDeptIds.length === 0 && <Badge tone="ontime">Mọi người</Badge>}
                     {l.visibleRoles.map((r) => (
                       <Badge key={r} tone="violet">
@@ -133,15 +133,19 @@ export default function LinksAdminPage() {
                         {deptName(d)}
                       </Badge>
                     ))}
+                    {!l.active && <Badge tone="neutral">Đang ẩn</Badge>}
                   </p>
+                  <div className="mt-auto flex items-center justify-between border-t border-slate-100 pt-2">
+                    <span className="text-xs text-slate-400">Thứ tự #{l.order}</span>
+                    <div className="flex">
+                      <IconButton icon="edit" label="Sửa" onClick={() => setForm({ ...l, description: l.description ?? "" })} />
+                      <IconButton icon="trash" label="Xóa" className="text-rose-600 hover:bg-rose-50" onClick={() => setDel(l)} />
+                    </div>
+                  </div>
                 </div>
-                <div className="flex shrink-0">
-                  <IconButton icon="edit" label="Sửa" onClick={() => setForm({ ...l, description: l.description ?? "" })} />
-                  <IconButton icon="trash" label="Xóa" className="text-rose-600 hover:bg-rose-50" onClick={() => setDel(l)} />
-                </div>
-              </li>
+              </div>
             ))}
-          </ul>
+          </div>
         )}
       </Card>
 
@@ -212,7 +216,7 @@ export default function LinksAdminPage() {
             <Field label="Thứ tự" hint="Số nhỏ hiện trước.">
               {(id) => <input id={id} className="input" type="number" min={0} max={9999} value={form.order} onChange={(e) => setForm({ ...form, order: Number(e.target.value) })} />}
             </Field>
-            <Field label="Vai trò được xem" hint="Không chọn = mọi vai trò.">
+            <Field label="Vai trò được xem" hint={form.visibleRoles.length && !form.visibleRoles.includes(me.role as Role) ? `Bạn (${ROLE_LABEL[me.role as Role] ?? me.role}) không thuộc diện này — vẫn thấy ô ở trang Thông tin nhờ quyền quản lý, kèm nhãn "Chỉ: …".` : "Không chọn = mọi vai trò. Chỉ tích 'Nhân viên' thì Quản lý/Nhân sự cùng phòng KHÔNG thấy."}>
               {() => (
                 <div className="flex flex-wrap gap-2">
                   {ROLES.map((r) => (

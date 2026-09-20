@@ -31,7 +31,7 @@ const valid = (over: Record<string, unknown> = {}) => ({ title: `${tag} link`, u
 async function myLinks(who: Who) {
   const r = await as(who, "me/links");
   expect(r.status).toBe(200);
-  return (await r.json()) as { links: { id: number; title: string; url: string; icon: string; color: string }[]; canManage: boolean };
+  return (await r.json()) as { links: { id: number; title: string; url: string; icon: string; color: string; visibleToMe?: boolean; audience?: string | null }[]; canManage: boolean };
 }
 
 async function createFixture(role: string, departmentId: number) {
@@ -163,9 +163,16 @@ describe("GET /api/me/links: lọc theo vai trò + phòng ban", () => {
     expect(await titles("EMP_B")).toEqual(["3 all"]);
     expect(await titles("MANAGER")).toEqual(["1 deptA", "2 managers", "3 all"]);
     expect(await titles("MGR_B")).toEqual(["2 managers", "3 all", "4 mgrB"]);
-    // HR ở phòng A: không phải MANAGER nên không thấy "2 managers"; ADMIN cũng theo đúng luật.
-    expect(await titles("HR")).toEqual(["1 deptA", "3 all"]);
-    expect(await titles("ADMIN")).toEqual(["1 deptA", "3 all"]);
+    // Người có links.manage (HR/ADMIN) thấy mọi liên kết đang bật để kiểm tra cấu hình; ô không dành cho mình có nhãn audience.
+    expect(await titles("HR")).toEqual(["1 deptA", "2 managers", "3 all", "4 mgrB"]);
+    expect(await titles("ADMIN")).toEqual(["1 deptA", "2 managers", "3 all", "4 mgrB"]);
+    const hr = (await myLinks("HR")).links.filter((l) => l.title.startsWith(tag));
+    expect(hr.map((l) => l.visibleToMe)).toEqual([true, false, true, false]);
+    expect(hr[1].audience).toBe("Quản lý");
+    expect(hr[3].audience).toBe(`Quản lý · ${tag} B`);
+    // Quản lý được cấp quyền: thấy diện của mình + liên kết trong phạm vi phòng mình; "4 mgrB" của phòng B vẫn không thấy.
+    await saveMatrix(managerGranted());
+    expect(await titles("MANAGER")).toEqual(["1 deptA", "2 managers", "3 all"]);
   });
   it("chỉ trả trường cần hiển thị + cờ canManage; nhân viên không thấy danh sách phòng/vai trò", async () => {
     await as("HR", "links", "POST", valid({ description: "mô tả" }));

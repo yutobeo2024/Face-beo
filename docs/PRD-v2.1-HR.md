@@ -201,7 +201,9 @@ Job `request-overdue` chạy mỗi 30 phút.
   phạm vi). Liên kết toàn công ty (không chọn phòng) chỉ Nhân sự / Quản trị thao tác được. Trang quản trị: `/admin/links`.
 - **Ai được thấy.** Mỗi liên kết có hai bộ lọc: *vai trò được xem* và *phòng ban được xem*; để trống = tất cả. Nhân viên thấy liên kết
   khi đang bật **và** (vai trò khớp hoặc trống) **và** (phòng khớp hoặc trống). Ví dụ "Bảng KPI Kinh doanh" chọn vai trò Quản lý +
-  phòng Kinh doanh → chỉ quản lý phòng Kinh doanh thấy; Nhân sự ở phòng Hành chính không thấy (luật giao, không ngoại lệ cho HR/QT).
+  phòng Kinh doanh → chỉ quản lý phòng Kinh doanh thấy; Nhân sự ở phòng Hành chính không thuộc diện xem (luật giao).
+  Riêng người có `links.manage` thấy thêm mọi liên kết đang bật trong phạm vi mình quản lý (để kiểm tra cấu hình), ô không thuộc
+  diện của họ mang nhãn "Chỉ: <vai trò> · <phòng>".
 - **Ẩn thay vì xóa.** Bỏ tích "Đang hiển thị" để tạm ẩn; xóa thì mất hẳn. Mọi thao tác ghi audit `INFOLINK_UPDATE` và báo vào nhóm
   Zalo minh bạch (với HR/Quản trị).
 - **An toàn.** Chỉ nhận URL `http(s)://`; icon và màu phải thuộc danh sách cho phép; mở bằng `rel="noopener noreferrer"`.
