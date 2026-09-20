@@ -18,7 +18,23 @@ Bị `.gitignore` bỏ qua — **cố ý**, phải chép tay từ máy cũ (USB 
 | `models/*.onnx` (≈180 MB) | mô hình nhận diện + liveness | Tải lại: `npm run models:face` và `npm run models:liveness` |
 | `public/models/`, `node_modules/`, `.next/` | sinh ra khi cài/build | `npm install`, `npm run build` |
 
-## 2. Trên máy cũ (trước khi tắt)
+## 1b. Bắt đầu sạch (dữ liệu hiện tại chỉ là mockup — chọn cách này khi chưa vận hành thật)
+
+Không cần chép `data/`. Trên máy mới sau `npm install`:
+
+```bash
+copy .env.example .env      # rồi mở .env điền giá trị (xem dưới)
+npm run db:deploy && npm run db:seed   # DB mới + dữ liệu mẫu NV001…, mật khẩu seed 123456
+```
+
+Trong `.env` mới: tạo `BIOMETRIC_KEY` và `JWT_SECRET` mới (chuỗi ngẫu nhiên dài; mẫu khuôn mặt sẽ enroll lại từ đầu nên khóa mới
+không sao). Riêng phần Zalo nên **chép lại từ `.env` máy cũ**: `ZALO_OA_APP_ID`, `ZALO_OA_SECRET`, `ZALO_WEBHOOK_SECRET`, `ZALO_OA_NAME`.
+Lưu ý token: cặp token hiện hành nằm trong bảng `ZaloToken` của DB cũ (refresh token trong `.env` cũ rất có thể đã bị dùng một lần
+rồi) → bỏ DB thì phải **lấy cặp token mới** bằng API Explorer (developers.zalo.me/tools/explorer, Version 4) điền vào
+`ZALO_OA_REFRESH_TOKEN`, rồi vào Cấu hình → Zalo OA **kết nối lại nhóm** (ID nhóm "FCY-ai": `712b67d35bb3b2edeba2`, hoặc dán từ danh
+sách nhóm đã dò). Không điền Zalo thì hệ thống chạy mô phỏng, vẫn phát triển và test bình thường.
+
+## 2. Trên máy cũ (trước khi tắt) — chỉ khi muốn giữ dữ liệu
 
 1. Dừng server (`Ctrl+C` hoặc tắt tiến trình node cổng 3000) để SQLite gộp `-wal` vào `.db`.
 2. Chép `.env`, `data/facebeo.db` (và `-wal`/`-shm` nếu vẫn còn), tùy chọn `data/backups/`, `data/snapshots/`, `models/*.onnx`.
