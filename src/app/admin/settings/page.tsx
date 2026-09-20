@@ -53,6 +53,10 @@ export default function SettingsPage() {
   const [weightForm, setWeightForm] = useState<{ departmentId: string; shiftId: string; value: string } | null>(null);
   const [holiday, setHoliday] = useState<Holiday>({ date: "", name: "" });
   const [newDept, setNewDept] = useState("");
+  const [deptForm, setDeptForm] = useState<{ id: number; name: string } | null>(null);
+  const [holidayForm, setHolidayForm] = useState<{ orig: string; date: string; name: string } | null>(null);
+  // Hộp xác nhận xóa dùng chung (không dùng window.confirm); server vẫn là chốt chặn cuối khi thứ cần xóa đang được dùng.
+  const [confirmBox, setConfirmBox] = useState<{ title: string; body: string; ok: string; fn: () => Promise<unknown>; after: () => void } | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -145,6 +149,20 @@ export default function SettingsPage() {
                   </p>
                 </div>
                 <IconButton icon="edit" label="Sửa ca" onClick={() => setShiftForm(sh)} />
+                <IconButton
+                  icon="trash"
+                  label="Xóa ca"
+                  className="text-rose-600 hover:bg-rose-50"
+                  onClick={() =>
+                    setConfirmBox({
+                      title: "Xóa ca làm việc",
+                      body: `Xóa ca "${sh.name}"? Chỉ xóa được ca chưa từng được dùng (không nhân viên, mẫu tuần, lịch tuần hay log chấm công nào tham chiếu). Ca đã dùng thì hệ thống sẽ từ chối — hãy đổi tên thành "… (ngừng dùng)" thay vì xóa.`,
+                      ok: "Đã xóa ca",
+                      fn: () => api(`/api/shifts/${sh.id}`, { method: "DELETE" }),
+                      after: () => (shifts.reload(), weights.reload()),
+                    })
+                  }
+                />
               </li>
             ))}
           </ul>
@@ -223,7 +241,21 @@ export default function SettingsPage() {
                 <span className="min-w-0 flex-1 truncate text-sm text-slate-600">
                   {h.name} · {WEEKDAY_LONG[weekdayOf(h.date)]}
                 </span>
-                <IconButton icon="trash" label="Xóa ngày lễ" className="text-rose-600" onClick={() => run(() => api(`/api/holidays/${h.date}`, { method: "DELETE" }), "Đã xóa", holidays.reload)} />
+                <IconButton icon="edit" label="Sửa ngày lễ" onClick={() => setHolidayForm({ orig: h.date, date: h.date, name: h.name })} />
+                <IconButton
+                  icon="trash"
+                  label="Xóa ngày lễ"
+                  className="text-rose-600 hover:bg-rose-50"
+                  onClick={() =>
+                    setConfirmBox({
+                      title: "Xóa ngày lễ",
+                      body: `Bỏ ngày lễ ${fmtDay(h.date)} (${h.name})? Ngày này sẽ trở lại thành ngày làm việc bình thường trong các tháng chưa chốt công.`,
+                      ok: "Đã xóa ngày lễ",
+                      fn: () => api(`/api/holidays/${h.date}`, { method: "DELETE" }),
+                      after: holidays.reload,
+                    })
+                  }
+                />
               </li>
             ))}
           </ul>
@@ -237,6 +269,24 @@ export default function SettingsPage() {
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold text-slate-800">{d.name}</p>
                   <p className="text-xs text-slate-500">{d.employeeCount} nhân viên</p>
+                </div>
+                <div className="flex shrink-0 sm:order-last">
+                  <IconButton icon="edit" label="Đổi tên phòng" onClick={() => setDeptForm({ id: d.id, name: d.name })} />
+                  <IconButton
+                    icon="trash"
+                    label={d.employeeCount > 0 ? "Phòng còn nhân viên — không xóa được" : "Xóa phòng ban"}
+                    className="text-rose-600 hover:bg-rose-50"
+                    disabled={d.employeeCount > 0}
+                    onClick={() =>
+                      setConfirmBox({
+                        title: "Xóa phòng ban",
+                        body: `Xóa phòng "${d.name}"? Chỉ xóa được phòng trống hoàn toàn (không nhân viên kể cả đã nghỉ, không tuần đã đăng ký, không ngày đã chốt công). Hệ số công riêng của phòng sẽ bị xóa; liên kết "Thông tin" đang giới hạn theo phòng này sẽ được gỡ phòng (và tạm ẩn nếu không còn phòng nào).`,
+                        ok: "Đã xóa phòng ban",
+                        fn: () => api(`/api/departments/${d.id}`, { method: "DELETE" }),
+                        after: () => (depts.reload(), weights.reload()),
+                      })
+                    }
+                  />
                 </div>
                 <Select
                   className="sm:w-64"
@@ -302,6 +352,21 @@ export default function SettingsPage() {
                       </p>
                     </div>
                     <IconButton icon="edit" label="Sửa mẫu" onClick={() => setPatternForm(pt)} />
+                    <IconButton
+                      icon="trash"
+                      label={(pt.employeeCount ?? 0) > 0 ? "Mẫu đang có nhân viên dùng — không xóa được" : "Xóa mẫu"}
+                      className="text-rose-600 hover:bg-rose-50"
+                      disabled={(pt.employeeCount ?? 0) > 0}
+                      onClick={() =>
+                        setConfirmBox({
+                          title: "Xóa mẫu tuần",
+                          body: `Xóa mẫu "${pt.name}"? Không nhân viên đang làm nào dùng mẫu này. Người đã nghỉ việc từng dùng mẫu sẽ được gỡ liên kết; lịch sử công của họ không đổi.`,
+                          ok: "Đã xóa mẫu tuần",
+                          fn: () => api(`/api/work-patterns/${pt.id}`, { method: "DELETE" }),
+                          after: patterns.reload,
+                        })
+                      }
+                    />
                   </li>
                 ))}
               </ul>
@@ -355,6 +420,89 @@ export default function SettingsPage() {
                 </Field>
               ))}
             </div>
+          </div>
+        )}
+      </Modal>
+
+      <Modal
+        open={!!confirmBox}
+        onClose={() => setConfirmBox(null)}
+        title={confirmBox?.title ?? ""}
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setConfirmBox(null)}>
+              Hủy
+            </Button>
+            <Button variant="danger" loading={busy} onClick={() => confirmBox && run(confirmBox.fn, confirmBox.ok, () => (setConfirmBox(null), confirmBox.after()))}>
+              Xóa
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm text-slate-700">{confirmBox?.body}</p>
+      </Modal>
+
+      <Modal
+        open={!!deptForm}
+        onClose={() => setDeptForm(null)}
+        title="Đổi tên phòng ban"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setDeptForm(null)}>
+              Hủy
+            </Button>
+            <Button
+              loading={busy}
+              disabled={!deptForm || deptForm.name.trim().length < 2}
+              onClick={() => deptForm && run(() => api(`/api/departments/${deptForm.id}`, { method: "PATCH", body: { name: deptForm.name.trim() } }), "Đã đổi tên phòng ban", () => (setDeptForm(null), depts.reload()))}
+            >
+              Lưu
+            </Button>
+          </>
+        }
+      >
+        {deptForm && (
+          <Field label="Tên phòng ban" hint="Chỉ đổi nhãn hiển thị; nhân viên, lịch, phạm vi quản lý và số liệu đã chốt không đổi.">
+            {(id) => <input id={id} className="input" value={deptForm.name} maxLength={80} onChange={(e) => setDeptForm({ ...deptForm, name: e.target.value })} />}
+          </Field>
+        )}
+      </Modal>
+
+      <Modal
+        open={!!holidayForm}
+        onClose={() => setHolidayForm(null)}
+        title="Sửa ngày lễ"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setHolidayForm(null)}>
+              Hủy
+            </Button>
+            <Button
+              loading={busy}
+              disabled={!holidayForm || !holidayForm.date || holidayForm.name.trim().length < 2}
+              onClick={() =>
+                holidayForm &&
+                run(
+                  () => api(`/api/holidays/${holidayForm.orig}`, { method: "PATCH", body: { date: holidayForm.date, name: holidayForm.name.trim() } }),
+                  "Đã sửa ngày lễ",
+                  () => (setHolidayForm(null), holidays.reload()),
+                )
+              }
+            >
+              Lưu
+            </Button>
+          </>
+        }
+      >
+        {holidayForm && (
+          <div className="grid gap-3">
+            <Field label="Ngày">{(id) => <input id={id} type="date" className="input" value={holidayForm.date} onChange={(e) => setHolidayForm({ ...holidayForm, date: e.target.value })} />}</Field>
+            <Field label="Tên ngày lễ">{(id) => <input id={id} className="input" value={holidayForm.name} onChange={(e) => setHolidayForm({ ...holidayForm, name: e.target.value })} />}</Field>
+            {holidayForm.date !== holidayForm.orig && (
+              <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                Đổi ngày: {fmtDay(holidayForm.orig)} trở lại thành ngày làm việc bình thường (có thể phát sinh vắng nếu không ai chấm công), còn {holidayForm.date ? fmtDay(holidayForm.date) : "ngày mới"} thành nghỉ lễ. Chỉ ảnh hưởng tháng chưa chốt công.
+              </p>
+            )}
           </div>
         )}
       </Modal>

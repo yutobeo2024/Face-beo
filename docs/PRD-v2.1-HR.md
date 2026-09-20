@@ -208,3 +208,19 @@ Job `request-overdue` chạy mỗi 30 phút.
   Zalo minh bạch (với HR/Quản trị).
 - **An toàn.** Chỉ nhận URL `http(s)://`; icon và màu phải thuộc danh sách cho phép; mở bằng `rel="noopener noreferrer"`.
 - **Dữ liệu.** Bảng `InfoLink` (SQLite), hai cột JSON `visibleRoles`, `visibleDeptIds`; lọc trong ứng dụng (≤ vài chục dòng).
+
+## 14. Sửa / xóa cấu hình tổ chức (v1.5.1, 20/09/2026)
+
+Trang Cấu hình có đủ sửa/xóa cho ca, mẫu tuần, phòng ban, ngày lễ. Nguyên tắc chung: **không xóa thứ đã đi vào lịch sử công**;
+server là chốt chặn (400 kèm lý do), nút trên UI chỉ mờ đi để gợi ý.
+
+| Đối tượng | Sửa | Xóa được khi | Khi bị chặn thì |
+|---|---|---|---|
+| Ca làm việc | giờ, nghỉ, ân hạn, hệ số (áp dụng cho tháng chưa chốt) | chưa ai dùng: không nhân viên (ca mặc định), mẫu tuần, lịch tuần, log chấm công, lịch sử phân công nào tham chiếu; hệ số riêng theo phòng của ca được xóa kèm | đổi tên "… (ngừng dùng)" |
+| Mẫu tuần | tên, ca theo thứ (hiệu lực từ hôm nay) | không nhân viên **đang làm** dùng; người đã nghỉ còn trỏ tới mẫu được gỡ liên kết (lịch sử đã snapshot trong `ScheduleAssignment`) | đổi mẫu cho nhân viên trong hồ sơ trước |
+| Phòng ban | đổi tên (chỉ nhãn; phạm vi, lịch, số liệu chốt theo `id` không đổi); gán/gỡ quản lý | phòng trống hoàn toàn: không nhân viên kể cả đã nghỉ (`departmentId` bắt buộc), không tuần đã đăng ký, không lịch sử phân công, không ngày đã chốt; hệ số riêng bị xóa; liên kết "Thông tin" gắn phòng được gỡ phòng, thành rỗng thì tạm ẩn | chuyển nhân viên sang phòng khác hoặc đổi tên |
+| Ngày lễ | tên (chỉ hiển thị) hoặc ngày (khóa chính → xóa + tạo trong một giao dịch) | luôn xóa được | — |
+
+Đổi **ngày** của ngày lễ (hoặc thêm/xóa ngày lễ) thay đổi cách tính công của tháng *chưa chốt* ở ngày cũ (thành ngày làm, có thể
+phát sinh vắng) và ngày mới (thành nghỉ lễ). Tháng đã chốt không đổi vì `LockedDay` đã snapshot. Không có bước "tính lại" riêng:
+công được tính trực tiếp từ planner. Quản lý được cấp `org.manage` chỉ xóa được phòng trong phạm vi mình (`assertDept`).

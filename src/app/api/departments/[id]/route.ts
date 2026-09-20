@@ -6,6 +6,7 @@ import { can, requirePerm } from "@/lib/permissions";
 import { assertDept } from "@/lib/auth";
 import { assertCanModify } from "@/lib/employee-guards";
 import { announce } from "@/lib/announce";
+import { parseIds } from "@/lib/info-links";
 
 const schema = z.object({
   name: z.string().trim().min(2).max(80).optional(),
@@ -48,5 +49,41 @@ export const PATCH = handle<{ id: string }>(async (req, ctx) => {
       detail: promoted ? "Tự động nâng vai trò Nhân viên → Quản lý" : undefined,
     });
   }
+  return json({ ok: true });
+});
+
+/**
+ * Xóa phòng ban: chỉ khi phòng trống hoàn toàn. Nhiều bảng lịch sử (RosterWeek, ScheduleAssignment, LockedDay) tham chiếu phòng
+ * mà không có khóa ngoại nên phải tự kiểm tra — xóa bừa sẽ làm bảng công / chốt công mất tên phòng. Nhân viên đã nghỉ vẫn giữ
+ * departmentId (bắt buộc) => phòng đã từng có người thì không xóa được, chỉ đổi tên.
+ */
+export const DELETE = handle<{ id: string }>(async (req, ctx) => {
+  const u = await requirePerm(req, "org.manage");
+  const id = await idParam(ctx);
+  const d = await prisma.department.findUnique({ where: { id } });
+  if (!d) throw notFound();
+  assertDept(u, id);
+  const [emps, weeks, assignments, locked] = await Promise.all([
+    prisma.employee.count({ where: { departmentId: id } }),
+    prisma.rosterWeek.count({ where: { departmentId: id } }),
+    prisma.scheduleAssignment.count({ where: { departmentId: id } }),
+    prisma.lockedDay.count({ where: { departmentId: id } }),
+  ]);
+  const reasons = [
+    emps > 0 && `${emps} nhân viên (kể cả đã nghỉ việc)`,
+    weeks > 0 && `${weeks} tuần đã đăng ký ca`,
+    assignments > 0 && `${assignments} bản ghi lịch sử phân công`,
+    locked > 0 && `${locked} ngày đã chốt công`,
+  ].filter(Boolean);
+  if (reasons.length) throw badRequest(`Không thể xóa phòng "${d.name}": còn ${reasons.join(", ")}. Hãy chuyển nhân viên sang phòng khác hoặc đổi tên phòng thay vì xóa.`);
+  // Liên kết "Thông tin" đang giới hạn theo phòng này: bỏ phòng khỏi danh sách; nếu thành rỗng (= toàn công ty) thì tạm ẩn để không lộ ngoài ý muốn.
+  const links = (await prisma.infoLink.findMany({ where: { visibleDeptIds: { contains: `${id}` } } })).filter((l) => parseIds(l.visibleDeptIds).includes(id));
+  const linkUpdates = links.map((l) => {
+    const rest = parseIds(l.visibleDeptIds).filter((x) => x !== id);
+    return prisma.infoLink.update({ where: { id: l.id }, data: { visibleDeptIds: JSON.stringify(rest), ...(rest.length === 0 && { active: false }) } });
+  });
+  await prisma.$transaction([prisma.departmentShiftWeight.deleteMany({ where: { departmentId: id } }), ...linkUpdates, prisma.department.delete({ where: { id } })]);
+  await audit({ actorId: u.id, action: "SETTINGS_UPDATE", entity: "Department", entityId: id, detail: { deleted: true, name: d.name, hiddenLinks: links.filter((l) => parseIds(l.visibleDeptIds).length === 1).map((l) => l.id) } });
+  await announce(u, `đã xóa phòng ban "${d.name}" (phòng trống)`, { key: `dept-delete:${id}` });
   return json({ ok: true });
 });

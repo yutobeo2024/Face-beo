@@ -34,6 +34,12 @@ Ghi lại những điểm đã phát hiện trong quá trình làm và test, c�
 - **OT ngày không có ca:** tính theo đơn tăng ca đã duyệt.
 - **Minh bạch:** thao tác duyệt/sửa của HR và ADMIN được gửi vào nhóm Zalo OA. Không gửi lần quét chấm công, cũng như thao tác ngang quyền nhân viên.
 
+## Đã chốt v1.5.1 (20/09/2026)
+
+- **Xóa cấu hình tổ chức chỉ khi chưa đi vào lịch sử**: ca chỉ xóa khi chưa ai dùng; mẫu tuần chỉ xóa khi không nhân viên đang làm
+  dùng (người đã nghỉ được gỡ liên kết); phòng ban chỉ xóa khi trống hoàn toàn (kể cả nhân viên đã nghỉ, tuần đã đăng ký, ngày đã
+  chốt). Không có "xóa mềm" cho ca/phòng — muốn ngừng dùng thì đổi tên. Ngày lễ sửa được cả tên lẫn ngày. Xem PRD mục 14.
+
 ## Đã chốt v1.5.0 (20/09/2026)
 
 - **Mục "Thông tin" (thư viện liên kết)** trong trang cá nhân: quyền mới `links.manage`, mặc định Nhân sự; Quản lý chỉ khi được cấp và

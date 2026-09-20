@@ -30,13 +30,21 @@ export const PATCH = handle<{ id: string }>(async (req, ctx) => {
   return json({ pattern: after });
 });
 
+/**
+ * Xóa mẫu tuần: chặn khi còn nhân viên ĐANG LÀM dùng mẫu (khớp con số hiển thị trên UI).
+ * Nhân viên đã nghỉ việc còn trỏ tới mẫu thì gỡ liên kết — lịch sử công của họ đã nằm trong ScheduleAssignment (snapshot), không mất.
+ */
 export const DELETE = handle<{ id: string }>(async (req, ctx) => {
   const u = await requirePerm(req, "org.manage");
   const id = await idParam(ctx);
-  const p = await prisma.workPattern.findUnique({ where: { id }, include: { _count: { select: { employees: true } } } });
+  const p = await prisma.workPattern.findUnique({ where: { id }, include: { _count: { select: { employees: { where: { active: true } } } } } });
   if (!p) throw notFound();
-  if (p._count.employees > 0) throw badRequest(`Mẫu đang được ${p._count.employees} nhân viên sử dụng, không thể xóa`);
-  await prisma.workPattern.delete({ where: { id } });
-  await audit({ actorId: u.id, action: "PATTERN_UPDATE", entity: "WorkPattern", entityId: id, detail: { deleted: p.name } });
+  if (p._count.employees > 0) throw badRequest(`Mẫu đang được ${p._count.employees} nhân viên sử dụng, không thể xóa. Đổi mẫu cho họ trong hồ sơ trước.`);
+  const [detached] = await prisma.$transaction([
+    prisma.employee.updateMany({ where: { workPatternId: id }, data: { workPatternId: null } }),
+    prisma.workPattern.delete({ where: { id } }),
+  ]);
+  await audit({ actorId: u.id, action: "PATTERN_UPDATE", entity: "WorkPattern", entityId: id, detail: { deleted: p.name, detachedInactive: detached.count } });
+  await announce(u, `đã xóa mẫu tuần làm việc "${p.name}"`, { key: `pattern-delete:${id}` });
   return json({ ok: true });
 });

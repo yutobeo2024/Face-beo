@@ -71,6 +71,7 @@ export const shiftWeightsSchema = z.object({
 });
 
 export const holidaySchema = z.object({ date: dateStr, name: z.string().trim().min(2).max(100) });
+export const holidayPatchSchema = holidaySchema.partial().refine((b) => b.date !== undefined || b.name !== undefined, "Không có gì để sửa");
 
 /** Liên kết trong mục "Thông tin": chỉ nhận http(s); mảng vai trò / phòng rỗng = tất cả. */
 const infoLinkFields = {

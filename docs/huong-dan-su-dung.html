@@ -308,6 +308,9 @@ gantt
   <div class="callout warn"><b>Sửa ca đang dùng</b>
     <p>Đổi giờ ca, ân hạn hoặc hệ số sẽ ảnh hưởng tới cách tính các ngày <b>chưa chốt</b>. Muốn đổi quy định từ một ngày nhất định, nên <b>tạo ca mới</b> rồi gán cho nhân viên / mẫu tuần từ hôm nay. Tháng đã chốt thì không bị ảnh hưởng (đọc từ bản chụp).</p>
   </div>
+  <div class="callout"><b>Xóa ca (nút 🗑 cạnh nút Sửa)</b>
+    <p>Chỉ xóa được ca <b>chưa ai từng dùng</b>: không nhân viên nào lấy làm ca mặc định, không mẫu tuần, lịch tuần, log chấm công hay lịch sử phân công nào tham chiếu. Ca đã dùng thì hệ thống từ chối và nêu lý do — hãy <b>đổi tên thành "… (ngừng dùng)"</b> và ngừng gán; dữ liệu công cũ cần ca đó để tính lại. Hệ số riêng theo phòng của ca bị xóa sẽ mất theo.</p>
+  </div>
 </section>
 
 <!-- 5 -->
@@ -324,13 +327,18 @@ gantt
     <tr><td>Sáng sớm T2–T7</td><td>SS</td><td>SS</td><td>SS</td><td>SS</td><td>SS</td><td>SS</td><td>nghỉ</td></tr>
   </table></div>
   <p>Sửa mẫu tuần chỉ có hiệu lực <b>từ hôm nay</b>. Công những ngày đã qua giữ nguyên.</p>
+  <p><b>Xóa mẫu:</b> chỉ khi không nhân viên <b>đang làm</b> nào dùng (nút xóa mờ đi khi còn người dùng; đổi mẫu cho họ trong hồ sơ trước). Người đã nghỉ việc từng dùng mẫu được tự gỡ liên kết, lịch sử công của họ không đổi.</p>
 
   <h3>5.2 Phòng ban &amp; quản lý</h3>
   <p>Tạo phòng ban và chọn một hoặc nhiều quản lý. Quản lý chỉ thấy và duyệt đơn của nhân viên trong các phòng mình quản lý. Nhân viên thường gửi đơn thì <b>quản lý phòng</b> là người duyệt đầu tiên.</p>
+  <p><b>Đổi tên phòng</b> (nút ✎): chỉ đổi nhãn — nhân viên, lịch, phạm vi quản lý, số liệu đã chốt đều giữ nguyên. <b>Xóa phòng</b> (nút 🗑): chỉ khi phòng <b>trống hoàn toàn</b> — không nhân viên (kể cả đã nghỉ việc, vì hồ sơ vẫn ghi phòng), không tuần đã đăng ký ca, không ngày đã chốt công. Phòng đã từng có người thì không xóa được, đúng chủ đích để bảng công và lương cũ còn tên phòng; muốn gộp phòng thì chuyển hết nhân viên sang phòng mới rồi đổi tên phòng cũ. Xóa phòng sẽ xóa hệ số công riêng của phòng và gỡ phòng khỏi các liên kết ở mục Thông tin (liên kết chỉ dành riêng phòng đó sẽ tạm ẩn).</p>
 
   <h3>5.3 Ngày lễ</h3>
   <p>Nhập các ngày lễ trong năm. Ngày lễ: nhân viên cố định được nghỉ, không bị báo vắng. Ai đi làm ngày lễ phải có <b>đơn tăng ca đã duyệt</b> mới được tính OT; ngày công ngày lễ = 0.</p>
   <div class="callout"><b>Riêng nhân viên xoay ca</b><p>Lịch tuần đã đăng ký có ca vào ngày lễ thì người đó <b>làm ngày lễ theo lịch</b> (tính như ngày làm bình thường).</p></div>
+  <div class="callout warn"><b>Sửa ngày lễ (nút ✎)</b>
+    <p>Đổi <b>tên</b> vô hại (tên chỉ để hiển thị). Đổi <b>ngày</b> thì ngày cũ trở lại thành ngày làm bình thường (tháng chưa chốt có thể phát sinh "vắng" nếu không ai chấm công hôm đó) và ngày mới thành nghỉ lễ. Tháng đã chốt công không đổi. Lỡ sửa sai thì sửa lại là công tự tính đúng, không cần thao tác gì thêm.</p>
+  </div>
 
   <h3>5.4 Hệ thống xác định ca của một ngày như thế nào</h3>
   <div class="diagram">
@@ -349,7 +357,7 @@ flowchart TD
     <div class="cap">Hình 3. Thứ tự ưu tiên khi xác định ca. Bản nháp lịch tuần không bao giờ được tính.</div>
   </div>
 
-  <h3 id="lien-ket">5.4 Liên kết nhanh — mục "Thông tin" của trang cá nhân</h3>
+  <h3 id="lien-ket">5.5 Liên kết nhanh — mục "Thông tin" của trang cá nhân</h3>
   <p class="lead"><span class="pill h">Nhân sự</span> <span class="pill a">Quản trị</span> Menu <b>Liên kết</b>. Đưa các công cụ dùng chung (web app cũ, Google Sheet đã chia sẻ, thư mục Drive, Google Docs…) thành các ô bấm-là-mở trong <b>Trang cá nhân → Thông tin</b> của nhân viên.</p>
   <ol class="steps">
     <li><b>Thêm liên kết</b>: nhập Tiêu đề (vd. "Bảng KPI tháng"), dán đường dẫn bắt đầu bằng <code>https://</code> (link chia sẻ của Google Sheet/Drive/Docs hoặc địa chỉ web app), mô tả ngắn (không bắt buộc).</li>
@@ -773,7 +781,7 @@ stateDiagram-v2
     <div class="card"><h4>🏠 Trang chủ</h4><p>Ca hôm nay, giờ vào/ra, công tháng này (ngày công, phép, trễ, OT), thông báo gần đây.</p></div>
     <div class="card"><h4>🕘 Chấm công</h4><p>Lịch sử từng ngày: ca, giờ vào/ra, trễ/sớm, trạng thái. Thấy sai thì gửi đơn ngay.</p></div>
     <div class="card"><h4>📝 Đơn từ</h4><p>Chọn loại đơn → ngày → giờ → lý do (≥ 10 ký tự) → gửi. Theo dõi trạng thái: Chờ duyệt / Đã duyệt / Từ chối / Đã hủy.</p></div>
-    <div class="card"><h4>🔗 Thông tin</h4><p>Lưới ô liên kết tới công cụ, bảng tính, tài liệu dùng chung (web app, Google Sheet, Drive, Docs…). Bấm ô để mở tab mới. Chỉ thấy các liên kết dành cho vai trò/phòng của mình; thiếu link thì báo HR (mục 5.4). Trên điện thoại: bấm <b>Thêm</b> ở thanh dưới.</p></div>
+    <div class="card"><h4>🔗 Thông tin</h4><p>Lưới ô liên kết tới công cụ, bảng tính, tài liệu dùng chung (web app, Google Sheet, Drive, Docs…). Bấm ô để mở tab mới. Chỉ thấy các liên kết dành cho vai trò/phòng của mình; thiếu link thì báo HR (mục 5.5). Trên điện thoại: bấm <b>Thêm</b> ở thanh dưới.</p></div>
     <div class="card"><h4>🔒 Đổi mật khẩu</h4><p>Nhập mật khẩu hiện tại và mật khẩu mới (≥ 8 ký tự, có chữ và số). Đổi xong, thiết bị khác đang đăng nhập sẽ bị thoát. Quên mật khẩu thì nhờ HR đặt lại.</p></div>
   </div>
   <div class="ex"><div class="t">Tình huống: hôm qua quên chấm ra</div>
@@ -812,7 +820,7 @@ stateDiagram-v2
   <details><summary>Đăng xuất trên điện thoại thì máy tính cũng bị thoát?</summary><p>Đúng, có chủ đích: đăng xuất ở bất kỳ đâu sẽ thoát tài khoản trên mọi thiết bị (kể cả phiên lỡ để lại ở máy dùng chung). Đăng nhập lại là được. Đổi mật khẩu cũng vậy.</p></details>
 </section>
 
-<footer>Face Beo · Cẩm nang sử dụng · cập nhật 20/09/2026 (phiên bản ứng dụng v1.5.0)</footer>
+<footer>Face Beo · Cẩm nang sử dụng · cập nhật 20/09/2026 (phiên bản ứng dụng v1.5.1)</footer>
 </main>
 </div>
 

@@ -94,7 +94,8 @@ const gates: [string, string, Capability[]][] = [
   ["employees", "GET", ["employees.view", "employees.manage"]], ["employees", "POST", ["employees.manage"]],
   ["employees/[id]", "PATCH", ["employees.manage"]],
   ["employees/[id]/consent", "POST", ["faces.enroll"]], ["employees/[id]/faces", "POST", ["faces.enroll"]], ["employees/[id]/faces", "DELETE", ["faces.enroll"]],
-  ["departments", "POST", ["org.manage"]], ["departments/[id]", "PATCH", ["org.manage"]],
+  ["departments", "POST", ["org.manage"]], ["departments/[id]", "PATCH", ["org.manage"]], ["departments/[id]", "DELETE", ["org.manage"]],
+  ["holidays/[date]", "PATCH", ["org.manage"]],
   ["shifts", "POST", ["org.manage"]], ["shifts/[id]", "PATCH", ["org.manage"]], ["shifts/[id]", "DELETE", ["org.manage"]],
   ["work-patterns", "POST", ["org.manage"]], ["work-patterns/[id]", "PATCH", ["org.manage"]], ["work-patterns/[id]", "DELETE", ["org.manage"]],
   ["holidays", "POST", ["org.manage"]], ["holidays/[date]", "DELETE", ["org.manage"]],
@@ -280,7 +281,72 @@ describe("CRUD employees and organization", () => {
     expect((await employee("ADMIN", missing)).status).toBe(404);
     expect((await employee("ADMIN", missing, "PATCH", { name: "Missing employee" })).status).toBe(404);
   });
-  it("department: create/read/rename/assign manager/remove manager; no DELETE interface", async () => {
+  it("department DELETE: only an empty department; weights cascade, info links lose the dept (hidden when empty); scope enforced", async () => {
+    const mk = async (name: string) => (await (await as("ADMIN", "departments", "POST", { name })).json()).department.id as number;
+    const del = (role: Role, id: number) => as(role, "departments/[id]", "DELETE", undefined, { id: String(id) });
+    // 1) Phòng có nhân viên (kể cả đã nghỉ) => 400, không xóa.
+    const withLeft = await mk(`${tag} dept with leaver`);
+    const leaver = await createFixture("EMPLOYEE", withLeft);
+    await prisma.employee.update({ where: { id: leaver }, data: { active: false } });
+    const r1 = await del("ADMIN", withLeft);
+    expect(r1.status).toBe(400); expect((await r1.json()).error).toMatch(/nhân viên/);
+    expect(await prisma.department.findUnique({ where: { id: withLeft } })).not.toBeNull();
+    // 2) Phòng trống nhưng có tuần đã đăng ký / ngày đã chốt => 400.
+    const withWeek = await mk(`${tag} dept with week`);
+    await prisma.rosterWeek.create({ data: { departmentId: withWeek, weekStart: "2097-01-06", status: "REGISTERED" } });
+    const r2 = await del("ADMIN", withWeek);
+    expect(r2.status).toBe(400); expect((await r2.json()).error).toMatch(/tuần/);
+    await prisma.rosterWeek.deleteMany({ where: { departmentId: withWeek } });
+    await prisma.lockedDay.create({ data: { employeeId: users.EMPLOYEE, workDate: "2097-01-06", month: "2097-01", departmentId: withWeek, data: "{}" } });
+    expect((await del("ADMIN", withWeek)).status).toBe(400);
+    await prisma.lockedDay.deleteMany({ where: { departmentId: withWeek } });
+    // 3) Phòng trống: hệ số riêng bị xóa, liên kết Thông tin gỡ phòng (rỗng => ẩn), phòng biến mất.
+    await prisma.departmentShiftWeight.create({ data: { departmentId: withWeek, shiftId, workDayValue: 0.5 } });
+    const onlyThis = await prisma.infoLink.create({ data: { title: `${tag} link only`, url: "https://x.y", visibleDeptIds: JSON.stringify([withWeek]) } });
+    const shared = await prisma.infoLink.create({ data: { title: `${tag} link shared`, url: "https://x.y", visibleDeptIds: JSON.stringify([deptA, withWeek]) } });
+    try {
+      expect((await del("MANAGER", withWeek)).status).toBe(403); // ngoài phạm vi quản lý
+      expect((await del("HR", withWeek)).status).toBe(403); // HR mặc định không có org.manage
+      expect((await del("ADMIN", withWeek)).status).toBe(200);
+      expect(await prisma.department.findUnique({ where: { id: withWeek } })).toBeNull();
+      expect(await prisma.departmentShiftWeight.count({ where: { departmentId: withWeek } })).toBe(0);
+      const a = await prisma.infoLink.findUniqueOrThrow({ where: { id: onlyThis.id } });
+      expect(a.visibleDeptIds).toBe("[]"); expect(a.active).toBe(false);
+      const b = await prisma.infoLink.findUniqueOrThrow({ where: { id: shared.id } });
+      expect(b.visibleDeptIds).toBe(JSON.stringify([deptA])); expect(b.active).toBe(true);
+      expect((await del("ADMIN", withWeek)).status).toBe(404);
+    } finally { await prisma.infoLink.deleteMany({ where: { title: { startsWith: tag } } }); }
+  });
+  it("holiday PATCH: rename keeps date; moving date replaces the row; collision 400; unknown 404", async () => {
+    const d1 = "2097-04-30", d2 = "2097-05-01", d3 = "2097-05-02";
+    await prisma.holiday.deleteMany({ where: { date: { in: [d1, d2, d3] } } });
+    try {
+      expect((await as("ADMIN", "holidays", "POST", { date: d1, name: `${tag} h1` })).status).toBe(201);
+      expect((await as("ADMIN", "holidays", "POST", { date: d3, name: `${tag} h3` })).status).toBe(201);
+      expect((await as("ADMIN", "holidays/[date]", "PATCH", { name: `${tag} renamed` }, { date: d1 })).status).toBe(200);
+      expect((await prisma.holiday.findUniqueOrThrow({ where: { date: d1 } })).name).toBe(`${tag} renamed`);
+      expect((await as("ADMIN", "holidays/[date]", "PATCH", { date: d3 }, { date: d1 })).status).toBe(400); // trùng ngày lễ khác
+      expect((await as("ADMIN", "holidays/[date]", "PATCH", { date: d2 }, { date: d1 })).status).toBe(200);
+      expect(await prisma.holiday.findUnique({ where: { date: d1 } })).toBeNull();
+      expect((await prisma.holiday.findUniqueOrThrow({ where: { date: d2 } })).name).toBe(`${tag} renamed`);
+      expect((await as("ADMIN", "holidays/[date]", "PATCH", { name: "x y" }, { date: d1 })).status).toBe(404);
+      expect((await as("ADMIN", "holidays/[date]", "PATCH", {}, { date: d2 })).status).toBe(400);
+      expect((await as("HR", "holidays/[date]", "PATCH", { name: "x y" }, { date: d2 })).status).toBe(403);
+    } finally { await prisma.holiday.deleteMany({ where: { date: { in: [d1, d2, d3] } } }); }
+  });
+  it("work pattern DELETE: blocked by active users only; inactive users are detached", async () => {
+    const p = await as("ADMIN", "work-patterns", "POST", { name: `${tag} pattern leavers`, monShiftId: null, tueShiftId: null, wedShiftId: null, thuShiftId: null, friShiftId: null, satShiftId: null, sunShiftId: null });
+    const pid = (await p.json()).pattern.id;
+    const active = await createFixture(); const left = await createFixture();
+    await prisma.employee.update({ where: { id: active }, data: { workPatternId: pid } });
+    await prisma.employee.update({ where: { id: left }, data: { workPatternId: pid, active: false } });
+    expect((await as("ADMIN", "work-patterns/[id]", "DELETE", undefined, { id: String(pid) })).status).toBe(400);
+    await prisma.employee.update({ where: { id: active }, data: { workPatternId: null } });
+    expect((await as("ADMIN", "work-patterns/[id]", "DELETE", undefined, { id: String(pid) })).status).toBe(200);
+    expect((await prisma.employee.findUniqueOrThrow({ where: { id: left } })).workPatternId).toBeNull();
+    expect(await prisma.workPattern.findUnique({ where: { id: pid } })).toBeNull();
+  });
+  it("department: create/read/rename/assign manager/remove manager", async () => {
     const name = `${tag} created department`;
     const res = await as("ADMIN", "departments", "POST", { name }); expect(res.status).toBe(201);
     const id = (await res.json()).department.id;
@@ -291,7 +357,6 @@ describe("CRUD employees and organization", () => {
     expect((await prisma.department.findUniqueOrThrow({ where: { id } })).managerId).toBe(candidate);
     expect((await as("ADMIN", "departments/[id]", "PATCH", { managerId: null }, { id: String(id) })).status).toBe(200);
     expect((await prisma.department.findUniqueOrThrow({ where: { id } })).managerId).toBeNull();
-    expect(modules["../../src/app/api/departments/[id]/route.ts"].DELETE).toBeUndefined();
   });
   it("shift and work pattern: complete lifecycle; referenced shift/pattern cannot be deleted", async () => {
     const body = { name: `${tag} temporary shift`, startTime: "08:00", endTime: "12:00", breakMinutes: 0, graceLateMinutes: 0, graceEarlyMinutes: 0 };
