@@ -319,7 +319,7 @@ describe("kiosk — lớp L2 phía server (LIVENESS_SERVER=true)", () => {
     }
   });
 
-  it("L2 bật nhưng thiếu mô hình => tạm dùng L1 và ghi cảnh báo cho ADMIN", async () => {
+  it("L2 bật nhưng thiếu mô hình => KHÔNG hạ xuống L1: trả 503 (kiosk giữ hàng đợi) và ghi cảnh báo cho ADMIN", async () => {
     process.env.LIVENESS_SERVER = "true";
     registerServerLiveness(async () => {
       throw new Error("Không tìm thấy mô hình L2");
@@ -328,7 +328,9 @@ describe("kiosk — lớp L2 phía server (LIVENESS_SERVER=true)", () => {
       const base = await enrollFake((await byCode("NV014")).id, 14);
       const { cookie } = await pairedDevice("Kiosk L2 lỗi");
       const r = await scan(cookie, { snapshot: sampleJpeg(), faceBox: [512, 347, 200, 200] }, base);
-      expect(r.result).toBe("OK");
+      expect(r.result).toBeUndefined();
+      expect(r.code).toBe("LIVENESS_UNAVAILABLE");
+      expect(await prisma.attendanceLog.count({ where: { employeeId: (await byCode("NV014")).id, checkTime: { gte: new Date(Date.now() - 60_000) } } })).toBe(0);
       expect(await prisma.auditLog.count({ where: { action: "LIVENESS_L2_UNAVAILABLE" } })).toBeGreaterThan(0);
     } finally {
       registerServerLiveness(null);

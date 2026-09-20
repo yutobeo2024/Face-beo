@@ -92,6 +92,9 @@ export default function KioskPage() {
             // Mất mạng hẳn: dừng, chờ ping tiếp theo. Server trả 5xx/429 cho riêng bản ghi này: đếm số lần, quá 30 lần thì bỏ để
             // không chặn các bản ghi phía sau (bản ghi quá 24 giờ server cũng không nhận nữa).
             if (e.status == null) break;
+            // 503 = máy chủ chưa sẵn sàng (thiếu mô hình nhận diện / xác minh người thật) — sự cố chung, có thể kéo dài hàng giờ:
+            // dừng cả vòng, KHÔNG đếm lần thử, giữ nguyên hàng đợi cho tới khi máy chủ chạy lại (giờ quét vẫn là giờ thật).
+            if (e.status === 503) break;
             const attempts = (item.attempts ?? 0) + 1;
             if (attempts >= 30) await queue.remove(item.clientEventId);
             else await queue.add({ ...item, attempts }).catch(() => {});

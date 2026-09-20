@@ -14,7 +14,7 @@ export async function sessionCookie(employeeId: number) {
   const e = await prisma.employee.findUniqueOrThrow({ where: { id: employeeId } });
   // Test giả định người dùng đã đổi mật khẩu.
   if (e.mustChangePassword) await prisma.employee.update({ where: { id: e.id }, data: { mustChangePassword: false } });
-  const token = await signSession({ sub: String(e.id), role: e.role as Role, name: e.name, mcp: false });
+  const token = await signSession({ sub: String(e.id), role: e.role as Role, name: e.name, mcp: false, sv: e.sessionVersion });
   return `${SESSION_COOKIE}=${token}`;
 }
 

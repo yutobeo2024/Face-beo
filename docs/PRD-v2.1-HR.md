@@ -180,3 +180,13 @@ Job `request-overdue` chạy mỗi 30 phút.
 - Mỗi mốc chỉ gửi một lần. Đơn quá 60 ngày thì bỏ qua.
 - Không bao giờ tự duyệt.
 - Dashboard hiện số đơn quá hạn mà người xem có quyền xử lý.
+
+## 12. Phiên đăng nhập, mật khẩu, liveness (v1.4.4 — theo rà soát bảo mật 20/09/2026)
+
+- **Không có mật khẩu mặc định.** Tạo tài khoản không kèm mật khẩu thì hệ thống sinh mật khẩu tạm ngẫu nhiên, trả về một lần cho người tạo.
+- **Thu hồi phiên.** `Employee.sessionVersion` được ghi vào JWT; đổi mật khẩu, đặt lại mật khẩu, và **đăng xuất** đều tăng số này nên mọi
+  phiên cũ (kể cả cookie bị sao chép) hết hiệu lực ngay. Đăng xuất một nơi = thoát mọi thiết bị.
+- **Đăng nhập.** Sai tài khoản và sai mật khẩu trả cùng một thông báo; bộ đếm sai được tăng nguyên tử trong DB, ≥ 5 lần khóa 15 phút.
+- **Ảnh quét bị từ chối** (không gắn log, không rõ phòng) chỉ người có phạm vi toàn công ty và quyền `suspicious.view` xem được.
+- **Liveness L2 lỗi = từ chối** (fail-closed): kiosk nhận 503, giữ lần quét trong hàng đợi (không đếm lần thử) và gửi lại khi mô hình
+  chạy; Quản trị được cảnh báo. L2 tắt bằng cấu hình thì chỉ dùng L1 — vận hành thật phải bật `LIVENESS_SERVER=true`.

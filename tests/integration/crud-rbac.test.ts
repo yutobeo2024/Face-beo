@@ -177,10 +177,14 @@ describe("Dynamic matrix, sessions and scope", () => {
     await prisma.employee.update({ where: { id }, data: { active: true, mustChangePassword: true } });
     expect((await call("employees", "GET", cookie)).status).toBe(403);
     expect((await call("auth/me", "GET", cookie)).status).toBe(200);
-    expect((await call("auth/change-password", "POST", cookie, { currentPassword: "Fixture123", newPassword: "Changed123" })).status).toBe(200);
-    expect((await call("employees", "GET", cookie)).status).toBe(200);
+    const changed = await call("auth/change-password", "POST", cookie, { currentPassword: "Fixture123", newPassword: "Changed123" });
+    expect(changed.status).toBe(200);
+    // Đổi mật khẩu thu hồi phiên cũ (v1.4.4); phiên mới được cấp trong phản hồi.
+    expect((await call("employees", "GET", cookie)).status).toBe(401);
+    const fresh = changed.headers.get("set-cookie")!.split(";")[0];
+    expect((await call("employees", "GET", fresh)).status).toBe(200);
     await prisma.employee.update({ where: { id }, data: { role: "EMPLOYEE" } });
-    expect((await call("employees", "GET", cookie)).status).toBe(403);
+    expect((await call("employees", "GET", fresh)).status).toBe(403);
   });
   it("lists, detail and query filters cannot reveal another department; personal data stays private", async () => {
     const own = await (await employee("MANAGER", users.EMPLOYEE)).json();

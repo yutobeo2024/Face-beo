@@ -5,7 +5,7 @@ import { readSnapshot } from "@/lib/storage";
 import { can, requirePerm } from "@/lib/permissions";
 
 /** Snapshot: người có quyền `snapshots.view` trong phạm vi phòng ban (ADMIN/HR toàn công ty, quản lý phòng mình).
- * Ảnh của lần quét bị từ chối (không gắn log) cần thêm quyền `suspicious.view`. */
+ * Ảnh của lần quét bị từ chối (không gắn log, không biết thuộc phòng nào) chỉ dành cho phạm vi toàn công ty có thêm `suspicious.view`. */
 export const GET = handle<{ path: string[] }>(async (req, ctx) => {
   const u = await requirePerm(req, "snapshots.view");
   const parts = (await ctx.params).path;
@@ -13,7 +13,7 @@ export const GET = handle<{ path: string[] }>(async (req, ctx) => {
   const log = await prisma.attendanceLog.findFirst({ where: { snapshotUrl: url }, select: { employee: { select: { departmentId: true } } } });
   if (log) {
     if (deptScope(u) !== null && !canManageDept(u, log.employee.departmentId)) throw forbidden();
-  } else if (!(await can(u, "suspicious.view"))) {
+  } else if (deptScope(u) !== null || !(await can(u, "suspicious.view"))) {
     throw forbidden();
   }
   const buf = await readSnapshot(parts);

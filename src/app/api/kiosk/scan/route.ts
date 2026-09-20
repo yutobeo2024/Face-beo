@@ -63,7 +63,11 @@ export const POST = handle(async (req) => {
     snapshot: snapshotBuf,
     faceBox: body.faceBox ?? null,
   });
-  if (live.server.status === "unavailable") await auditL2Unavailable(device.id, live.server.error);
+  if (live.server.status === "unavailable") {
+    // Không hạ xuống điểm L1 của kiosk: trả 503 để kiosk giữ lần quét trong hàng đợi và gửi lại khi mô hình chạy (giờ quét giữ nguyên).
+    await auditL2Unavailable(device.id, live.server.error);
+    throw new HttpError(503, "Máy chủ chưa sẵn sàng xác minh người thật — báo Quản trị", { code: "LIVENESS_UNAVAILABLE" });
+  }
 
   if (!live.verified) {
     const snapshotUrl = snapshotBuf ? await saveSnapshot(snapshotBuf, body.capturedAt) : null;

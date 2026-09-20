@@ -26,7 +26,9 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
 ## Tài khoản seed
 
-Mật khẩu mặc định của tất cả tài khoản là `123456`, và hệ thống **bắt buộc đổi mật khẩu ở lần đăng nhập đầu**. Có thể đăng nhập bằng mã nhân viên hoặc số điện thoại.
+Mật khẩu của các tài khoản **seed (dữ liệu mẫu)** là `123456`, và hệ thống **bắt buộc đổi mật khẩu ở lần đăng nhập đầu**. Có thể đăng nhập bằng mã nhân viên hoặc số điện thoại.
+Tài khoản tạo trên giao diện **không** có mật khẩu mặc định: nếu không nhập, hệ thống sinh mật khẩu tạm ngẫu nhiên và chỉ hiện một lần cho người tạo.
+Không dùng seed để khởi tạo dữ liệu vận hành thật (hoặc đổi ngay mật khẩu NV001).
 
 | Mã | Họ tên | Vai trò | Phòng | SĐT |
 | --- | --- | --- | --- | --- |
@@ -293,6 +295,10 @@ Chạy `npm audit` trước mỗi lần phát hành. Mục tiêu là **0 lỗ h�
 - Snapshot nằm ở `data/snapshots/YYYY/MM/DD/`, ngoài thư mục `public`, chỉ xem được qua `/api/snapshots/*` (ADMIN hoặc quản lý trực tiếp). Tự xóa sau `snapshotRetentionDays` (mặc định 90 ngày).
 - Giới hạn tần suất: đăng nhập 10 lượt/phút/IP; quét kiosk 60 lượt/phút/thiết bị.
 - Mọi input đều được validate bằng zod. Log không chứa embedding, token hay mật khẩu.
+- Phiên đăng nhập (v1.4.4): JWT mang `sessionVersion`; đổi/đặt lại mật khẩu và đăng xuất thu hồi mọi phiên cũ của tài khoản.
+  Đăng nhập sai trả một thông báo chung, bộ đếm sai tăng nguyên tử, ≥ 5 lần khóa 15 phút. Không có mật khẩu mặc định cho tài khoản mới.
+- Liveness L2 (`LIVENESS_SERVER=true`) lỗi thì **từ chối** quét (503) thay vì hạ xuống điểm L1 của kiosk; kiosk giữ hàng đợi và gửi lại.
+  Chi tiết rà soát: `docs/SECURITY-AUDIT-79baa01.md`.
 - Việc cần làm ngoài code: lập hồ sơ đánh giá tác động xử lý dữ liệu cá nhân theo Luật 91/2025/QH15 và Nghị định 356/2025/NĐ-CP.
 
 ## Quyết định còn mở

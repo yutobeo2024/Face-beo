@@ -358,7 +358,7 @@ flowchart TD
   <ol class="steps">
     <li>Bấm <b>Thêm nhân viên</b>, nhập mã, họ tên, phòng ban, vai trò (Nhân sự không gán được vai trò Nhân sự/Quản trị).</li>
     <li>Chọn <b>loại lịch</b>: <b>Cố định</b> (chọn mẫu tuần hoặc ca mặc định) hoặc <b>Xoay ca</b> (theo lịch tuần quản lý xếp).</li>
-    <li>Tạo mật khẩu đăng nhập ban đầu và đưa cho nhân viên. Có thể <b>đặt lại mật khẩu</b> sau này.</li>
+    <li>Mật khẩu ban đầu: nhập tay, hoặc để trống để hệ thống <b>sinh mật khẩu tạm ngẫu nhiên</b> (hiện <b>một lần</b> sau khi lưu — ghi lại và đưa cho nhân viên). Nhân viên bắt buộc đổi ở lần đăng nhập đầu. Sau này có thể <b>đặt lại mật khẩu</b> trong hồ sơ.</li>
     <li>Enroll khuôn mặt (6.3).</li>
   </ol>
   <div class="callout"><b>Thay đổi có hiệu lực theo ngày</b>
@@ -427,7 +427,7 @@ sequenceDiagram
     <tr><td>ℹ️ "Bạn đã chấm lúc ..."</td><td>Quét lại trong 2 phút, bỏ qua</td><td>Không cần làm gì</td></tr>
     <tr><td>❌ "Không nhận ra" / ⛔ "Không xác minh được"</td><td>Không ghi</td><td>Nhìn thẳng, bỏ khẩu trang, thử lại; vẫn lỗi thì báo HR</td></tr>
   </table></div>
-  <div class="callout"><b>Mất mạng?</b><p>Kiosk giữ lần quét trong hàng đợi và gửi bù khi có mạng lại, giờ quét là giờ thật lúc đứng trước máy.</p></div>
+  <div class="callout"><b>Mất mạng hoặc máy chủ báo "chưa sẵn sàng"?</b><p>Kiosk giữ lần quét trong hàng đợi và gửi bù khi máy chủ hoạt động lại, giờ quét là giờ thật lúc đứng trước máy. Kiosk báo "chưa sẵn sàng" liên tục thì Quản trị kiểm tra cảnh báo ở Tổng quan (mô hình nhận diện / xác minh người thật).</p></div>
 </section>
 
 <!-- 8 -->
@@ -786,7 +786,8 @@ stateDiagram-v2
   <details><summary>Không sửa được ca / không duyệt được đơn, báo tháng đã chốt</summary><p>Tháng đã chốt công. Liên hệ Quản trị để mở khóa (mục 14).</p></details>
   <details><summary>Quản lý muốn đổi ca đã đăng ký</summary><p>Quản lý không sửa được lịch đã đăng ký. Nhờ HR sửa, kèm lý do; thay đổi sẽ báo vào nhóm Zalo.</p></details>
   <details><summary>Nhóm Zalo không nhận tin</summary><p>Quản trị mở thẻ Zalo OA: xem trạng thái (thật/mô phỏng), trạng thái nhóm phải là "enabled", xem lỗi ở bảng 10 tin gần nhất, bấm Gửi tin thử.</p></details>
-  <details><summary>Quên mật khẩu</summary><p>Nhờ HR (hoặc Quản trị với tài khoản HR/Quản trị) đặt lại mật khẩu trong hồ sơ nhân viên.</p></details>
+  <details><summary>Quên mật khẩu</summary><p>Nhờ HR (hoặc Quản trị với tài khoản HR/Quản trị) đặt lại mật khẩu trong hồ sơ nhân viên. Đặt lại xong, mọi phiên đăng nhập cũ của người đó bị thoát.</p></details>
+  <details><summary>Đăng xuất trên điện thoại thì máy tính cũng bị thoát?</summary><p>Đúng, có chủ đích: đăng xuất ở bất kỳ đâu sẽ thoát tài khoản trên mọi thiết bị (kể cả phiên lỡ để lại ở máy dùng chung). Đăng nhập lại là được. Đổi mật khẩu cũng vậy.</p></details>
 </section>
 
 <footer>Face Beo · Cẩm nang sử dụng · cập nhật 19/09/2026 (phiên bản ứng dụng v1.4)</footer>

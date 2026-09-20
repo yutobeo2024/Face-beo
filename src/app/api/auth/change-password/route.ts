@@ -12,11 +12,13 @@ export const POST = handle(async (req) => {
   const emp = await prisma.employee.findUniqueOrThrow({ where: { id: u.id } });
   if (!(await bcrypt.compare(body.currentPassword, emp.passwordHash))) throw badRequest("Mật khẩu hiện tại không đúng");
   if (body.currentPassword === body.newPassword) throw badRequest("Mật khẩu mới phải khác mật khẩu cũ");
-  await prisma.employee.update({
+  // Tăng sessionVersion: mọi phiên đã phát hành trước đó (kể cả bản sao cookie bị lộ) hết hiệu lực; chỉ phiên mới dưới đây còn dùng được.
+  const updated = await prisma.employee.update({
     where: { id: u.id },
-    data: { passwordHash: await bcrypt.hash(body.newPassword, 10), mustChangePassword: false },
+    data: { passwordHash: await bcrypt.hash(body.newPassword, 10), mustChangePassword: false, sessionVersion: { increment: 1 } },
+    select: { sessionVersion: true },
   });
-  const token = await signSession({ sub: String(u.id), role: u.role, name: u.name, mcp: false });
+  const token = await signSession({ sub: String(u.id), role: u.role, name: u.name, mcp: false, sv: updated.sessionVersion });
   const res = json({ ok: true, role: u.role });
   res.cookies.set(SESSION_COOKIE, token, cookieOptions(SESSION_TTL_SECONDS));
   return res;

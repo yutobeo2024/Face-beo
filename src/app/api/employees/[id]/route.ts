@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
-import { randomInt } from "node:crypto";
 import { prisma } from "@/lib/db";
+import { randomTempPassword } from "@/lib/temp-password";
 import { todayVN } from "@/lib/attendance";
 import { applyScheduleChangeFromToday, ensureBaseline } from "@/lib/schedule-assignments";
 import { badRequest, forbidden, handle, idParam, json, notFound, parseJson } from "@/lib/api";
@@ -74,6 +74,8 @@ export const PATCH = handle<{ id: string }>(async (req, ctx) => {
     data.mustChangePassword = true;
     data.failedLogins = 0;
     data.lockedUntil = null;
+    // Thu hồi mọi phiên đang mở của người này (kể cả phiên bị lộ) — không để phiên cũ "sống lại" sau khi đổi mật khẩu tạm.
+    data.sessionVersion = { increment: 1 };
   }
   if (unlinkZalo) {
     data.zaloUserId = null;
@@ -133,10 +135,3 @@ export const PATCH = handle<{ id: string }>(async (req, ctx) => {
   }
   return json({ ok: true, ...(tempPassword ? { tempPassword } : {}) });
 });
-
-function randomTempPassword() {
-  const A = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz";
-  const D = "23456789";
-  const pick = (s: string) => s[randomInt(0, s.length)];
-  return Array.from({ length: 6 }, () => pick(A)).join("") + pick(D) + pick(D);
-}

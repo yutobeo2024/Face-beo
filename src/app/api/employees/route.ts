@@ -11,6 +11,7 @@ import { can, requirePerm } from "@/lib/permissions";
 import { assertCanCreate } from "@/lib/employee-guards";
 import { announce } from "@/lib/announce";
 import { ROLE_LABEL, type Role } from "@/lib/roles";
+import { randomTempPassword } from "@/lib/temp-password";
 
 const listQuery = z.object({
   departmentId: optId,
@@ -76,6 +77,8 @@ export const POST = handle(async (req) => {
   if (!(await prisma.shift.findUnique({ where: { id: body.defaultShiftId } }))) throw badRequest("Ca mặc định không tồn tại");
   if (!(await prisma.department.findUnique({ where: { id: body.departmentId } }))) throw badRequest("Phòng ban không tồn tại");
   if (body.workPatternId && !(await prisma.workPattern.findUnique({ where: { id: body.workPatternId } }))) throw badRequest("Mẫu tuần không tồn tại");
+  // Không có mật khẩu mặc định chung: không truyền thì sinh mật khẩu tạm ngẫu nhiên, trả về MỘT LẦN cho người tạo đưa cho nhân viên.
+  const tempPassword = body.password ? null : randomTempPassword();
   const e = await prisma.employee.create({
     data: {
       code: body.code.toUpperCase(),
@@ -86,12 +89,12 @@ export const POST = handle(async (req) => {
       defaultShiftId: body.defaultShiftId,
       scheduleType: body.scheduleType ?? "FIXED",
       workPatternId: (body.scheduleType ?? "FIXED") === "FIXED" ? (body.workPatternId ?? null) : null,
-      passwordHash: await bcrypt.hash(body.password || "123456", 10),
+      passwordHash: await bcrypt.hash(body.password ?? tempPassword!, 10),
       mustChangePassword: true,
     },
   });
   await snapshotAssignment(e.id, BASELINE_DATE);
   await audit({ actorId: u.id, action: "EMPLOYEE_CREATE", entity: "Employee", entityId: e.id, detail: { code: e.code, role: e.role } });
   await announce(u, `đã tạo nhân viên ${e.code} — ${e.name}`, { key: `emp-create:${e.id}`, detail: `Vai trò: ${ROLE_LABEL[e.role as Role] ?? e.role}` });
-  return json({ employee: { id: e.id, code: e.code } }, { status: 201 });
+  return json({ employee: { id: e.id, code: e.code }, ...(tempPassword ? { tempPassword } : {}) }, { status: 201 });
 });

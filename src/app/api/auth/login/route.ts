@@ -8,6 +8,8 @@ import { SESSION_COOKIE, type Role } from "@/lib/roles";
 
 const MAX_FAILS = 5;
 const LOCK_MINUTES = 15;
+// Một thông báo chung cho "không có tài khoản" và "sai mật khẩu" — không để lộ tài khoản nào tồn tại.
+const GENERIC_FAIL = "Sai mã nhân viên/số điện thoại hoặc mật khẩu";
 // Hash giả để so sánh khi không tìm thấy tài khoản, tránh lộ thông tin qua thời gian phản hồi.
 let dummyHash: string | null = null;
 const getDummyHash = () => (dummyHash ??= bcrypt.hashSync("dummy-password", 10));
@@ -22,7 +24,7 @@ export const POST = handle(async (req) => {
   });
   if (!emp || !emp.active) {
     await bcrypt.compare(password, getDummyHash());
-    throw new HttpError(401, "Sai mã nhân viên/số điện thoại hoặc mật khẩu");
+    throw new HttpError(401, GENERIC_FAIL);
   }
   if (emp.lockedUntil && emp.lockedUntil > new Date()) {
     const mins = Math.ceil((emp.lockedUntil.getTime() - Date.now()) / 60_000);
@@ -30,20 +32,17 @@ export const POST = handle(async (req) => {
   }
   const ok = await bcrypt.compare(password, emp.passwordHash);
   if (!ok) {
-    const fails = emp.failedLogins + 1;
-    const lock = fails >= MAX_FAILS;
-    await prisma.employee.update({
-      where: { id: emp.id },
-      data: { failedLogins: lock ? 0 : fails, lockedUntil: lock ? new Date(Date.now() + LOCK_MINUTES * 60_000) : null },
-    });
-    throw new HttpError(
-      lock ? 423 : 401,
-      lock ? `Sai quá ${MAX_FAILS} lần, tài khoản bị khóa ${LOCK_MINUTES} phút` : `Sai mật khẩu (còn ${MAX_FAILS - fails} lần thử)`,
-    );
+    // Tăng bộ đếm nguyên tử trong DB (không đọc-rồi-ghi): nhiều yêu cầu sai đồng thời vẫn cộng đủ và khóa đúng lúc.
+    const r = await prisma.employee.update({ where: { id: emp.id }, data: { failedLogins: { increment: 1 } }, select: { failedLogins: true } });
+    if (r.failedLogins >= MAX_FAILS) {
+      await prisma.employee.update({ where: { id: emp.id }, data: { failedLogins: 0, lockedUntil: new Date(Date.now() + LOCK_MINUTES * 60_000) } });
+      throw new HttpError(423, `Sai quá ${MAX_FAILS} lần, tài khoản bị khóa ${LOCK_MINUTES} phút`);
+    }
+    throw new HttpError(401, GENERIC_FAIL);
   }
   await prisma.employee.update({ where: { id: emp.id }, data: { failedLogins: 0, lockedUntil: null } });
 
-  const token = await signSession({ sub: String(emp.id), role: emp.role as Role, name: emp.name, mcp: emp.mustChangePassword });
+  const token = await signSession({ sub: String(emp.id), role: emp.role as Role, name: emp.name, mcp: emp.mustChangePassword, sv: emp.sessionVersion });
   const res = json({ ok: true, role: emp.role, mustChangePassword: emp.mustChangePassword, name: emp.name });
   res.cookies.set(SESSION_COOKIE, token, cookieOptions(SESSION_TTL_SECONDS));
   return res;

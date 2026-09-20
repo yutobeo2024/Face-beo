@@ -7,6 +7,7 @@ export type SessionPayload = {
   role: Role;
   name: string;
   mcp: boolean; // mustChangePassword
+  sv?: number; // Employee.sessionVersion lúc phát hành — lệch với DB => phiên đã bị thu hồi (thiếu = 0)
 };
 
 export const SESSION_TTL_SECONDS = 7 * 24 * 3600;
@@ -20,7 +21,7 @@ function key() {
 }
 
 export async function signSession(p: SessionPayload): Promise<string> {
-  return new SignJWT({ role: p.role, name: p.name, mcp: p.mcp })
+  return new SignJWT({ role: p.role, name: p.name, mcp: p.mcp, sv: p.sv ?? 0 })
     .setProtectedHeader({ alg: "HS256" })
     .setSubject(p.sub)
     .setIssuedAt()
@@ -37,6 +38,7 @@ export async function verifySession(token: string | undefined | null): Promise<S
       role: payload.role as Role,
       name: String(payload.name ?? ""),
       mcp: Boolean(payload.mcp),
+      sv: typeof payload.sv === "number" ? payload.sv : 0,
     };
   } catch {
     return null;

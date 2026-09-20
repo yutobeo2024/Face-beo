@@ -6,8 +6,8 @@
  *
  * Khi bật L2:
  *  - Thiếu snapshot hoặc khung mặt => TỪ CHỐI (client không được né L2 bằng cách bỏ trống dữ liệu).
- *  - Lỗi phía server (thiếu mô hình, lỗi runtime) => chỉ dùng L1 và ghi nhận `unavailable` để cảnh báo ADMIN,
- *    tránh làm tê liệt chấm công vì sự cố hạ tầng.
+ *  - Lỗi phía server (thiếu mô hình, lỗi runtime) => KHÔNG xác minh (`unavailable`, fail-closed); route quét trả 503 để kiosk
+ *    giữ lần quét trong hàng đợi và gửi lại khi mô hình chạy; ADMIN được cảnh báo. Điểm L1 do kiosk tự báo không thay được L2.
  */
 import { env } from "./env";
 import { miniFasnetScore, type FaceBox } from "./liveness-l2";
@@ -62,14 +62,16 @@ export async function evaluateLiveness(args: {
         const error = (e as Error).message;
         if (!g.__l2Warned) {
           g.__l2Warned = true;
-          console.error("[liveness] L2 không chạy được, tạm dùng L1:", error);
+          console.error("[liveness] L2 không chạy được — từ chối xác minh cho tới khi mô hình chạy lại:", error);
         }
         server = { status: "unavailable", error };
       }
     }
   }
 
-  const verified = l1Pass && server.status !== "missing_input" && (server.status !== "checked" || server.pass);
+  // L2 được bật mà không chạy được => KHÔNG xác minh (fail-closed): điểm L1 do kiosk tự báo không đủ làm bằng chứng người thật.
+  // Route quét trả 503 để kiosk giữ lần quét trong hàng đợi và gửi lại khi mô hình hoạt động. L2 tắt (cấu hình) thì chỉ dùng L1.
+  const verified = l1Pass && server.status !== "missing_input" && server.status !== "unavailable" && (server.status !== "checked" || server.pass);
   // Điểm lưu vào log = điểm yếu nhất giữa các lớp đã chạy.
   const score = server.status === "checked" ? Math.min(l1, server.score) : l1;
   return { score, l1, verified, server };

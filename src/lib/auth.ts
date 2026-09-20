@@ -16,8 +16,9 @@ export type AuthUser = {
   mustChangePassword: boolean;
 };
 
-async function loadUser(sub: string | undefined): Promise<AuthUser | null> {
-  const id = Number(sub);
+/** Nạp người dùng từ phiên; phiên đã bị thu hồi (đổi/đặt lại mật khẩu, đăng xuất) hoặc tài khoản ngừng hoạt động => null. */
+async function loadUser(s: { sub: string; sv?: number }): Promise<AuthUser | null> {
+  const id = Number(s.sub);
   if (!Number.isInteger(id)) return null;
   const e = await prisma.employee.findUnique({
     where: { id },
@@ -29,10 +30,11 @@ async function loadUser(sub: string | undefined): Promise<AuthUser | null> {
       active: true,
       departmentId: true,
       mustChangePassword: true,
+      sessionVersion: true,
       managedDepartments: { select: { id: true } },
     },
   });
-  if (!e || !e.active) return null;
+  if (!e || !e.active || e.sessionVersion !== (s.sv ?? 0)) return null;
   return {
     id: e.id,
     code: e.code,
@@ -46,7 +48,7 @@ async function loadUser(sub: string | undefined): Promise<AuthUser | null> {
 
 export async function userFromRequest(req: NextRequest): Promise<AuthUser | null> {
   const s = await verifySession(req.cookies.get(SESSION_COOKIE)?.value);
-  return s ? loadUser(s.sub) : null;
+  return s ? loadUser(s) : null;
 }
 
 /**
@@ -98,7 +100,7 @@ export function employeeScopeWhere(u: AuthUser, departmentId?: number | null) {
 export async function getPageUser(): Promise<AuthUser | null> {
   const jar = await cookies();
   const s = await verifySession(jar.get(SESSION_COOKIE)?.value);
-  return s ? loadUser(s.sub) : null;
+  return s ? loadUser(s) : null;
 }
 
 export async function requirePageUser(): Promise<AuthUser> {

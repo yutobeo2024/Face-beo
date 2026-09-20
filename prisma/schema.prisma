@@ -39,6 +39,7 @@ model Employee {
   biometricConsentAt DateTime?
   failedLogins       Int               @default(0)
   lockedUntil        DateTime?
+  sessionVersion     Int               @default(0) // tăng khi đổi/đặt lại mật khẩu, đăng xuất => mọi phiên (JWT) cũ hết hiệu lực
   createdAt          DateTime          @default(now())
   schedules          WorkSchedule[]
   logs               AttendanceLog[]

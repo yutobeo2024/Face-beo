@@ -96,8 +96,9 @@ export default function EmployeesPage() {
         await api(`/api/employees/${form.id}`, { method: "PATCH", body: { ...body, active: form.active } });
         toast.success("Đã lưu thông tin nhân viên");
       } else {
-        await api("/api/employees", { body: { ...body, code: form.code } });
-        toast.success("Đã tạo nhân viên — mật khẩu mặc định 123456");
+        const r = await api<{ tempPassword?: string }>("/api/employees", { body: { ...body, code: form.code } });
+        if (r.tempPassword) setTempPw(r.tempPassword);
+        else toast.success("Đã tạo nhân viên");
       }
       setForm(null);
       void reload();
