@@ -73,8 +73,15 @@ export function json(data: unknown, init?: ResponseInit) {
  * IP client dùng cho giới hạn tần suất. Chỉ tin X-Forwarded-For khi chạy sau reverse proxy tin cậy
  * (TRUSTED_PROXY_HOPS = số proxy phía trước, mặc định 1 cho Caddy/Nginx): lấy phần tử do proxy gần nhất thêm vào
  * (tính từ PHẢI sang), không lấy phần tử đầu mà client tự đặt được.
+ * Chạy sau Cloudflare Tunnel (app không lộ cổng nào ra ngoài): đặt CLIENT_IP_HEADER=cf-connecting-ip — header do Cloudflare ghi đè,
+ * client không tự đặt được. KHÔNG bật khi app nhận kết nối trực tiếp (ai cũng giả được header).
  */
 export function clientIp(req: NextRequest): string {
+  const header = process.env.CLIENT_IP_HEADER?.trim().toLowerCase();
+  if (header) {
+    const ip = req.headers.get(header)?.split(",")[0]?.trim();
+    if (ip) return ip;
+  }
   const hops = Number(process.env.TRUSTED_PROXY_HOPS || "1"); // để trống trong .env = mặc định
   const xff = req.headers.get("x-forwarded-for");
   if (hops > 0 && xff) {

@@ -307,6 +307,8 @@ Chạy `npm audit` trước mỗi lần phát hành. Mục tiêu là **0 lỗ h�
 
 ## Triển khai
 
+- **Máy chủ thật: VPS qua Cloudflare Tunnel bằng Docker — xem [`docs/DEPLOY-VPS.md`](docs/DEPLOY-VPS.md)** (`Dockerfile`, `deploy/docker-compose.yml`, `deploy/update.sh`).
+  Sau Cloudflare đặt `CLIENT_IP_HEADER=cf-connecting-ip` (compose đã đặt sẵn) để giới hạn tần suất theo IP người dùng thật.
 - Chạy trên 1 máy chủ hoặc VPS: `npm run build && npm start`, dưới PM2 hoặc Docker. Cần volume bền cho thư mục `data/` (SQLite, snapshot, bản sao lưu). **Không** dùng nền tảng serverless.
 - HTTPS là bắt buộc (camera). Đặt Caddy hoặc Nginx phía trước kèm chứng chỉ Let's Encrypt. Ví dụ Caddyfile:
   ```

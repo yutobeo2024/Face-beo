@@ -1,0 +1,39 @@
+# Face Beo trên VPS: app + cloudflared (Cloudflare Tunnel). Không map cổng nào ra host — chỉ tunnel gọi được app.
+# Chạy từ /opt/facebeo/src:  docker compose -f deploy/docker-compose.yml -p facebeo up -d --build
+# Dữ liệu: /opt/facebeo/data (DB, snapshots, backups, credentials, avatars) · mô hình: /opt/facebeo/models · cấu hình: /opt/facebeo/.env
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    image: facebeo-app:latest
+    env_file: /opt/facebeo/.env
+    environment:
+      DATABASE_URL: "file:../data/facebeo.db"
+      CLIENT_IP_HEADER: "cf-connecting-ip"
+    volumes:
+      - /opt/facebeo/data:/app/data
+      - /opt/facebeo/models:/app/models
+    mem_limit: 1500m
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://localhost:3000/login"]
+      interval: 60s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "5" }
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:?Thiếu TUNNEL_TOKEN trong /opt/facebeo/.env}
+    depends_on:
+      - app
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options: { max-size: "5m", max-file: "3" }

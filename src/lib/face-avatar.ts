@@ -48,9 +48,27 @@ export async function cropFaceAvatar(jpeg: Buffer, landmarks: [number, number][]
     .toBuffer();
 }
 
+// Khóa theo nhân viên (ứng dụng chạy 1 tiến trình): hai lượt enroll lại cùng lúc không được xen kẽ ghi file / cập nhật DB / dọn file,
+// nếu không lượt này có thể xóa file mà DB của lượt kia vừa trỏ tới.
+const locks = new Map<number, Promise<unknown>>();
+function withLock<T>(employeeId: number, fn: () => Promise<T>): Promise<T> {
+  const prev = locks.get(employeeId) ?? Promise.resolve();
+  const run = prev.catch(() => {}).then(fn);
+  const tail = run.catch(() => {});
+  locks.set(employeeId, tail);
+  void tail.then(() => {
+    if (locks.get(employeeId) === tail) locks.delete(employeeId);
+  });
+  return run;
+}
+
 /** Lưu ảnh đại diện mới (thay ảnh cũ). Trả về key đã lưu. */
 export async function saveFaceAvatar(employeeId: number, jpeg: Buffer, landmarks: [number, number][]): Promise<string> {
   const img = await cropFaceAvatar(jpeg, landmarks);
+  return withLock(employeeId, () => storeAvatar(employeeId, img));
+}
+
+async function storeAvatar(employeeId: number, img: Buffer): Promise<string> {
   const key = `${randomUUID()}.jpg`;
   const dir = avatarDir(employeeId);
   await mkdir(dir, { recursive: true });
@@ -76,8 +94,10 @@ export async function saveFaceAvatar(employeeId: number, jpeg: Buffer, landmarks
 /** Xóa ảnh đại diện (file + cột DB). Không ném lỗi khi không có ảnh. */
 export async function clearFaceAvatar(employeeId: number, opts: { dbAlreadyGone?: boolean } = {}) {
   if (!Number.isInteger(employeeId) || employeeId <= 0) return;
-  await rm(avatarDir(employeeId), { recursive: true, force: true });
-  if (!opts.dbAlreadyGone) await prisma.employee.updateMany({ where: { id: employeeId, faceAvatarKey: { not: null } }, data: { faceAvatarKey: null, faceAvatarAt: null } });
+  await withLock(employeeId, async () => {
+    await rm(avatarDir(employeeId), { recursive: true, force: true });
+    if (!opts.dbAlreadyGone) await prisma.employee.updateMany({ where: { id: employeeId, faceAvatarKey: { not: null } }, data: { faceAvatarKey: null, faceAvatarAt: null } });
+  });
 }
 
 export async function readFaceAvatar(employeeId: number, key: string | null): Promise<Buffer | null> {

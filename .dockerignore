@@ -1,0 +1,16 @@
+node_modules
+.next
+out
+data
+models/*.onnx
+public/models
+.env
+.env.*
+!.env.example
+tests
+docs
+.git
+.orchestrator
+*.db
+*.db-*
+*.tsbuildinfo
