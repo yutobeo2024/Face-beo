@@ -8,6 +8,11 @@ export default function setup() {
     DATABASE_URL: "file:../data/test.db",
     BIOMETRIC_KEY: "11".repeat(32),
     PRISMA_HIDE_UPDATE_MESSAGE: "1",
+    // Tiến trình con (Prisma CLI, seed) cũng nạp .env của máy: đặt rỗng để không bao giờ dùng khóa Zalo thật.
+    ZALO_OA_APP_ID: "",
+    ZALO_OA_SECRET: "",
+    ZALO_OA_ACCESS_TOKEN: "",
+    ZALO_OA_REFRESH_TOKEN: "",
   };
   execSync("npx prisma migrate deploy", { env, stdio: "pipe" });
   execSync("npx tsx prisma/seed.ts --force", { env, stdio: "pipe" });

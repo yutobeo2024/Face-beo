@@ -38,8 +38,8 @@ async function goLive() {
   await primeZaloToken();
 }
 async function goSim() {
-  for (const k of Object.keys(LIVE)) delete process.env[k];
-  delete process.env.ZALO_OA_REFRESH_TOKEN;
+  for (const k of Object.keys(LIVE)) process.env[k] = "";
+  process.env.ZALO_OA_REFRESH_TOKEN = "";
   await prisma.zaloToken.deleteMany();
   await primeZaloToken();
 }
@@ -55,6 +55,7 @@ afterEach(async () => {
   replies = [];
   await goSim();
   await saveStringSetting("zaloGroupId", "");
+  await prisma.zaloGroup.deleteMany({ where: { groupId: "g-live" } });
 });
 
 describe("công tắc mô phỏng", () => {
@@ -146,22 +147,24 @@ describe("API trạng thái & gửi thử (Quản trị)", () => {
     expect((await zaloTestRoute.POST(req("/api/settings/zalo/test", { method: "POST", cookie: mgr }), ctx())).status).toBe(403);
   });
 
-  it("thật: trạng thái gọi getoa + getgroup, gửi thử => SENT với payload nhóm đúng", async () => {
+  it("thật: trạng thái gọi getoa, gửi thử (nhóm minh bạch / đúng nhóm chỉ định) => SENT với payload nhóm đúng", async () => {
     await goLive();
-    await saveStringSetting("zaloGroupId", "g-live");
+    await prisma.zaloGroup.create({ data: { groupId: "g-live", name: "Nhóm HR", source: "MANUAL", categories: JSON.stringify(["MINH_BACH"]) } });
     useFakeZalo();
-    replies = [{ body: { error: 0, data: { oa_id: "99", name: "Face Beo OA" } } }, { body: { error: 0, data: { group_info: { name: "Nhóm HR", status: "enabled", total_member: 4, group_link: "https://zalo.me/g/x" } } } }];
+    replies = [{ body: { error: 0, data: { oa_id: "99", name: "Face Beo OA" } } }];
     const st = await (await zaloStatusRoute.GET(req("/api/settings/zalo", { cookie: A }), ctx())).json();
     expect(st.simulated).toBe(false);
     expect(st.oa.name).toBe("Face Beo OA");
-    expect(st.group).toMatchObject({ name: "Nhóm HR", status: "enabled", totalMember: 4 });
-    expect(calls.find((c) => c.url.includes("/group/getgroup?group_id=g-live"))).toBeDefined();
     calls = [];
     const t = await (await zaloTestRoute.POST(req("/api/settings/zalo/test", { method: "POST", cookie: A }), ctx())).json();
     expect(t.status).toBe("SENT");
     expect(JSON.parse(String(calls[0].init.body)).recipient.group_id).toBe("g-live");
     const st2 = await (await zaloStatusRoute.GET(req("/api/settings/zalo", { cookie: A }), ctx())).json();
-    expect(st2.recent[0].status).toBe("SENT");
+    expect(st2.recent[0]).toMatchObject({ status: "SENT", group: "Nhóm HR" });
+    calls = [];
+    const t2 = await (await zaloTestRoute.POST(req("/api/settings/zalo/test", { method: "POST", cookie: A, body: { groupId: "g-live" } }), ctx())).json();
+    expect(t2.status).toBe("SENT");
+    expect(JSON.parse(String(calls[0].init.body)).recipient.group_id).toBe("g-live");
   });
 });
 
@@ -208,21 +211,20 @@ describe("dò & kết nối nhóm GMF", () => {
     await prisma.zaloGroup.deleteMany({ where: { groupId: gid } });
   });
 
-  it("Kết nối nhóm: thật => xác minh getgroup (disabled => 400), enabled => lưu zaloGroupId + tin xác nhận vào nhóm; Quản lý => 403", async () => {
+  it("Thêm nhóm: thật => xác minh getgroup (disabled => 400), enabled => lưu nhóm + loại tin + tin xác nhận vào nhóm; Quản lý => 403", async () => {
     await goLive();
     useFakeZalo();
     const { POST, GET } = await import("@/app/api/settings/zalo/groups/route");
     replies = [{ body: { error: 0, data: { group_info: { name: "Nhóm cũ", status: "disabled" } } } }];
     expect((await POST(req("/api/settings/zalo/groups", { method: "POST", cookie: A, body: { groupId: "g-off" } }), ctx())).status).toBe(400);
     replies = [{ body: { error: 0, data: { group_info: { name: "Nhóm HR", status: "enabled", total_member: 5 } } } }];
-    const ok = await POST(req("/api/settings/zalo/groups", { method: "POST", cookie: A, body: { groupId: "g-on" } }), ctx());
+    const ok = await POST(req("/api/settings/zalo/groups", { method: "POST", cookie: A, body: { groupId: "https://oa.zalo.me/chat?gid=g-on&oaid=4184792993048491848", categories: ["MINH_BACH"] } }), ctx());
     expect(ok.status).toBe(200);
     const send = calls.filter((c) => c.url.includes("/group/message")).at(-1)!;
     expect(JSON.parse(String(send.init.body)).recipient.group_id).toBe("g-on");
     replies = [{ body: { error: 0, data: { group_info: { name: "Nhóm HR", status: "enabled", total_member: 5 } } } }];
     const list = await (await GET(req("/api/settings/zalo/groups", { cookie: A }), ctx())).json();
-    expect(list.connected).toBe("g-on");
-    expect(list.groups.find((g: { groupId: string }) => g.groupId === "g-on")).toMatchObject({ name: "Nhóm HR", source: "MANUAL" });
+    expect(list.groups.find((g: { groupId: string }) => g.groupId === "g-on")).toMatchObject({ name: "Nhóm HR", source: "MANUAL", categories: ["MINH_BACH"] });
     const mgr = await sessionCookie((await byCode("NV002")).id);
     expect((await POST(req("/api/settings/zalo/groups", { method: "POST", cookie: mgr, body: { groupId: "g-on" } }), ctx())).status).toBe(403);
     await prisma.zaloGroup.deleteMany({ where: { groupId: { in: ["g-on", "g-off"] } } });

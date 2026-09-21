@@ -790,7 +790,19 @@ stateDiagram-v2
 <!-- 15 -->
 <section id="zalo">
   <h2><span class="num">15.</span>Zalo &amp; thông báo</h2>
-  <p class="lead"><span class="pill a">Quản trị</span> Menu <b>Cấu hình</b> → thẻ <b>Zalo OA — nhóm minh bạch</b>.</p>
+  <p class="lead"><span class="pill a">Quản trị</span> Menu <b>Cấu hình</b> → thẻ <b>Zalo OA — nhóm nhận tin</b>. Có thể dùng nhiều nhóm; mỗi nhóm tích <b>loại tin</b> muốn nhận.</p>
+
+  <div class="tw"><table>
+    <tr><th>Loại tin</th><th>Nhóm nhận thấy gì</th><th>Ví dụ nhóm</th></tr>
+    <tr><td><b>Minh bạch (quản trị)</b></td><td>Mọi thao tác duyệt/sửa của Nhân sự &amp; Quản trị, đăng ký/sửa ca, chốt công, đơn quá 48 giờ (mục 15.1) — <b>có kèm lý do/ghi chú</b>, chỉ nên dùng cho nhóm quản lý</td><td>Nhóm Quản trị + HR</td></tr>
+    <tr><td><b>Chấm công nhân viên</b></td><td>⏰ Chưa chấm giờ vào (sau 30 phút) · 🚪 Quên chấm giờ ra · ❌ Vắng không phép (hết ca, không quét lần nào, không có đơn nghỉ)</td><td>YDSG-NHÂN VIÊN</td></tr>
+    <tr><td><b>Đơn từ nhân viên</b></td><td>📝 Đã gửi đơn → đang chờ ai duyệt · ✅/❌ Đã duyệt/bị từ chối bởi ai · ↩️ Tự hủy đơn · 🛠️ Bổ sung công đã chấm tay — <b>không</b> kèm lý do và ghi chú</td><td>YDSG-NHÂN VIÊN</td></tr>
+  </table></div>
+  <div class="ex"><div class="t">Ví dụ tin trong nhóm nhân viên</div>
+    <p>📝 <b>Bùi Quang Minh (NV008) — Kinh doanh</b><br/>Đã gửi đơn #131: Về sớm 15:00 24/09/2026 → 17:00 24/09/2026<br/>Đang chờ Lê Hoàng Cường duyệt</p>
+    <p>🚪 <b>Đặng Thị Lan (NV007) — Hành chính</b><br/>Quên chấm giờ ra ca Hành chính ngày 22/09/2026 (vào lúc 07:58)</p>
+  </div>
+  <div class="callout warn"><b>Nhóm nhân viên là nơi công khai</b><p>Ai trong nhóm cũng đọc được ai quên chấm, ai vắng, ai xin nghỉ. Lý do xin nghỉ và ghi chú duyệt/từ chối <b>không</b> đưa vào nhóm, chỉ gửi riêng cho người liên quan. Nên báo trước cho nhân viên quy định này.</p></div>
 
   <h3>15.1 Nhóm minh bạch nhận tin gì</h3>
   <div class="grid">
@@ -798,13 +810,15 @@ stateDiagram-v2
     <div class="card"><h4>❌ Không gửi</h4><ul><li>Từng lần quét chấm công</li><li>Việc cá nhân như HR tự gửi / hủy đơn của mình</li></ul></div>
   </div>
 
-  <h3>15.2 Kết nối nhóm</h3>
+  <h3>15.2 Thêm nhóm và chọn loại tin</h3>
   <ol class="steps">
-    <li>Trong OA Manager, tạo nhóm chat GMF và thêm Quản trị/HR vào nhóm.</li>
-    <li>Mở thẻ Zalo OA: dòng trạng thái phải là <b>"Đang gửi thật · OA &lt;tên&gt;"</b> (nếu là "mô phỏng" thì máy chủ chưa có khóa Zalo — báo kỹ thuật).</li>
-    <li>Nhóm mới tạo tự hiện trong danh sách; hoặc dán ID nhóm vào ô. Bấm <b>Kết nối</b>. Hệ thống kiểm tra nhóm đang hoạt động rồi gửi tin xác nhận vào nhóm.</li>
-    <li>Bấm <b>Gửi tin thử vào nhóm</b>. Bảng bên dưới hiện 10 tin gần nhất và lỗi (nếu có).</li>
+    <li>Trong OA Manager, tạo nhóm chat GMF (vd. "YDSG-NHÂN VIÊN") và thêm thành viên.</li>
+    <li>Mở thẻ Zalo OA: dòng trạng thái phải là <b>"Đang gửi thật"</b> (nếu là "mô phỏng" thì máy chủ chưa có khóa Zalo — báo kỹ thuật).</li>
+    <li>Mở nhóm trong OA Manager, <b>chép link trên thanh địa chỉ</b> (dạng <code>https://oa.zalo.me/chat?gid=712b…&amp;oaid=4184…</code>), dán vào ô dưới cùng, bấm <b>Thêm nhóm</b>. Hệ thống tự lấy phần <code>gid</code> (ID nhóm). Nhóm tạo mới cũng có thể tự hiện trong danh sách nếu đã bật webhook.</li>
+    <li>Ở khối của nhóm: tích <b>loại tin</b> (vd. "Chấm công nhân viên" + "Đơn từ nhân viên"); muốn chỉ một số phòng thì bấm chọn phòng (không chọn = mọi phòng). Bấm <b>Lưu</b>.</li>
+    <li>Bấm <b>Gửi tin thử</b> của nhóm đó; kết quả phải là <code>SENT</code>. Bảng "10 tin nhóm gần nhất" ghi rõ tin nào vào nhóm nào.</li>
   </ol>
+  <div class="callout"><b>ID nhóm và ID OA</b><p>Trong link, <code>gid=…</code> là ID nhóm (có lẫn chữ a–f), <code>oaid=…</code> là ID của OA (toàn chữ số). Dán nhầm chuỗi toàn số, hệ thống sẽ báo "đây là ID của OA, không phải ID nhóm".</p></div>
   <div class="callout"><b>Tin nhắn Zalo cá nhân cho từng nhân viên</b>
     <p>Hệ thống có gửi tin riêng (nhắc trễ, đơn được duyệt, thiếu giờ ra…) cho người <b>đã liên kết Zalo</b> ở trang cá nhân, nhưng Zalo chỉ cho OA nhắn miễn phí trong 48 giờ sau khi người đó nhắn cho OA — nên tin riêng là "có thì tốt", chưa đảm bảo (đang chờ quyết định dùng ZNS trả phí). Nhân viên luôn xem được thông báo tại <code>/me</code> → <b>Thông báo gần đây</b>. Chi tiết kỹ thuật và sơ đồ: <a href="https://claude.ai/artifact/KwxtwjjshvwgYp8F9T64gh" target="_blank" rel="noopener noreferrer">Tài liệu Zalo OA</a> (<code>docs/zalo-oa.html</code>).</p>
   </div>
@@ -851,7 +865,8 @@ stateDiagram-v2
   <details><summary>Nhân viên xoay ca hiện "Chưa có lịch"</summary><p>Tuần chưa được đăng ký. Quản lý (nếu tuần chưa bắt đầu) hoặc HR đăng ký tuần đó; công tự tính lại.</p></details>
   <details><summary>Không sửa được ca / không duyệt được đơn, báo tháng đã chốt</summary><p>Tháng đã chốt công. Liên hệ Quản trị để mở khóa (mục 14).</p></details>
   <details><summary>Quản lý muốn đổi ca đã đăng ký</summary><p>Quản lý không sửa được lịch đã đăng ký. Nhờ HR sửa, kèm lý do; thay đổi sẽ báo vào nhóm Zalo.</p></details>
-  <details><summary>Nhóm Zalo không nhận tin</summary><p>Quản trị mở thẻ Zalo OA: xem trạng thái (thật/mô phỏng), trạng thái nhóm phải là "enabled", xem lỗi ở bảng 10 tin gần nhất, bấm Gửi tin thử.</p></details>
+  <details><summary>Nhóm Zalo không nhận tin</summary><p>Quản trị mở thẻ Zalo OA: xem trạng thái (thật/mô phỏng), nhóm đã được tích đúng <b>loại tin</b> chưa (nhóm không tích loại nào thì không nhận gì), có đang giới hạn phòng không, xem lỗi ở bảng 10 tin gần nhất, bấm Gửi tin thử của nhóm đó.</p></details>
+  <details><summary>Nhóm nhân viên không báo "chưa chấm vào" cho một người</summary><p>Tin chỉ gửi khi người đó đã enroll khuôn mặt, hôm đó có ca (nhân viên xoay ca: tuần đã đăng ký), không có đơn nghỉ, và đã quá "Tính vắng sau (phút)" kể từ giờ vào ca. Mỗi người mỗi ngày chỉ một tin.</p></details>
   <details><summary>Quên mật khẩu / muốn đổi mật khẩu</summary><p><b>Quên:</b> nhờ HR (hoặc Quản trị với tài khoản HR/Quản trị) đặt lại mật khẩu trong hồ sơ nhân viên; HR đưa mật khẩu tạm, đăng nhập xong hệ thống bắt đổi ngay. <b>Còn nhớ, muốn đổi:</b> vào Trang cá nhân → <b>Đổi mật khẩu</b>. Cả hai cách đều làm mọi phiên đăng nhập cũ của người đó bị thoát.</p></details>
   <details><summary>Quản trị quên mật khẩu / bị khóa đăng nhập, không còn ai đặt lại cho</summary><p>Người quản lý máy chủ mở cửa sổ lệnh trong thư mục ứng dụng, chạy <code>npm run admin:create -- --reset AD01</code> (thay AD01 bằng mã Quản trị). Lệnh in mật khẩu tạm mới, mở khóa đăng nhập và thoát mọi phiên cũ; đăng nhập xong hệ thống bắt đổi mật khẩu. Chỉ áp dụng cho Quản trị đang làm việc; nếu mọi Quản trị đã nghỉ việc thì tạo Quản trị mới bằng <code>npm run admin:create -- --code … --name … --phone …</code>.</p></details>
   <details><summary>Tạo nhầm nhân viên, muốn xóa</summary><p>Nhân viên → Sửa → nút đỏ <b>Xóa tài khoản</b> → xác nhận. Chỉ xóa được khi tài khoản chưa có chấm công / đơn từ / lịch; nếu bị từ chối (đã có dữ liệu) thì bỏ tích <b>Đang làm việc</b> để cho nghỉ việc, hoặc sửa lại hồ sơ đó cho đúng người (mục 6.2).</p></details>
@@ -859,7 +874,7 @@ stateDiagram-v2
   <details><summary>Đăng xuất trên điện thoại thì máy tính cũng bị thoát?</summary><p>Đúng, có chủ đích: đăng xuất ở bất kỳ đâu sẽ thoát tài khoản trên mọi thiết bị (kể cả phiên lỡ để lại ở máy dùng chung). Đăng nhập lại là được. Đổi mật khẩu cũng vậy.</p></details>
 </section>
 
-<footer>Face Beo · Cẩm nang sử dụng · cập nhật 21/09/2026 (phiên bản ứng dụng v1.5.4)</footer>
+<footer>Face Beo · Cẩm nang sử dụng · cập nhật 21/09/2026 (phiên bản ứng dụng v1.6.0)</footer>
 </main>
 </div>
 

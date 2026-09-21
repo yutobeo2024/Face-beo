@@ -309,14 +309,17 @@ model LockedDay {
   @@index([month])
 }
 
-// Nhóm chat GMF của OA đã dò được (webhook create_group) hoặc Quản trị nhập tay; nhóm đang nhận tin minh bạch = AppSetting zaloGroupId.
+// Nhóm chat GMF của OA đã dò được (webhook create_group) hoặc Quản trị nhập tay.
+// Nhóm nhận loại tin nào do `categories` quyết định (v1.6.0, thay AppSetting zaloGroupId); mảng rỗng = không nhận tin.
 model ZaloGroup {
-  groupId      String   @id
-  oaId         String?
-  name         String?
-  status       String? // enabled | disabled (theo API getgroup)
-  totalMember  Int?
-  source       String   @default("WEBHOOK") // WEBHOOK | MANUAL
-  discoveredAt DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  groupId       String   @id
+  oaId          String?
+  name          String?
+  status        String? // enabled | disabled (theo API getgroup)
+  totalMember   Int?
+  source        String   @default("WEBHOOK") // WEBHOOK | MANUAL
+  categories    String   @default("[]") // JSON: MINH_BACH | CHAM_CONG | DON_TU
+  departmentIds String   @default("[]") // JSON id phòng; rỗng = mọi phòng (chỉ áp cho tin nhân viên)
+  discoveredAt  DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }

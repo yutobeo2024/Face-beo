@@ -271,3 +271,29 @@ công được tính trực tiếp từ planner. Quản lý được cấp `org.
   lại qua lệnh này — khi không còn Quản trị nào hoạt động thì tạo tài khoản mới. Người chạy lệnh phải có quyền truy cập máy chủ và DB.
 - **Chặn seed demo trên DB thật**: `npm run db:seed` từ chối khi DB đã có nhân viên hoặc ca, ép bằng `npm run db:seed:force` hoặc `SEED_FORCE=1`
   (test tích hợp dùng `--force` cho `data/test.db`). Dữ liệu demo giữ nguyên (ca demo hệ số 1).
+
+## 18. Nhiều nhóm Zalo, mỗi nhóm nhận loại tin riêng (v1.6.0, 21/09/2026)
+
+- **Vấn đề.** Trước đây mọi tin nhóm vào **một** nhóm (`AppSetting.zaloGroupId`) và chỉ gồm thao tác quản trị. Chủ dự án cần thêm nhóm nhân
+  viên (vd. "YDSG-NHÂN VIÊN") nhận tin chấm công và đơn từ của nhân viên, nhóm minh bạch cũ giữ nguyên.
+- **Loại tin** (`ZaloGroup.categories`, JSON; rỗng = nhóm không nhận tin):
+  | Mã | Nội dung | Nguồn |
+  |---|---|---|
+  | `MINH_BACH` | 25 luồng tin nhóm cũ (`announce()` / `announceSystem()`), luật HR/QT + `always` không đổi | `src/lib/announce.ts` |
+  | `CHAM_CONG` | ⏰ chưa chấm giờ vào (sau `absentAfterMinutes`, không đơn — cùng lúc `ABSENT_WARNING`) · 🚪 quên chấm giờ ra (cùng lúc `MISSING_OUT_NUDGE`) · ❌ vắng không phép | `src/lib/jobs.ts` |
+  | `DON_TU` | 📝 đã gửi đơn → đang chờ {người duyệt} · ✅/❌ đã duyệt/từ chối bởi {tên} (mọi người duyệt, kể cả Quản lý) · ↩️ tự hủy đơn · 🛠️ bổ sung công đã chấm tay | `src/lib/notify.ts` |
+- **Lọc phòng** (`ZaloGroup.departmentIds`; rỗng = mọi phòng): chỉ áp cho `CHAM_CONG`/`DON_TU`, theo phòng hiện tại của nhân viên.
+- **Riêng tư**: tin nhóm nhân viên chỉ có tên, mã, phòng, loại đơn, thời gian, trạng thái, người duyệt — **không** lý do xin nghỉ, **không**
+  ghi chú duyệt/từ chối (các nội dung đó vẫn gửi riêng cho người liên quan như trước).
+- **Vắng không phép** (chỉ để báo nhóm): trong vòng 12 giờ sau giờ kết thúc ca, cả ngày công không có lần quét nào, nhân viên đã enroll, ngày
+  có ca (không nghỉ, không lễ, tuần xoay ca đã đăng ký), không có đơn nghỉ phép giao ca và không có đơn bổ sung công trong cửa sổ ca
+  (đã duyệt **hoặc đang chờ**). Không đổi dữ liệu công. Người đã nghỉ việc không bị báo nhóm.
+- **Khóa dedupe tin nhân viên** luôn là `staff:{sự kiện}:{id}@{groupId}` (thêm/bớt nhóm giữa hai lần chạy job không làm gửi lặp).
+- **Gửi ngay từng người**, mỗi sự kiện một tin; chạy lại job không trùng. Tin Minh bạch có kèm lý do/ghi chú nên chỉ tích cho nhóm quản lý.
+- **Nâng cấp**: migration chuyển nhóm đang ở `zaloGroupId` thành dòng `ZaloGroup` có `categories=["MINH_BACH"]` — không phải cấu hình lại.
+  Chưa nhóm nào tích Minh bạch → tin minh bạch ghi `FAILED` "Chưa cấu hình ID nhóm" như cũ; tin nhân viên không có nhóm → bỏ qua, không ghi.
+- **Cấu hình → Zalo OA**: mỗi nhóm tích loại tin + chọn phòng, nút Lưu / Gửi tin thử riêng; ô "Thêm nhóm" nhận **link chat nhóm**
+  (`https://oa.zalo.me/chat?gid=…&oaid=…`) và tự tách `gid`; chuỗi toàn số (ID OA) bị từ chối kèm giải thích. Đổi loại tin ghi audit
+  `ZALO_GROUP_ROUTING` và báo nhóm minh bạch. Quyền `settings.system` (chỉ Quản trị).
+- **Test không gọi Zalo thật**: `tests/setup.ts` chặn @next/env và Prisma Client nạp `.env` của máy (khai báo trước khóa rỗng) — lỗi cũ chỉ lộ
+  ra trên máy có `.env` chứa khóa Zalo thật. `TRUSTED_PROXY_HOPS=` để trống giờ được hiểu là mặc định 1.

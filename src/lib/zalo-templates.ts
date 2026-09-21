@@ -8,6 +8,7 @@ export type MessageType =
   | "ABSENT_WARNING"
   | "ABSENT_DIGEST"
   | "GROUP_EVENT"
+  | "GROUP_STAFF"
   | "CORRECTION_READY"
   | "CORRECTION_DONE"
   | "MISSING_OUT_NUDGE"
@@ -108,6 +109,8 @@ export const zaloTemplates: Record<MessageType, (d: Data) => string> = {
     ]
       .filter(Boolean)
       .join("\n"),
+  // Tin về một nhân viên vào nhóm nhân viên (chấm công, đơn từ): chỉ trạng thái, không lý do.
+  GROUP_STAFF: (d) => [`${s(d.icon)} ${s(d.employeeName)} (${s(d.employeeCode)}) — ${s(d.departmentName)}`, s(d.text), `🕒 ${s(d.atText)}`].join("\n"),
   ABSENT_DIGEST: (d) => {
     const rows = (d.items as { name: string; code: string; note?: string }[]) ?? [];
     return [

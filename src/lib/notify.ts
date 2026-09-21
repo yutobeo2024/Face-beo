@@ -2,6 +2,7 @@
 import type { LeaveRequest } from "@prisma/client";
 import { prisma } from "./db";
 import { sendZaloMessage } from "./zalo-oa";
+import { announceStaff } from "./zalo-routing";
 import { toVN, shouldSendLateReminder, vnTime, type DayPlan, type RequestLite } from "./attendance";
 import { REQUEST_TYPE_LABEL, type RequestTypeT } from "./roles";
 import { can } from "./permissions";
@@ -97,6 +98,17 @@ export async function canExecuteCorrection(user: { id: number; role: string }, r
 export const correctionText = (r: Pick<LeaveRequest, "correctionAt" | "correctionKind">) =>
   r.correctionAt ? `${r.correctionKind === "OUT" ? "giờ ra" : "giờ vào"} lúc ${fmtDT(r.correctionAt)}` : "";
 
+/** "Nghỉ phép 08:00 22/09/2026 → 17:00 22/09/2026" / "Bổ sung công — giờ ra lúc …": dùng cho tin nhóm nhân viên (không lý do). */
+function requestSummary(r: LeaveRequest) {
+  const type = REQUEST_TYPE_LABEL[r.type as RequestTypeT] ?? r.type;
+  return r.correctionAt ? `${type} — ${correctionText(r)}` : `${type} ${fmtDT(r.fromTime)} → ${fmtDT(r.toTime)}`;
+}
+
+async function namesOf(ids: number[]) {
+  const rows = await prisma.employee.findMany({ where: { id: { in: ids } }, select: { name: true }, orderBy: { name: "asc" } });
+  return rows.map((r) => r.name).join(", ");
+}
+
 export async function notifyRequestCreated(r: LeaveRequest) {
   const emp = await prisma.employee.findUniqueOrThrow({ where: { id: r.employeeId }, select: { name: true, code: true } });
   const data = {
@@ -110,6 +122,14 @@ export async function notifyRequestCreated(r: LeaveRequest) {
     reason: r.reason,
   };
   const approvers = new Set(await approversFor(r.employeeId));
+  const approverNames = await namesOf([...approvers]);
+  await announceStaff({
+    category: "DON_TU",
+    employeeId: r.employeeId,
+    icon: "📝",
+    text: `Đã gửi đơn #${r.id}: ${requestSummary(r)}\nĐang chờ ${approverNames || "người duyệt"} duyệt`,
+    key: `req-created:${r.id}`,
+  });
   const to = new Set(approvers);
   // Đơn bổ sung công: Nhân sự (người sẽ chấm tay) nhận tin ngay từ đầu — dạng "để biết", không phải "cần duyệt".
   if (r.type === "BO_SUNG_CONG") for (const id of await executorsFor(r.employeeId)) to.add(id);
@@ -125,6 +145,11 @@ export async function notifyRequestCreated(r: LeaveRequest) {
   );
 }
 
+/** Nhân viên tự hủy đơn đang chờ: báo nhóm đơn từ (để tin "đang chờ duyệt" trước đó không treo). */
+export async function notifyRequestCancelled(r: LeaveRequest) {
+  await announceStaff({ category: "DON_TU", employeeId: r.employeeId, icon: "↩️", text: `Đã tự hủy đơn #${r.id}: ${requestSummary(r)}`, key: `req-cancelled:${r.id}` });
+}
+
 /** Đơn bổ sung công vừa được duyệt: báo người thực hiện chấm tay. */
 export async function notifyCorrectionReady(r: LeaveRequest) {
   const emp = await prisma.employee.findUniqueOrThrow({ where: { id: r.employeeId }, select: { name: true, code: true } });
@@ -138,6 +163,13 @@ export async function notifyCorrectionReady(r: LeaveRequest) {
 
 /** Đã chấm tay xong: báo nhân viên. */
 export async function notifyCorrectionDone(r: LeaveRequest, executorName: string, time: Date) {
+  await announceStaff({
+    category: "DON_TU",
+    employeeId: r.employeeId,
+    icon: "🛠️",
+    text: `Đơn bổ sung công #${r.id} đã được ${executorName} chấm tay: ${r.correctionKind === "OUT" ? "giờ ra" : "giờ vào"} lúc ${fmtDT(time)}`,
+    key: `corr-done:${r.id}`,
+  });
   return sendZaloMessage({
     toEmployeeId: r.employeeId,
     messageType: "CORRECTION_DONE",
@@ -148,6 +180,14 @@ export async function notifyCorrectionDone(r: LeaveRequest, executorName: string
 
 export async function notifyRequestDecided(r: LeaveRequest) {
   const approver = r.approverId ? await prisma.employee.findUnique({ where: { id: r.approverId }, select: { name: true } }) : null;
+  // Tin nhóm: chỉ trạng thái — không kèm ghi chú duyệt/từ chối (có thể là chuyện riêng).
+  await announceStaff({
+    category: "DON_TU",
+    employeeId: r.employeeId,
+    icon: r.status === "APPROVED" ? "✅" : "❌",
+    text: `Đơn #${r.id} ${requestSummary(r)} ${r.status === "APPROVED" ? "đã được DUYỆT" : "bị TỪ CHỐI"}${approver ? ` bởi ${approver.name}` : ""}`,
+    key: `req-decided:${r.id}`,
+  });
   return sendZaloMessage({
     toEmployeeId: r.employeeId,
     messageType: "REQUEST_DECIDED",

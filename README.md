@@ -67,7 +67,7 @@ Seed còn tạo 4 ca (Hành chính 08:00–17:00, Sáng sớm 07:00–17:00, Ca 
 | `/admin/reports` | `reports.view` | Bảng công tổng hợp, xuất Excel: bảng công (`/api/reports/attendance.xlsx`) và ma trận giờ vào/ra theo ngày (`/api/reports/inout.xlsx`, v1.5.2) |
 | `/admin/employees` | `employees.view` / `employees.manage` | Nhân viên, loại lịch + mẫu tuần, enroll khuôn mặt (`faces.enroll`) |
 | `/admin/devices` | 🔒 ADMIN | Ghép / thu hồi kiosk |
-| `/admin/settings` | 🔒 ADMIN / `org.manage` | Ca, mẫu tuần, ngày lễ, phòng ban, ngưỡng, ID nhóm Zalo |
+| `/admin/settings` | 🔒 ADMIN / `org.manage` | Ca, mẫu tuần, ngày lễ, phòng ban, ngưỡng, các nhóm Zalo và loại tin nhận |
 | `/admin/settings/permissions` | 🔒 ADMIN | Ma trận phân quyền |
 | `/admin/links` | `links.manage` (HR mặc định; Quản lý nếu được cấp, giới hạn theo phòng) | Liên kết nhanh của mục "Thông tin": thêm/sửa/ẩn, chọn icon, giới hạn vai trò + phòng ban được xem (v1.5.0) |
 | `/me`, `/me/requests`, `/me/attendance`, `/me/zalo`, `/me/info`, `/me/password` | Mọi người đăng nhập | Lịch tuần, đơn của tôi (nghỉ, về sớm, tăng ca, bổ sung công), lịch sử công, liên kết Zalo, mục Thông tin (ô liên kết web app / Google Sheet / Drive), đổi mật khẩu |
@@ -198,11 +198,19 @@ Mở `/kiosk/benchmark` trên tablet thật và bấm **Bắt đầu 50 lượt*
 
 ## Cấu hình Zalo OA
 
-Tài liệu đầy đủ (sơ đồ cho người không kỹ thuật, 13 loại tin, job nền, cài đặt, xử lý sự cố, tham chiếu mã/API, link tài liệu Zalo):
+Tài liệu đầy đủ (sơ đồ cho người không kỹ thuật, 14 loại tin, nhiều nhóm theo loại tin, job nền, cài đặt, xử lý sự cố, tham chiếu mã/API, link tài liệu Zalo):
 [`docs/zalo-oa.html`](docs/zalo-oa.html).
 
 Thiếu `ZALO_OA_APP_ID`, `ZALO_OA_SECRET` hoặc chưa có token thì hệ thống chạy ở **chế độ mô phỏng**: tin nhắn in ra console và ghi
 `NotificationLog` với trạng thái `SIMULATED`. Trạng thái hiện tại xem ở **Cấu hình → Zalo OA** (chỉ Quản trị).
+
+### Nhiều nhóm, mỗi nhóm một loại tin (v1.6.0)
+
+Mỗi nhóm GMF trong **Cấu hình → Zalo OA** tích loại tin muốn nhận: **Minh bạch** (toàn bộ tin nhóm cũ — thao tác HR/Quản trị, đăng ký/sửa
+ca, chốt công, đơn quá 48 giờ), **Chấm công nhân viên** (chưa chấm vào, quên chấm ra, vắng không phép) và **Đơn từ nhân viên** (đã gửi → chờ
+ai duyệt, đã duyệt/từ chối bởi ai, đã chấm tay bổ sung công — **không** kèm lý do/ghi chú). Tin nhân viên lọc được theo phòng (trống = mọi
+phòng). Khi nâng cấp, nhóm đang kết nối tự thành nhóm *Minh bạch*. Thêm nhóm bằng cách dán **link chat nhóm** (`…/chat?gid=…&oaid=…`):
+hệ thống tự lấy `gid`; chuỗi toàn số (ID của OA) bị chặn. Logic: `src/lib/zalo-routing.ts`.
 
 ### Giai đoạn 1 (v1.4): nhóm minh bạch
 
@@ -221,7 +229,8 @@ Mọi thao tác duyệt/sửa của Nhân sự và Quản trị (đơn, chấm t
 4. Điền `.env`: `ZALO_OA_APP_ID`, `ZALO_OA_SECRET`, `ZALO_OA_ACCESS_TOKEN`, `ZALO_OA_REFRESH_TOKEN` (hai token chỉ dùng để khởi tạo DB),
    `ZALO_OA_NAME` (tên hiển thị), `APP_BASE_URL` (địa chỉ mà link trong tin nhắn trỏ tới). Khởi động lại server.
 5. Vào **Cấu hình → Zalo OA**: thấy "Đang gửi thật · OA <tên>". Chọn nhóm trong danh sách *Nhóm đã dò* (nếu đã bật webhook, nhóm tạo mới tự
-   xuất hiện) hoặc dán ID nhóm, bấm **Kết nối** — hệ thống kiểm tra nhóm đang `enabled` rồi gửi một tin xác nhận vào nhóm. Có thể bấm thêm **Gửi tin thử vào nhóm**. Thẻ này cũng hiện trạng thái nhóm (`enabled` = OA gửi được) và
+   xuất hiện) hoặc dán link chat nhóm / ID nhóm, bấm **Thêm nhóm** — hệ thống kiểm tra nhóm đang `enabled` rồi gửi một tin xác nhận vào nhóm.
+   Tích loại tin cho nhóm (v1.6.0) rồi **Lưu**; mỗi nhóm có nút **Gửi tin thử**. Thẻ này cũng hiện trạng thái nhóm (`enabled` = OA gửi được) và
    10 tin gần nhất kèm mã lỗi.
 
 API đã đối chiếu tài liệu (19/09/2026): `POST https://openapi.zalo.me/v3.0/oa/group/message` body `{recipient:{group_id}, message:{text}}`;

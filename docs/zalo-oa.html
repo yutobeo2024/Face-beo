@@ -105,13 +105,14 @@ footer{color:var(--muted);font-size:.85rem;text-align:center;padding:10px}
 <div class="layout">
 <nav class="toc" id="toc">
   <div class="brand">💬 Zalo OA trong Face Beo</div>
-  <div class="sub">Tài liệu tích hợp · bản v1.5.3</div>
+  <div class="sub">Tài liệu tích hợp · bản v1.6.0</div>
   <button class="menu-mobile" onclick="document.getElementById('toc').classList.toggle('open')">☰ Mục lục</button>
   <ol>
     <li class="grp">Cho mọi người</li>
     <li><a href="#tong-quan">1. Zalo OA là gì, Face Beo dùng để làm gì</a></li>
-    <li><a href="#luong">2. Bốn luồng hoạt động (sơ đồ)</a></li>
-    <li><a href="#tin">3. 13 loại tin nhắn</a></li>
+    <li><a href="#luong">2. Các luồng hoạt động (sơ đồ)</a></li>
+    <li><a href="#dinh-tuyen">2.5 Nhiều nhóm theo loại tin</a></li>
+    <li><a href="#tin">3. 14 loại tin nhắn</a></li>
     <li><a href="#cron">4. Lịch tự động (job nền)</a></li>
     <li class="grp">Quản trị</li>
     <li><a href="#cai-dat">5. Cài đặt &amp; vận hành</a></li>
@@ -125,7 +126,7 @@ footer{color:var(--muted);font-size:.85rem;text-align:center;padding:10px}
 <header class="hero">
   <button class="theme-btn" id="themeBtn" type="button">🌓 Giao diện</button>
   <h1>Zalo OA trong Face Beo</h1>
-  <p>Toàn bộ những gì Face Beo làm với Zalo Official Account: gửi tin vào nhóm minh bạch, nhắn riêng cho nhân viên, liên kết tài khoản, làm mới token, cùng các lệnh, biến cấu hình và mã nguồn liên quan.</p>
+  <p>Toàn bộ những gì Face Beo làm với Zalo Official Account: gửi tin vào các nhóm (nhóm minh bạch cho quản trị, nhóm nhân viên cho chấm công và đơn từ — mỗi nhóm chọn loại tin), nhắn riêng cho nhân viên, liên kết tài khoản, làm mới token, cùng các lệnh, biến cấu hình và mã nguồn liên quan.</p>
   <p>Mục 1–4 viết cho <b>người không kỹ thuật</b> (có sơ đồ). Mục 5–6 cho <b>Quản trị vận hành</b>. Mục 7–8 là tham chiếu kỹ thuật kèm link tài liệu chính thức của Zalo.</p>
   <p><span class="pill a">Quản trị</span><span class="pill h">Nhân sự</span><span class="pill m">Quản lý</span><span class="pill e">Nhân viên</span></p>
 </header>
@@ -172,7 +173,7 @@ flowchart LR
 
 <!-- 2 -->
 <section id="luong">
-  <h2><span class="num">2.</span>Bốn luồng hoạt động</h2>
+  <h2><span class="num">2.</span>Các luồng hoạt động</h2>
   <p class="lead">Mỗi luồng một sơ đồ trình tự, đọc từ trên xuống. Tên trong ngoặc là hàm / bảng dữ liệu để người kỹ thuật tra cứu.</p>
 
   <h3>2.1 Tin nhóm minh bạch</h3>
@@ -252,7 +253,7 @@ flowchart TD
   </div>
   <div class="callout ok"><b>Chống làm mới trùng</b><p>Nhiều tin gửi cùng lúc chỉ tạo <b>một</b> lần làm mới: trong tiến trình dùng "singleflight", giữa các tiến trình dùng khóa <code>AppSetting.zaloRefreshLock</code> (hạn 60 giây) và so-sánh-rồi-ghi trên <code>refreshToken</code> hiện tại.</p></div>
 
-  <h3>2.4 Dò nhóm và kết nối nhóm minh bạch</h3>
+  <h3>2.4 Dò nhóm và thêm nhóm</h3>
   <div class="diagram">
 <pre class="mermaid">
 sequenceDiagram
@@ -266,30 +267,59 @@ sequenceDiagram
   A->>OAM: Tạo nhóm chat GMF, thêm HR/Quản trị vào nhóm
   Z->>W: Sự kiện create_group
   W->>DB: Lưu ZaloGroup (source = WEBHOOK), hỏi tên/số thành viên qua getgroup
-  A->>UI: Thấy nhóm trong "Nhóm đã dò" (hoặc dán ID nhóm tay)
-  A->>UI: Bấm "Kết nối"
+  A->>UI: Thấy nhóm trong danh sách (hoặc dán link chat nhóm / ID nhóm)
+  A->>UI: Bấm "Thêm nhóm", tích loại tin, bấm Lưu
   UI->>Z: GET /v3.0/oa/group/getgroup?group_id=…
   alt status = enabled
-    UI->>DB: Lưu AppSetting zaloGroupId; ZaloGroup source = MANUAL nếu nhập tay
-    UI->>Z: Gửi tin xác nhận vào nhóm (announce, always = true)
+    UI->>DB: Lưu ZaloGroup (source = MANUAL nếu nhập tay) + loại tin (categories) + phòng
+    UI->>Z: Gửi tin xác nhận vào chính nhóm đó
   else disabled / không thấy
     UI-->>A: Báo lỗi 400 "nhóm chưa enabled", không lưu
   end
 </pre>
-    <div class="cap">Hình 5. Nhóm phải ở trạng thái <code>enabled</code> (OA còn quyền gửi) mới kết nối được. Nút "Gửi tin thử vào nhóm" dùng để kiểm tra bất cứ lúc nào (giới hạn 5 lần/phút).</div>
+    <div class="cap">Hình 5. Nhóm phải ở trạng thái <code>enabled</code> (OA còn quyền gửi) mới thêm được. Mỗi nhóm có nút "Gửi tin thử" riêng (giới hạn 5 lần/phút).</div>
   </div>
+  <div class="callout"><b>Lấy ID nhóm từ link chat</b><p>Mở nhóm trong OA Manager, link trên thanh địa chỉ có dạng <code>https://oa.zalo.me/chat?gid=712b67d35bb3b2edeba2&amp;oaid=4184792993048491848</code>. Phần <code>gid=…</code> là <b>ID nhóm</b> (chuỗi có lẫn chữ a–f); phần <code>oaid=…</code> là <b>ID của OA</b> (toàn chữ số) — <b>không</b> phải ID nhóm. Dán cả link vào ô "Thêm nhóm", hệ thống tự tách <code>gid</code>; dán chuỗi toàn số sẽ bị từ chối kèm giải thích.</p></div>
+
+  <h3 id="dinh-tuyen">2.5 Nhiều nhóm — mỗi nhóm nhận loại tin riêng (v1.6.0)</h3>
+  <p>Mỗi nhóm Zalo trong <b>Cấu hình → Zalo OA</b> được tích <b>loại tin</b> muốn nhận. Tin nhân viên (chấm công, đơn từ) có thể giới hạn theo <b>phòng ban</b> — không chọn phòng = mọi phòng. Nhóm không tích loại nào thì không nhận tin. Nhờ vậy sau này muốn tách "nhóm nhân viên" theo từng phòng chỉ cần thêm nhóm và tích, không phải sửa phần mềm.</p>
+  <div class="tw"><table>
+    <tr><th>Loại tin</th><th>Gồm những gì</th><th>Ai gây ra</th></tr>
+    <tr><td><b>Minh bạch (quản trị)</b></td><td>Toàn bộ tin nhóm cũ (mục 3.1): duyệt/sửa của Nhân sự &amp; Quản trị, đăng ký/sửa ca, chốt công, phân quyền, báo cáo thứ Hai, đơn quá 48 giờ — <b>kèm lý do/ghi chú</b>, chỉ dành cho nhóm quản lý</td><td>Luật cũ giữ nguyên: HR/Quản trị, trừ thao tác gắn cờ <code>always</code></td></tr>
+    <tr><td><b>Chấm công nhân viên</b></td><td>⏰ Chưa chấm giờ vào (sau "tính vắng sau N phút", không có đơn) · 🚪 Quên chấm giờ ra · ❌ Vắng không phép (hết ca, không có lần quét nào, không có đơn nghỉ đã duyệt hoặc đang chờ)</td><td>Job nền (mỗi 5 / 30 phút)</td></tr>
+    <tr><td><b>Đơn từ nhân viên</b></td><td>📝 Đã gửi đơn → đang chờ ai duyệt · ✅/❌ Đã duyệt / bị từ chối bởi ai (kể cả Quản lý duyệt) · ↩️ Tự hủy đơn · 🛠️ Bổ sung công đã được chấm tay. <b>Không</b> kèm lý do xin nghỉ và ghi chú duyệt/từ chối</td><td>Mọi vai trò</td></tr>
+  </table></div>
+  <div class="diagram">
+<pre class="mermaid">
+flowchart LR
+  A["Thao tác HR / Quản trị<br/>(announce)"] --> MB{{"Minh bạch"}}
+  J["Job nền: chưa chấm vào,<br/>quên chấm ra, vắng không phép"] --> CC{{"Chấm công"}}
+  R["Gửi đơn, duyệt / từ chối,<br/>chấm tay bổ sung công"] --> DT{{"Đơn từ"}}
+  MB --> G1["Nhóm minh bạch<br/>(Quản trị, HR)"]
+  CC --> G2["YDSG-NHÂN VIÊN<br/>(mọi phòng)"]
+  DT --> G2
+  DT -.->|"nếu tích phòng Kinh doanh"| G3["Nhóm phòng Kinh doanh"]
+</pre>
+    <div class="cap">Hình 6. Một sự kiện có thể vào nhiều nhóm (mỗi nhóm một tin). Tin nhân viên chỉ vào nhóm có tích đúng loại và (nếu có chọn) đúng phòng của nhân viên.</div>
+  </div>
+  <div class="ex"><div class="t">Ví dụ tin trong nhóm nhân viên</div>
+    <p>📝 <b>Bùi Quang Minh (NV008) — Kinh doanh</b><br/>Đã gửi đơn #131: Về sớm 15:00 24/09/2026 → 17:00 24/09/2026<br/>Đang chờ Lê Hoàng Cường duyệt<br/>🕒 10:12 21/09/2026</p>
+    <p>❌ <b>Đặng Thị Lan (NV007) — Hành chính</b><br/>Vắng không phép ca Hành chính ngày 22/09/2026 (không có lần chấm công, không có đơn nghỉ)<br/>🕒 17:05 22/09/2026</p>
+  </div>
+  <div class="callout warn"><b>Nhóm nhân viên là nơi công khai</b><p>Mọi thành viên trong nhóm đều đọc được ai quên chấm, ai vắng, ai xin nghỉ. Vì vậy tin đơn từ chỉ có loại đơn, thời gian, trạng thái và người duyệt — lý do và ghi chú chỉ gửi riêng cho người liên quan. Nên thông báo trước quy định này cho nhân viên.</p></div>
 </section>
 
 <!-- 3 -->
 <section id="tin">
-  <h2><span class="num">3.</span>13 loại tin nhắn</h2>
+  <h2><span class="num">3.</span>14 loại tin nhắn</h2>
   <p class="lead">Nội dung tin lấy từ <code>src/lib/zalo-templates.ts</code>. Mỗi tin có link mở đúng màn hình trong Face Beo (địa chỉ gốc lấy từ <code>APP_BASE_URL</code>).</p>
-  <h3>3.1 Tin gửi vào nhóm minh bạch</h3>
+  <h3>3.1 Tin gửi vào nhóm</h3>
   <div class="tw"><table>
     <tr><th>Loại</th><th>Khi nào</th><th>Nội dung mẫu</th></tr>
     <tr><td><code>GROUP_EVENT</code></td><td>HR/Quản trị: duyệt/từ chối đơn, chấm tay bổ sung công, thêm/sửa/xóa nhân viên (kể cả đặt lại mật khẩu, cho nghỉ việc), enroll/xóa khuôn mặt, hệ số công (chung của ca và theo phòng), mẫu tuần, gán/gỡ quản lý phòng, xóa phòng, liên kết Thông tin. <b>Bất kể vai trò</b> (cờ <code>always</code>): đăng ký/sửa ca tuần (kể cả Quản lý), chốt/mở khóa công, phân quyền, kết nối nhóm, gửi tin thử. Hệ thống: báo cáo thứ Hai, đơn quá 48 giờ.</td><td>🔔 <i>Vai trò Tên</i> đã … <br/>Chi tiết (nếu có) · Lý do/ghi chú của người thao tác <br/>🕒 HH:mm dd/MM/yyyy</td></tr>
+    <tr><td><code>GROUP_STAFF</code> (v1.6.0)</td><td>Nhóm tích <b>Chấm công</b> / <b>Đơn từ</b> (mục 2.5): chưa chấm vào, quên chấm ra, vắng không phép; gửi đơn, duyệt/từ chối, chấm tay bổ sung công</td><td>⏰/🚪/❌/📝/✅/🛠️ <i>Tên (Mã) — Phòng</i><br/>Nội dung trạng thái (không lý do)<br/>🕒 HH:mm dd/MM/yyyy</td></tr>
   </table></div>
-  <p><b>Không</b> gửi vào nhóm: lần quét chấm công của từng người; thao tác ngang quyền nhân viên (tự làm đơn, tự liên kết Zalo, tự đổi mật khẩu); thao tác thường ngày của Quản lý (duyệt đơn, xem báo cáo); sửa giờ ca, thêm/đổi tên phòng, ngày lễ (chỉ ghi nhật ký). Ngoại lệ được đăng bất kể vai trò: đăng ký/sửa ca tuần, chốt/mở khóa công, phân quyền, kết nối nhóm, tin thử.</p>
+  <p><code>GROUP_EVENT</code> chỉ vào nhóm tích <b>Minh bạch</b>. <b>Không</b> gửi vào nhóm minh bạch: lần quét chấm công của từng người; thao tác ngang quyền nhân viên (tự làm đơn, tự liên kết Zalo, tự đổi mật khẩu); thao tác thường ngày của Quản lý (duyệt đơn, xem báo cáo); sửa giờ ca, thêm/đổi tên phòng, ngày lễ (chỉ ghi nhật ký). Ngoại lệ được đăng bất kể vai trò: đăng ký/sửa ca tuần, chốt/mở khóa công, phân quyền, kết nối nhóm, tin thử.</p>
 
   <h3>3.2 Tin riêng (cần nhân viên đã liên kết Zalo)</h3>
   <div class="tw"><table>
@@ -347,7 +377,7 @@ sequenceDiagram
     <li>Trên developers.zalo.me → ứng dụng → <b>Official Account → cấp quyền</b>: chọn OA, bật <i>Gửi tin nhắn</i>, <i>Quản lý thông tin OA</i>, <i>Quản lý Nhóm Chat – GMF</i>. Ghi lại <b>App ID</b> và <b>Secret key</b> (phần Cài đặt).</li>
     <li><b>Lấy token lần đầu</b> bằng <b>API Explorer</b> (developers.zalo.me/tools/explorer → "Lấy Access Token", Version 4, chọn ứng dụng và OA): sao chép <i>Access token</i> và <i>Refresh token</i>.</li>
     <li>Điền <code>.env</code> (bảng 5.4) rồi <b>khởi động lại</b> máy chủ. Hai token trong <code>.env</code> chỉ dùng để khởi tạo bảng <code>ZaloToken</code>; sau đó hệ thống tự làm mới, <b>không</b> chép lại giá trị cũ vào <code>.env</code>.</li>
-    <li>Vào <b>Cấu hình → Zalo OA</b>: thấy "Đang gửi thật · OA &lt;tên&gt;". Chọn nhóm trong <i>Nhóm đã dò</i> hoặc dán ID nhóm, bấm <b>Kết nối</b>, rồi <b>Gửi tin thử vào nhóm</b> để chắc chắn tin đến.</li>
+    <li>Vào <b>Cấu hình → Zalo OA</b>: thấy "Đang gửi thật · OA &lt;tên&gt;". Chọn nhóm trong danh sách hoặc dán <b>link chat nhóm</b> (hệ thống tự lấy phần <code>gid</code>), bấm <b>Thêm nhóm</b>, tích <b>loại tin</b> (và phòng nếu cần), <b>Lưu</b>, rồi bấm <b>Gửi tin thử</b> của nhóm đó để chắc chắn tin đến.</li>
   </ol>
   <h3>5.3 Webhook qua Cloudflare Tunnel (máy chủ trong LAN)</h3>
   <p>Zalo chỉ gọi webhook tới HTTPS công khai. Cloudflare Tunnel miễn phí, không cần mở cổng trên router:</p>
@@ -373,9 +403,9 @@ cloudflared tunnel --url http://localhost:3000
   <ul>
     <li><b>Badge</b>: mô phỏng / đang gửi thật; App ID/Secret có hay thiếu; token có và hạn; webhook secret có hay chưa.</li>
     <li><b>Cảnh báo đỏ</b> khi làm mới token thất bại (cũng hiện ở Tổng quan).</li>
-    <li><b>Nhóm đã dò</b>: tên, ID, số thành viên, nguồn (dò qua webhook / nhập tay) và nút <b>Kết nối</b>; ô dán ID nhóm thủ công.</li>
-    <li><b>Nhóm đang nhận tin</b> với trạng thái ("OA gửi tin được" = enabled), nút <b>Gửi tin thử vào nhóm</b> và kết quả.</li>
-    <li><b>10 tin nhóm gần nhất</b> kèm trạng thái và mã lỗi.</li>
+    <li><b>Danh sách nhóm</b> (nhóm đang nhận tin lên đầu, viền xanh): tên, ID, số thành viên, nguồn, trạng thái; 3 ô tích loại tin (Minh bạch / Chấm công / Đơn từ); chọn phòng cho tin nhân viên; nút <b>Lưu</b>, <b>Gửi tin thử</b> và kết quả.</li>
+    <li><b>Thêm nhóm</b>: dán link chat nhóm hoặc ID nhóm; chuỗi toàn số (ID của OA) bị chặn kèm giải thích.</li>
+    <li><b>10 tin nhóm gần nhất</b> kèm tên nhóm, trạng thái và mã lỗi.</li>
   </ul>
 </section>
 
@@ -385,7 +415,9 @@ cloudflared tunnel --url http://localhost:3000
   <div class="tw"><table>
     <tr><th>Triệu chứng</th><th>Kiểm tra</th><th>Cách sửa</th></tr>
     <tr><td>Nhóm không nhận tin, nhật ký ghi <code>SIMULATED</code></td><td>Cấu hình → Zalo OA hiện "mô phỏng"</td><td>Điền đủ App ID, Secret, cặp token rồi khởi động lại (mục 5.2)</td></tr>
-    <tr><td>Tin nhóm <code>FAILED</code> "Chưa cấu hình ID nhóm"</td><td>Chưa bấm Kết nối nhóm</td><td>Cấu hình → Zalo OA → chọn nhóm → Kết nối</td></tr>
+    <tr><td>Tin nhóm <code>FAILED</code> "Chưa cấu hình ID nhóm"</td><td>Chưa nhóm nào tích <b>Minh bạch</b></td><td>Cấu hình → Zalo OA → tích Minh bạch cho nhóm quản trị → Lưu</td></tr>
+    <tr><td>Nhóm nhân viên không nhận tin chấm công / đơn từ</td><td>Nhóm đã tích đúng loại chưa; có chọn phòng không (nhân viên phòng khác sẽ không vào)</td><td>Tích loại tin, bỏ chọn phòng nếu muốn mọi phòng, Lưu. Tin chấm công chỉ có khi nhân viên đã enroll khuôn mặt và có ca hôm đó</td></tr>
+    <tr><td>Thêm nhóm báo "toàn chữ số — đây là ID của OA"</td><td>Đã dán phần <code>oaid</code> thay vì <code>gid</code></td><td>Dán cả link chat nhóm, hoặc chỉ phần sau <code>gid=</code> (mục 2.4)</td></tr>
     <tr><td>Kết nối báo "nhóm chưa enabled" / <code>FAILED</code> sai group_id</td><td>Trạng thái nhóm trong OA Manager; OA còn trong nhóm không</td><td>Bật lại nhóm hoặc tạo nhóm GMF mới, kết nối lại</td></tr>
     <tr><td>Cảnh báo đỏ "Refresh token lỗi"</td><td>Refresh token đã hết hạn (~3 tháng) hoặc bị dùng ở nơi khác</td><td>Lấy cặp token mới bằng API Explorer, điền <code>.env</code>, <b>xóa dòng id = 1 trong bảng <code>ZaloToken</code></b> (bắt buộc — hệ thống không ghi đè dòng cũ; token trong <code>.env</code> chỉ được nạp khi bảng trống), khởi động lại</td></tr>
     <tr><td>Tin riêng <code>SKIPPED_NO_ZALO</code></td><td>Người nhận chưa liên kết Zalo</td><td>Nhân viên vào trang cá nhân → Zalo → lấy mã → nhắn cho OA</td></tr>
@@ -404,16 +436,17 @@ cloudflared tunnel --url http://localhost:3000
     <tr><th>File</th><th>Vai trò</th><th>Hàm / hằng đáng chú ý</th></tr>
     <tr><td><code>src/lib/zalo-oa.ts</code></td><td>Điểm gửi tin duy nhất, không bao giờ ném lỗi</td><td><code>sendZaloMessage({toEmployeeId?, toGroupId?, messageType, data, dedupeKey})</code>; <code>UNCONFIGURED_GROUP</code>; thử lại 3 lần, làm mới token 1 lần</td></tr>
     <tr><td><code>src/lib/zalo-token.ts</code></td><td>Token + gọi HTTP Zalo</td><td><code>refreshZaloToken(force)</code>, <code>getAccessToken()</code>, <code>isZaloSimulated()</code>, <code>getOaInfo()</code>, <code>getGroupInfo()</code>, <code>getZaloTokenStatus()</code>, <code>getZaloRefreshError()</code>, <code>transport</code>/<code>groupTransport</code> (thay được trong test)</td></tr>
-    <tr><td><code>src/lib/zalo-templates.ts</code></td><td>Nội dung 13 loại tin</td><td><code>renderMessage(type, data)</code>, <code>zaloTemplates</code></td></tr>
-    <tr><td><code>src/lib/announce.ts</code></td><td>Luật tin nhóm minh bạch</td><td><code>announce(actor, action, {key, detail, reason, always})</code>, <code>announceSystem</code>, <code>ANNOUNCED_ROLES = {HR, ADMIN}</code>, <code>onceKey()</code></td></tr>
-    <tr><td><code>src/lib/notify.ts</code></td><td>Chọn người nhận tin riêng (người duyệt, HR, quản lý phòng…)</td><td>hàm cho REQUEST_*, CORRECTION_*, LATE_REMINDER</td></tr>
+    <tr><td><code>src/lib/zalo-templates.ts</code></td><td>Nội dung 14 loại tin</td><td><code>renderMessage(type, data)</code>, <code>zaloTemplates</code></td></tr>
+    <tr><td><code>src/lib/zalo-routing.ts</code> (v1.6.0)</td><td>Định tuyến tin nhóm theo loại tin + phòng</td><td><code>ZALO_CATEGORIES</code>, <code>groupsFor(category, departmentId?)</code>, <code>announceStaff({category, employeeId, icon, text, key})</code>, <code>parseGroupInput()</code> (tách <code>gid</code> từ link, chặn <code>oaid</code>); khóa dedupe thêm <code>@groupId</code> khi nhiều nhóm cùng loại</td></tr>
+    <tr><td><code>src/lib/announce.ts</code></td><td>Luật tin nhóm minh bạch (gửi tới mọi nhóm tích Minh bạch)</td><td><code>announce(actor, action, {key, detail, reason, always})</code>, <code>announceSystem</code>, <code>ANNOUNCED_ROLES = {HR, ADMIN}</code>, <code>onceKey()</code></td></tr>
+    <tr><td><code>src/lib/notify.ts</code></td><td>Chọn người nhận tin riêng (người duyệt, HR, quản lý phòng…) + tin nhóm Đơn từ</td><td>hàm cho REQUEST_*, CORRECTION_*, LATE_REMINDER</td></tr>
     <tr><td><code>src/lib/jobs.ts</code>, <code>src/lib/cron.ts</code></td><td>Job nền (mục 4)</td><td><code>OVERDUE_REMIND_HOURS = 24</code>, <code>OVERDUE_ESCALATE_HOURS = 48</code></td></tr>
     <tr><td><code>src/app/api/zalo/webhook/route.ts</code></td><td>Nhận sự kiện Zalo</td><td>Kiểm chữ ký, <code>create_group</code>, <code>user_send_text</code>; rate limit 120/phút/IP</td></tr>
     <tr><td><code>src/app/api/me/zalo/route.ts</code>, <code>src/app/me/zalo/page.tsx</code></td><td>Liên kết Zalo của nhân viên</td><td>GET trạng thái, POST tạo mã (TTL 15 phút), DELETE hủy liên kết</td></tr>
-    <tr><td><code>src/app/api/settings/zalo/route.ts</code>, <code>…/groups/route.ts</code>, <code>…/test/route.ts</code></td><td>Màn hình Quản trị</td><td>Trạng thái, danh sách/kết nối nhóm, gửi tin thử (quyền <code>settings.system</code>)</td></tr>
+    <tr><td><code>src/app/api/settings/zalo/route.ts</code>, <code>…/groups/route.ts</code>, <code>…/groups/[groupId]/route.ts</code>, <code>…/test/route.ts</code></td><td>Màn hình Quản trị</td><td>Trạng thái; danh sách/thêm nhóm (POST nhận link hoặc ID, kèm <code>categories</code>); PATCH loại tin + phòng (audit <code>ZALO_GROUP_ROUTING</code>, báo nhóm minh bạch); gửi tin thử theo <code>groupId</code> (quyền <code>settings.system</code>)</td></tr>
     <tr><td><code>src/app/admin/settings/page.tsx</code> (<code>ZaloCard</code>)</td><td>Giao diện thẻ Zalo OA</td><td></td></tr>
     <tr><td><code>src/app/api/cron/[job]/route.ts</code></td><td>Chạy job thủ công</td><td>header <code>x-cron-secret</code></td></tr>
-    <tr><td><code>tests/integration/zalo-live.test.ts</code>, <code>qc-zalo.test.ts</code></td><td>Test không cần mạng (giả lập HTTP)</td><td>Payload GMF, mã lỗi, làm mới token, chữ ký webhook, kết nối nhóm</td></tr>
+    <tr><td><code>tests/integration/zalo-live.test.ts</code>, <code>qc-zalo.test.ts</code>, <code>zalo-routing.test.ts</code></td><td>Test không cần mạng (giả lập HTTP)</td><td>Payload GMF, mã lỗi, làm mới token, chữ ký webhook, thêm nhóm, định tuyến theo loại tin / phòng, không lộ lý do</td></tr>
   </table></div>
 
   <h3>7.2 Endpoint Zalo đã dùng</h3>
@@ -436,12 +469,12 @@ cloudflared tunnel --url http://localhost:3000
     <tr><th>Bảng / cột</th><th>Nội dung</th></tr>
     <tr><td><code>ZaloToken</code> (id = 1)</td><td><code>accessToken</code>, <code>refreshToken</code>, <code>expiresAt</code>, <code>updatedAt</code></td></tr>
     <tr><td><code>ZaloLinkCode</code></td><td><code>code</code> (khóa chính, 6 ký tự từ bộ A–Z bỏ I, O và 2–9), <code>employeeId</code>, <code>expiresAt</code></td></tr>
-    <tr><td><code>ZaloGroup</code></td><td><code>groupId</code>, <code>oaId</code>, <code>name</code>, <code>status</code> (enabled/disabled), <code>totalMember</code>, <code>source</code> (WEBHOOK/MANUAL)</td></tr>
+    <tr><td><code>ZaloGroup</code></td><td><code>groupId</code>, <code>oaId</code>, <code>name</code>, <code>status</code> (enabled/disabled), <code>totalMember</code>, <code>source</code> (WEBHOOK/MANUAL), <code>categories</code> (JSON: MINH_BACH / CHAM_CONG / DON_TU; rỗng = không nhận tin), <code>departmentIds</code> (JSON; rỗng = mọi phòng)</td></tr>
     <tr><td><code>NotificationLog</code></td><td><code>dedupeKey</code> (duy nhất), <code>toEmployeeId</code> / <code>toGroupId</code>, <code>messageType</code>, <code>payload</code> (JSON có text), <code>status</code>, <code>error</code></td></tr>
     <tr><td><code>Employee.zaloUserId</code>, <code>zaloLinkedAt</code></td><td>Liên kết Zalo cá nhân (duy nhất theo người)</td></tr>
-    <tr><td><code>AppSetting</code> khóa</td><td><code>zaloGroupId</code> (nhóm đang nhận tin), <code>zaloRefreshLock</code>, <code>zaloRefreshError</code></td></tr>
+    <tr><td><code>AppSetting</code> khóa</td><td><code>zaloRefreshLock</code>, <code>zaloRefreshError</code>; <code>zaloGroupId</code> chỉ còn là dữ liệu cũ (v1.6.0 chuyển thành nhóm tích Minh bạch khi nâng cấp)</td></tr>
   </table></div>
-  <div class="callout warn"><b>Bảo mật</b><p>Token Zalo lưu trong SQLite không mã hóa ở tầng ứng dụng (khác mẫu khuôn mặt) → bảo vệ file DB và bản sao lưu. API trạng thái chỉ trả cờ có/không, không bao giờ trả giá trị secret/token. Test tự xóa mọi biến <code>ZALO_*</code> thật và giả lập HTTP.</p></div>
+  <div class="callout warn"><b>Bảo mật</b><p>Token Zalo lưu trong SQLite không mã hóa ở tầng ứng dụng (khác mẫu khuôn mặt) → bảo vệ file DB và bản sao lưu. API trạng thái chỉ trả cờ có/không, không bao giờ trả giá trị secret/token. Test đặt rỗng mọi biến <code>ZALO_*</code> và chặn Next.js / Prisma tự nạp <code>.env</code> của máy (máy chạy server có khóa thật), rồi giả lập HTTP — test không bao giờ gọi Zalo thật.</p></div>
 </section>
 
 <!-- 8 -->
@@ -463,7 +496,7 @@ cloudflared tunnel --url http://localhost:3000
   <p>Tài liệu nội bộ liên quan: <code>README.md</code> mục "Cấu hình Zalo OA", <code>docs/PRD-v2-Face-Beo.md</code> §7, <code>docs/PRD-v2.1-HR.md</code> §7, <code>docs/OPEN-DECISIONS.md</code> D4, cẩm nang sử dụng mục 15.</p>
 </section>
 
-<footer>Face Beo · Tài liệu Zalo OA · cập nhật 20/09/2026 (phiên bản ứng dụng v1.5.3)</footer>
+<footer>Face Beo · Tài liệu Zalo OA · cập nhật 21/09/2026 (phiên bản ứng dụng v1.6.0)</footer>
 </main>
 </div>
 

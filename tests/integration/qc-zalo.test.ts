@@ -7,6 +7,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/db";
 import { __setZaloTestHooks, primeZaloToken } from "@/lib/zalo-token";
 import { sendZaloMessage } from "@/lib/zalo-oa";
+import { groupsFor } from "@/lib/zalo-routing";
 import { getStringSetting, saveStringSetting } from "@/lib/settings";
 import { resetRateLimits } from "@/lib/rate-limit";
 import { byCode, ctx, req, sessionCookie } from "./helpers";
@@ -39,14 +40,14 @@ function useFakeZalo() {
 const LIVE = { ZALO_OA_APP_ID: "123", ZALO_OA_SECRET: "sec", ZALO_WEBHOOK_SECRET: "wh" };
 async function goLive() {
   Object.assign(process.env, LIVE);
-  delete process.env.ZALO_OA_REFRESH_TOKEN;
+  process.env.ZALO_OA_REFRESH_TOKEN = "";
   await prisma.zaloToken.deleteMany();
   await prisma.zaloToken.create({ data: { id: 1, accessToken: "at-1", refreshToken: "rt-1", expiresAt: new Date(Date.now() + 10 * 3600_000) } });
   await primeZaloToken();
 }
 async function goSim() {
-  for (const k of Object.keys(LIVE)) delete process.env[k];
-  delete process.env.ZALO_OA_REFRESH_TOKEN;
+  for (const k of Object.keys(LIVE)) process.env[k] = "";
+  process.env.ZALO_OA_REFRESH_TOKEN = "";
   await prisma.zaloToken.deleteMany();
   await primeZaloToken();
 }
@@ -184,11 +185,13 @@ describe("(5) UI/API: lưu ngưỡng không được ghi đè nhóm đã kết n
     await goLive();
     useFakeZalo();
     replies = [{ body: { error: 0, data: { group_info: { name: "HR", status: "enabled", total_member: 3 } } } }];
-    expect((await groupsRoute.POST(req("/api/settings/zalo/groups", { method: "POST", cookie: A, body: { groupId: "g-verified" } }), ctx())).status).toBe(200);
+    expect((await groupsRoute.POST(req("/api/settings/zalo/groups", { method: "POST", cookie: A, body: { groupId: "g-verified", categories: ["MINH_BACH"] } }), ctx())).status).toBe(200);
     // Tab khác còn state cũ (""), hoặc ô dán ID đang chứa ID gõ dở chưa xác minh => bấm "Lưu cấu hình" ở thẻ ngưỡng.
     const r = await settingsRoute.PUT(req("/api/settings", { method: "PUT", cookie: A, body: { zaloGroupId: "g-typo-unverified" } }), ctx());
     expect(r.status).toBe(200);
-    expect(await getStringSetting("zaloGroupId")).toBe("g-verified");
+    // v1.6.0: nhóm nhận tin do ZaloGroup.categories quyết định — PUT ngưỡng không chạm vào.
+    expect(await groupsFor("MINH_BACH")).toContain("g-verified");
+    expect(await getStringSetting("zaloGroupId")).not.toBe("g-typo-unverified");
     await prisma.zaloGroup.deleteMany({ where: { groupId: "g-verified" } });
   });
 });

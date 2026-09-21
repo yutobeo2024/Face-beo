@@ -3,10 +3,11 @@ import { mkdir, readdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { DateTime } from "luxon";
 import { prisma } from "./db";
-import { addDays, decideAbsence, shiftInterval, summarizeDay, TZ, vnDate, vnTime } from "./attendance";
+import { addDays, decideAbsence, shiftInterval, shiftWindow, summarizeDay, TZ, vnDate, vnTime, type DayPlan, type RequestLite } from "./attendance";
 import { buildPlanner, loadRequests } from "./attendance-service";
 import { getSettings } from "./settings";
 import { sendZaloMessage } from "./zalo-oa";
+import { announceStaff } from "./zalo-routing";
 import { isZaloSimulated, refreshZaloToken } from "./zalo-token";
 import { approversFor, correctionText, executorsFor, fmtDate, fmtDT } from "./notify";
 import { REQUEST_TYPE_LABEL, type RequestTypeT } from "./roles";
@@ -23,6 +24,24 @@ export const JOBS = ["absence-check", "missing-checkout", "zalo-token-refresh", 
 export type JobName = (typeof JOBS)[number];
 
 type DigestItem = { name: string; code: string; note?: string };
+
+/**
+ * Vắng không phép (chỉ để báo nhóm nhân viên): hết ca ≤ 12 giờ trước, cả ngày công không có lần quét nào, không có đơn nghỉ và không có
+ * đơn bổ sung công trong cửa sổ ca (đã duyệt hoặc đang chờ — vd. máy không nhận mặt cả ngày, đã xin bổ sung).
+ */
+function isConfirmedAbsence(args: { plan: DayPlan; anyLog: boolean; enrolled: boolean; requests: RequestLite[]; now: Date }) {
+  const { plan, anyLog, enrolled, requests, now } = args;
+  if (!plan.shift || plan.isDayOff || plan.isHoliday || plan.unscheduled || anyLog || !enrolled) return false;
+  const iv = shiftInterval(plan.workDate, plan.shift);
+  const t = now.getTime();
+  if (t < iv.end.getTime() || t > iv.end.getTime() + 12 * 3600_000) return false;
+  const win = shiftWindow(plan.workDate, plan.shift);
+  return !requests.some(
+    (r) =>
+      (r.type === "NGHI_PHEP" && r.fromTime.getTime() < iv.end.getTime() && r.toTime.getTime() > iv.start.getTime()) ||
+      (r.type === "BO_SUNG_CONG" && r.fromTime.getTime() >= win.start.getTime() && r.fromTime.getTime() <= win.end.getTime()),
+  );
+}
 
 export async function absenceCheck(now = new Date()) {
   const settings = await getSettings();
@@ -44,10 +63,11 @@ export async function absenceCheck(now = new Date()) {
   const planner = await buildPlanner(ids, yesterday, today);
   const requests = await loadRequests(ids, new Date(now.getTime() - 36 * 3600_000), new Date(now.getTime() + 24 * 3600_000));
   const ins = await prisma.attendanceLog.findMany({
-    where: { employeeId: { in: ids }, workDate: { in: [yesterday, today] }, shiftId: { not: null } },
-    select: { employeeId: true, workDate: true },
+    where: { employeeId: { in: ids }, workDate: { in: [yesterday, today] } },
+    select: { employeeId: true, workDate: true, shiftId: true },
   });
-  const hasIn = new Set(ins.map((l) => `${l.employeeId}|${l.workDate}`));
+  const hasIn = new Set(ins.filter((l) => l.shiftId != null).map((l) => `${l.employeeId}|${l.workDate}`));
+  const anyLog = new Set(ins.map((l) => `${l.employeeId}|${l.workDate}`));
 
   let warned = 0;
   const digests = new Map<string, { deptId: number; deptName: string; workDate: string; shiftId: number; shiftName: string; items: DigestItem[] }>();
@@ -64,6 +84,15 @@ export async function absenceCheck(now = new Date()) {
         now,
         absentAfterMinutes: settings.absentAfterMinutes,
       });
+      if (plan.shift && isConfirmedAbsence({ plan, anyLog: anyLog.has(`${e.id}|${d}`), enrolled: e.faceTemplates.length > 0, requests: reqs, now })) {
+        await announceStaff({
+          category: "CHAM_CONG",
+          employeeId: e.id,
+          icon: "❌",
+          text: `Vắng không phép ca ${plan.shift.name} ngày ${fmtDate(d)} (không có lần chấm công, không có đơn nghỉ)`,
+          key: `absent-final:${e.id}:${d}`,
+        });
+      }
       if (decision.action === "SKIP" || !plan.shift) continue;
       const key = `${e.departmentId}|${d}|${plan.shift.id}`;
       if (!digests.has(key)) {
@@ -78,6 +107,13 @@ export async function absenceCheck(now = new Date()) {
           data: { shiftName: plan.shift.name, dateText: fmtDate(d), startText: vnTime(shiftInterval(d, plan.shift).start) },
         });
         if (r.status !== "DUPLICATE") warned++;
+        await announceStaff({
+          category: "CHAM_CONG",
+          employeeId: e.id,
+          icon: "⏰",
+          text: `Chưa chấm giờ vào ca ${plan.shift.name} ngày ${fmtDate(d)} (bắt đầu ${vnTime(shiftInterval(d, plan.shift).start)})`,
+          key: `absent:${e.id}:${d}`,
+        });
       }
     }
   }
@@ -133,6 +169,13 @@ export async function missingCheckout(now = new Date()) {
       messageType: "MISSING_OUT_NUDGE",
       dedupeKey: `missing-out:${k}`,
       data: { date: d, dateText: fmtDate(d), inText: s.inTime ? vnTime(s.inTime) : "", shiftName: plan.shift.name },
+    });
+    await announceStaff({
+      category: "CHAM_CONG",
+      employeeId: Number(id),
+      icon: "🚪",
+      text: `Quên chấm giờ ra ca ${plan.shift.name} ngày ${fmtDate(d)}${s.inTime ? ` (vào lúc ${vnTime(s.inTime)})` : ""}`,
+      key: `missing-out:${k}`,
     });
     flagged++;
   }

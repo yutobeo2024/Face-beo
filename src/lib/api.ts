@@ -75,7 +75,7 @@ export function json(data: unknown, init?: ResponseInit) {
  * (tính từ PHẢI sang), không lấy phần tử đầu mà client tự đặt được.
  */
 export function clientIp(req: NextRequest): string {
-  const hops = Number(process.env.TRUSTED_PROXY_HOPS ?? "1");
+  const hops = Number(process.env.TRUSTED_PROXY_HOPS || "1"); // để trống trong .env = mặc định
   const xff = req.headers.get("x-forwarded-for");
   if (hops > 0 && xff) {
     const parts = xff.split(",").map((s) => s.trim()).filter(Boolean);

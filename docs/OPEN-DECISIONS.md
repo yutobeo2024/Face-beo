@@ -34,6 +34,13 @@ Ghi lại những điểm đã phát hiện trong quá trình làm và test, c�
 - **OT ngày không có ca:** tính theo đơn tăng ca đã duyệt.
 - **Minh bạch:** thao tác duyệt/sửa của HR và ADMIN được gửi vào nhóm Zalo OA. Không gửi lần quét chấm công, cũng như thao tác ngang quyền nhân viên.
 
+## Đã chốt v1.6.0 (21/09/2026)
+
+- **Nhiều nhóm Zalo, mỗi nhóm chọn loại tin** (cấu hình được, không hard-code): Minh bạch / Chấm công nhân viên / Đơn từ nhân viên, lọc
+  theo phòng cho tin nhân viên. Nhóm nhân viên (vd. "YDSG-NHÂN VIÊN"): **gửi ngay từng người** (không gom tin), đơn từ **chỉ trạng thái**
+  (không lý do xin nghỉ, không ghi chú duyệt/từ chối), nhóm minh bạch cũ **giữ nguyên** luồng. "Vắng không phép" = hết ca, không lần quét
+  nào, không có đơn nghỉ (đã duyệt hoặc đang chờ) — chỉ là tin báo, không đổi cách tính công. Xem PRD v2.1 mục 18.
+
 ## Đã chốt v1.5.4 (21/09/2026)
 
 - **Đưa vào vận hành thật không qua dữ liệu mẫu.** `npm run db:seed:base` chỉ tạo cấu hình nền (ca, mẫu tuần, ngày lễ, quyền, cấu

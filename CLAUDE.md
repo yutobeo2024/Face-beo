@@ -4,10 +4,10 @@
 
 ## Dự án
 - Web app quản trị nhân sự cho ~100 nhân viên: xếp ca, chấm công khuôn mặt trên tablet kiosk (InsightFace w600k_r50 + liveness
-  MiniFASNetV2 phía server), đơn từ, tính công/chốt công tháng, xuất Excel, thông báo Zalo OA (nhóm minh bạch + tin riêng).
+  MiniFASNetV2 phía server), đơn từ, tính công/chốt công tháng, xuất Excel, thông báo Zalo OA (nhiều nhóm theo loại tin: minh bạch / chấm công / đơn từ + tin riêng).
 - Stack: Next.js 15 App Router, Prisma 6 (SQLite WAL), zod 4, luxon, exceljs, node-cron, jose JWT (HS256, 7 ngày, `sessionVersion`),
   vitest 4 (test tích hợp gọi thẳng route handler, DB `data/test.db`).
-- Phiên bản hiện tại: **v1.5.4** (tag GitHub `v1.5.4`, repo `yutobeo2024/Face-beo`). Phiên bản ghi trong prose (README, PRD,
+- Phiên bản hiện tại: **v1.6.0** (tag GitHub `v1.6.0`, repo `yutobeo2024/Face-beo`). Phiên bản ghi trong prose (README, PRD,
   OPEN-DECISIONS), không có CHANGELOG; `package.json` version không dùng để đánh số.
 
 ## Lệnh
@@ -43,7 +43,9 @@ Server production đang được chạy bằng `next start` (không phải dev).
 - Lịch sử là bất biến: không xóa cứng nhân viên/ca/mẫu tuần/phòng đã có dữ liệu (route DELETE chặn kèm lý do); "nghỉ việc" = `active=false`
   + xóa mẫu khuôn mặt + thu hồi phiên. Tháng đã chốt (`LockedDay`) không tính lại.
 - Thay đổi cấu hình lịch của nhân viên chỉ có hiệu lực từ hôm nay (`ScheduleAssignment` snapshot).
-- Zalo: tin nhóm chỉ cho thao tác của HR/ADMIN (trừ `always: true`); `sendZaloMessage` không bao giờ ném lỗi; mô phỏng khi thiếu cấu hình.
+- Zalo: tin nhóm định tuyến theo `ZaloGroup.categories` (`src/lib/zalo-routing.ts`): MINH_BACH = `announce()` chỉ cho thao tác HR/ADMIN
+  (trừ `always: true`); CHAM_CONG/DON_TU = `announceStaff()` tin nhân viên, **không** kèm lý do/ghi chú, lọc theo phòng. `sendZaloMessage`
+  không bao giờ ném lỗi; mô phỏng khi thiếu cấu hình. Test: `tests/setup.ts` chặn Next/Prisma nạp `.env` thật (máy server có khóa Zalo thật).
 - zod 4: schema PATCH không được có `.default()` (`.partial()` vẫn áp default → xóa dữ liệu). Cột JSON trong SQLite lưu chuỗi.
 
 ## Việc còn mở (21/09/2026)
