@@ -46,6 +46,16 @@ describe("bootstrap — DB trống", () => {
     expect(await db.department.count()).toBe(0);
     // Ca nửa ngày tính 0.5 công.
     expect((await db.shift.findUniqueOrThrow({ where: { name: "Sáng thứ Bảy" } })).workDayValue).toBe(0.5);
+    // Quản trị xóa một ca / một chức danh rồi chạy lại seed nền: không bị tạo lại (v1.7.0).
+    await db.shift.delete({ where: { name: "Ca đêm" } });
+    await db.jobTitle.delete({ where: { name: "IT" } });
+    const third = await seedBase(db);
+    expect(third.shifts).toEqual({ created: 0, existing: 3 });
+    expect(third.jobTitles.created).toBe(0);
+    expect(await db.shift.findUnique({ where: { name: "Ca đêm" } })).toBeNull();
+    expect(await db.jobTitle.findUnique({ where: { name: "IT" } })).toBeNull();
+    expect(first.jobTitles.created).toBe(12);
+    expect(first.specialties.created).toBe(12);
   });
 
   it("thông tin sai định dạng / mật khẩu yếu → lỗi, không tạo gì", async () => {

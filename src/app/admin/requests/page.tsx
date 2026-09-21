@@ -22,11 +22,15 @@ type Req = {
   decisionNote: string | null;
   canDecide: boolean;
   canExecute: boolean;
+  step1?: boolean;
   correctionAt: string | null;
   correctionKind: string | null;
   executedAt: string | null;
   employee: { id: number; code: string; name: string; department: { name: string } };
   approver: { name: string } | null;
+  managerApprover: { name: string } | null;
+  managerDecidedAt: string | null;
+  managerNote: string | null;
 };
 
 function RequestsInner() {
@@ -46,8 +50,14 @@ function RequestsInner() {
   async function decide(r: Req, action: "APPROVE" | "REJECT", decisionNote?: string) {
     setBusy(r.id);
     try {
-      const res = await api<{ recomputedDays: number }>(`/api/requests/${r.id}/decide`, { body: { action, note: decisionNote } });
-      toast.success(action === "APPROVE" ? `Đã duyệt đơn #${r.id}${res.recomputedDays ? ` · tính lại ${res.recomputedDays} ngày công` : ""}` : `Đã từ chối đơn #${r.id}`);
+      const res = await api<{ recomputedDays: number; request: { status: string } }>(`/api/requests/${r.id}/decide`, { body: { action, note: decisionNote } });
+      toast.success(
+        action === "REJECT"
+          ? `Đã từ chối đơn #${r.id}`
+          : res.request.status === "MANAGER_APPROVED"
+            ? `Đã duyệt bước 1 đơn #${r.id} — chờ Nhân sự duyệt`
+            : `Đã duyệt đơn #${r.id}${res.recomputedDays ? ` · tính lại ${res.recomputedDays} ngày công` : ""}`,
+      );
       setRejecting(null);
       setNote("");
       void reload();
@@ -130,7 +140,14 @@ function RequestsInner() {
                   </p>
                   <p className="mt-1 text-slate-600">{r.reason}</p>
                 </div>
-                {r.status !== "PENDING" && (r.approver || r.decisionNote) && (
+                {r.managerApprover && (
+                  <p className="mt-2 text-xs text-slate-500">
+                    Bước 1: trưởng phòng {r.managerApprover.name} đã duyệt
+                    {r.managerDecidedAt ? ` · ${fmtDateTime(r.managerDecidedAt)}` : ""}
+                    {r.managerNote ? ` · “${r.managerNote}”` : ""}
+                  </p>
+                )}
+                {r.status !== "PENDING" && r.status !== "MANAGER_APPROVED" && (r.approver || r.decisionNote) && (
                   <p className="mt-2 text-xs text-slate-500">
                     {r.approver ? `Xử lý bởi ${r.approver.name}` : ""}
                     {r.decidedAt ? ` · ${fmtDateTime(r.decidedAt)}` : ""}
@@ -143,11 +160,13 @@ function RequestsInner() {
                       Từ chối
                     </Button>
                     <Button variant="success" icon="check" onClick={() => decide(r, "APPROVE")} loading={busy === r.id}>
-                      Duyệt
+                      {r.step1 ? "Duyệt bước 1" : "Duyệt"}
                     </Button>
                   </div>
                 )}
-                {r.status === "PENDING" && !r.canDecide && <p className="mt-3 text-xs text-slate-500">Đơn này do người khác duyệt.</p>}
+                {(r.status === "PENDING" || r.status === "MANAGER_APPROVED") && !r.canDecide && (
+                  <p className="mt-3 text-xs text-slate-500">{r.status === "MANAGER_APPROVED" ? "Đang chờ Nhân sự duyệt bước 2." : "Đơn này do người khác duyệt."}</p>
+                )}
                 {r.canExecute && (
                   <Button className="mt-3" icon="clock" onClick={() => setExec({ r, at: toLocalInput(r.correctionAt!), note: "" })}>
                     Thực hiện chấm tay

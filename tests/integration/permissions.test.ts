@@ -154,8 +154,11 @@ describe("ma trận phân quyền chỉnh trên web", () => {
 });
 
 describe("tuyến duyệt đơn theo vai trò người tạo", () => {
-  it("Nhân viên → quản lý phòng; Quản lý → Nhân sự; Nhân sự → Quản trị", async () => {
-    expect(await approversFor(employee.id)).toEqual([managerKD.id]);
+  it("Nhân viên → quản lý phòng hoặc Nhân sự (mặc định MANAGER_OR_HR, v1.7.0); Quản lý → Nhân sự; Nhân sự → Quản trị", async () => {
+    const forEmployee = await approversFor(employee.id);
+    expect(forEmployee[0]).toBe(managerKD.id);
+    expect(forEmployee).toContain(hr.id);
+    expect(forEmployee).not.toContain(admin.id);
     const forManager = await approversFor(managerKT.id);
     expect(forManager).toContain(hr.id);
     expect(forManager).not.toContain(admin.id);

@@ -4,6 +4,7 @@ import { env } from "./env";
 export type MessageType =
   | "REQUEST_CREATED"
   | "REQUEST_DECIDED"
+  | "REQUEST_STAGE2"
   | "LATE_REMINDER"
   | "ABSENT_WARNING"
   | "ABSENT_DIGEST"
@@ -31,6 +32,18 @@ export const zaloTemplates: Record<MessageType, (d: Data) => string> = {
       `Lý do: ${s(d.reason)}`,
       d.fyi ? `Theo dõi tại: ${link("/admin/requests?status=PENDING")}` : `Duyệt tại: ${link("/admin/requests?status=PENDING")}`,
     ].join("\n"),
+  // Duyệt 2 bước: trưởng phòng đã duyệt bước 1, chờ Nhân sự duyệt (bước 2).
+  REQUEST_STAGE2: (d) =>
+    [
+      `☑️ Đơn chờ Nhân sự duyệt (trưởng phòng ${s(d.managerName)} đã duyệt bước 1)`,
+      `${s(d.employeeName)} (${s(d.employeeCode)}) — đơn ${s(d.typeLabel)}.`,
+      d.correctionText ? `Cần bổ sung ${s(d.correctionText)}` : `Thời gian: ${s(d.fromText)} → ${s(d.toText)}`,
+      `Lý do: ${s(d.reason)}`,
+      d.managerNote ? `Ghi chú trưởng phòng: ${s(d.managerNote)}` : "",
+      `Duyệt tại: ${link("/admin/requests?status=PENDING")}`,
+    ]
+      .filter(Boolean)
+      .join("\n"),
   REQUEST_DECIDED: (d) =>
     [
       d.status === "APPROVED" ? `✅ Đơn của bạn đã được duyệt` : `❌ Đơn của bạn bị từ chối`,

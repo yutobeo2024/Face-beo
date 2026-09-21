@@ -133,7 +133,7 @@ export async function recentMonths(n = 6) {
         where: {
           fromTime: { lt: end },
           toTime: { gt: start },
-          OR: [{ status: "PENDING" }, { type: "BO_SUNG_CONG", status: "APPROVED", executedAt: null }],
+          OR: [{ status: { in: ["PENDING", "MANAGER_APPROVED"] } }, { type: "BO_SUNG_CONG", status: "APPROVED", executedAt: null }],
         },
       }),
     );

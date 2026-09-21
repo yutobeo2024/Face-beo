@@ -109,12 +109,12 @@ export async function buildPlanner(employeeIds: number[], from: string, to: stri
   };
 }
 
-/** Đơn APPROVED/PENDING giao với khoảng [from, to). */
+/** Đơn APPROVED / còn chờ (PENDING, MANAGER_APPROVED) giao với khoảng [from, to). */
 export async function loadRequests(employeeIds: number[], from: Date, to: Date, db: Db = prisma) {
   return db.leaveRequest.findMany({
     where: {
       employeeId: { in: employeeIds },
-      status: { in: ["APPROVED", "PENDING"] },
+      status: { in: ["APPROVED", "PENDING", "MANAGER_APPROVED"] },
       fromTime: { lt: to },
       toTime: { gt: from },
     },

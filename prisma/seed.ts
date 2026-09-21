@@ -13,7 +13,7 @@ import { DEFAULT_APP_SETTINGS } from "../src/lib/settings";
 import { randomDigits } from "../src/lib/crypto";
 import { ensureDefaultPermissions } from "../src/lib/permissions";
 import { BASELINE_DATE, snapshotAssignment } from "../src/lib/schedule-assignments";
-import { BASE_HOLIDAYS, BASE_PATTERNS, BASE_SHIFTS, patternShiftIds, seedBase } from "../src/lib/bootstrap";
+import { BASE_HOLIDAYS, BASE_JOB_TITLES, BASE_PATTERNS, BASE_SHIFTS, BASE_SPECIALTIES, patternShiftIds, seedBase } from "../src/lib/bootstrap";
 
 const prisma = new PrismaClient();
 const args = process.argv.slice(2);
@@ -40,6 +40,8 @@ async function wipe() {
     prisma.kioskDevice.deleteMany(),
     prisma.department.updateMany({ data: { managerId: null } }),
     prisma.employee.deleteMany(),
+    prisma.jobTitle.deleteMany(),
+    prisma.specialty.deleteMany(),
     prisma.department.deleteMany(),
     prisma.workPattern.deleteMany(),
     prisma.shift.deleteMany(),
@@ -58,7 +60,7 @@ async function base() {
   const r = await seedBase(prisma);
   const line = (label: string, c: { created: number; existing: number }) => `  ${label}: tạo mới ${c.created}, đã có ${c.existing}`;
   console.log("\n✅ Đã tạo cấu hình nền (không xóa dữ liệu, không tạo nhân viên):");
-  console.log([line("Ca làm việc", r.shifts), line("Mẫu tuần", r.patterns), line("Ngày lễ", r.holidays), line("Cấu hình", r.settings)].join("\n"));
+  console.log([line("Ca làm việc", r.shifts), line("Mẫu tuần", r.patterns), line("Ngày lễ", r.holidays), line("Cấu hình", r.settings), line("Chức danh", r.jobTitles), line("Chuyên khoa", r.specialties)].join("\n"));
   console.log(`  Ma trận quyền: ${r.permissionsInitialized ? "đã nạp mặc định" : "đã có, giữ nguyên"}`);
   console.log('\nBước tiếp theo: npm run admin:create -- --code AD01 --name "Họ Tên" --phone 09xxxxxxxx\n');
 }
@@ -86,6 +88,10 @@ async function main() {
   const [patHalfSat, patFullSat, patEarly] = await Promise.all(
     BASE_PATTERNS.map((p) => prisma.workPattern.create({ data: { name: p.name, ...patternShiftIds(shiftId.get(p.weekday)!, p.saturday ? shiftId.get(p.saturday)! : null) } })),
   );
+
+  // Danh mục chức danh / chuyên khoa (v1.7.0): dữ liệu demo không gán cho nhân viên mẫu (giữ nguyên các test cũ).
+  await prisma.jobTitle.createMany({ data: BASE_JOB_TITLES.map((name, i) => ({ name, sortOrder: i })) });
+  await prisma.specialty.createMany({ data: BASE_SPECIALTIES.map((name, i) => ({ name, sortOrder: i })) });
 
   const deptNames = ["Hành chính", "Kinh doanh", "Kỹ thuật", "Kho vận", "Chăm sóc khách hàng"];
   const depts: { id: number; name: string }[] = [];

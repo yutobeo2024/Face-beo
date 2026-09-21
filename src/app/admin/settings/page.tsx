@@ -6,6 +6,7 @@ import { Badge, Button, Card, CardHeader, ErrorBox, Field, IconButton, Loading, 
 import { useDepartments } from "@/components/dept-select";
 import { useToast } from "@/components/toast";
 import { useCan } from "../admin-nav";
+import { APPROVAL_MODES, APPROVAL_MODE_LABEL } from "@/lib/roles";
 
 type Settings = { matchThreshold: number; matchMargin: number; livenessThreshold: number; livenessServerThreshold: number; absentAfterMinutes: number; snapshotRetentionDays: number; otRoundMinutes: number };
 type Shift = {
@@ -291,21 +292,36 @@ export default function SettingsPage() {
                     }
                   />
                 </div>
-                <Select
-                  className="sm:w-64"
-                  aria-label={`Quản lý phòng ${d.name}`}
-                  value={d.managerId ?? ""}
-                  onChange={(e) => run(() => api(`/api/departments/${d.id}`, { method: "PATCH", body: { managerId: e.target.value ? Number(e.target.value) : null } }), "Đã cập nhật quản lý", depts.reload)}
-                >
-                  <option value="">— Chưa có quản lý (đơn chuyển ADMIN) —</option>
-                  {emps.data?.employees
-                    .filter((e) => e.departmentId === d.id)
-                    .map((e) => (
-                      <option key={e.id} value={e.id}>
-                        {e.code} — {e.name}
+                <div className="flex flex-col gap-1.5 sm:w-72">
+                  <Select
+                    aria-label={`Quản lý phòng ${d.name}`}
+                    value={d.managerId ?? ""}
+                    onChange={(e) => run(() => api(`/api/departments/${d.id}`, { method: "PATCH", body: { managerId: e.target.value ? Number(e.target.value) : null } }), "Đã cập nhật quản lý", depts.reload)}
+                  >
+                    <option value="">— Chưa có quản lý (đơn chuyển Nhân sự) —</option>
+                    {emps.data?.employees
+                      .filter((e) => e.departmentId === d.id)
+                      .map((e) => (
+                        <option key={e.id} value={e.id}>
+                          {e.code} — {e.name}
+                        </option>
+                      ))}
+                  </Select>
+                  {/* Cách duyệt đơn của Nhân viên trong phòng (chỉ có ý nghĩa khi phòng có quản lý). */}
+                  <Select
+                    aria-label={`Cách duyệt đơn phòng ${d.name}`}
+                    title="Cách duyệt đơn của nhân viên trong phòng (áp dụng khi phòng có quản lý)"
+                    disabled={!d.managerId}
+                    value={d.approvalMode ?? "MANAGER_OR_HR"}
+                    onChange={(e) => run(() => api(`/api/departments/${d.id}`, { method: "PATCH", body: { approvalMode: e.target.value } }), "Đã đổi cách duyệt đơn", depts.reload)}
+                  >
+                    {APPROVAL_MODES.map((m) => (
+                      <option key={m} value={m}>
+                        Duyệt đơn: {APPROVAL_MODE_LABEL[m]}
                       </option>
                     ))}
-                </Select>
+                  </Select>
+                </div>
               </li>
             ))}
           </ul>
@@ -322,6 +338,7 @@ export default function SettingsPage() {
             </Button>
           </form>
         </Card>
+            <CatalogCard busy={busy} run={run} confirm={setConfirmBox} />
             <Card>
               <CardHeader
                 title="Mẫu tuần làm việc (nhóm ca cố định)"
@@ -618,6 +635,108 @@ export default function SettingsPage() {
         )}
       </Modal>
     </>
+  );
+}
+
+/** Cấu hình → Chức danh & chuyên khoa: hai danh mục mô tả nhân viên (không ảnh hưởng quyền). Thêm, đổi tên, xóa (người đang dùng được để trống). */
+function CatalogCard({
+  busy,
+  run,
+  confirm,
+}: {
+  busy: boolean;
+  run: (fn: () => Promise<unknown>, ok: string, after?: () => void) => Promise<void>;
+  confirm: (box: { title: string; body: string; ok: string; fn: () => Promise<unknown>; after: () => void }) => void;
+}) {
+  return (
+    <Card>
+      <CardHeader title="Chức danh & chuyên khoa" />
+      <p className="px-4 pt-3 text-xs text-slate-500 sm:px-5">
+        Mô tả nhân viên (vd. Bác sĩ · Tai Mũi Họng, KTV · Siêu âm) để lọc danh sách và thêm cột trong Excel. Không ảnh hưởng phân quyền hay duyệt đơn — việc đó theo phòng ban.
+      </p>
+      <div className="grid gap-4 p-4 sm:grid-cols-2 sm:px-5">
+        <CatalogList title="Chức danh" url="/api/job-titles" placeholder="VD: Kỹ thuật viên" busy={busy} run={run} confirm={confirm} />
+        <CatalogList title="Chuyên khoa / chuyên môn" url="/api/specialties" placeholder="VD: Tai Mũi Họng" busy={busy} run={run} confirm={confirm} />
+      </div>
+    </Card>
+  );
+}
+
+function CatalogList({
+  title,
+  url,
+  placeholder,
+  busy,
+  run,
+  confirm,
+}: {
+  title: string;
+  url: string;
+  placeholder: string;
+  busy: boolean;
+  run: (fn: () => Promise<unknown>, ok: string, after?: () => void) => Promise<void>;
+  confirm: (box: { title: string; body: string; ok: string; fn: () => Promise<unknown>; after: () => void }) => void;
+}) {
+  const list = useApi<{ items: { id: number; name: string; employeeCount: number }[] }>(url);
+  const [name, setName] = useState("");
+  const [editing, setEditing] = useState<{ id: number; name: string } | null>(null);
+  return (
+    <div>
+      <p className="mb-1 text-sm font-semibold text-slate-700">{title}</p>
+      <ul className="max-h-72 divide-y divide-slate-100 overflow-y-auto rounded-lg border border-slate-100 text-sm">
+        {list.data?.items.map((it) => (
+          <li key={it.id} className="flex items-center gap-1 px-2 py-1.5">
+            {editing?.id === it.id ? (
+              <form
+                className="flex flex-1 gap-1"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  void run(() => api(`${url}/${it.id}`, { method: "PATCH", body: { name: editing.name } }), "Đã đổi tên", () => (setEditing(null), list.reload()));
+                }}
+              >
+                <input className="input h-9 flex-1" value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} minLength={2} required autoFocus />
+                <Button size="sm" type="submit" loading={busy}>
+                  Lưu
+                </Button>
+              </form>
+            ) : (
+              <>
+                <span className="min-w-0 flex-1 truncate text-slate-800">{it.name}</span>
+                <span className="shrink-0 text-xs text-slate-400">{it.employeeCount} NV</span>
+                <IconButton icon="edit" label={`Đổi tên ${it.name}`} onClick={() => setEditing({ id: it.id, name: it.name })} />
+                <IconButton
+                  icon="trash"
+                  label={`Xóa ${it.name}`}
+                  className="text-rose-600 hover:bg-rose-50"
+                  onClick={() =>
+                    confirm({
+                      title: `Xóa "${it.name}"`,
+                      body: it.employeeCount ? `${it.employeeCount} nhân viên đang có "${it.name}" sẽ được để trống mục này. Tiếp tục?` : `Xóa "${it.name}"?`,
+                      ok: "Đã xóa",
+                      fn: () => api(`${url}/${it.id}`, { method: "DELETE" }),
+                      after: list.reload,
+                    })
+                  }
+                />
+              </>
+            )}
+          </li>
+        ))}
+        {list.data && !list.data.items.length && <li className="px-2 py-2 text-xs text-slate-500">Chưa có mục nào.</li>}
+      </ul>
+      <form
+        className="mt-2 flex gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void run(() => api(url, { body: { name } }), "Đã thêm", () => (setName(""), list.reload()));
+        }}
+      >
+        <input className="input" placeholder={placeholder} value={name} onChange={(e) => setName(e.target.value)} minLength={2} required />
+        <Button type="submit" icon="plus" loading={busy}>
+          Thêm
+        </Button>
+      </form>
+    </div>
   );
 }
 

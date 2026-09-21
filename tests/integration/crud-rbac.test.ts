@@ -96,6 +96,8 @@ const gates: [string, string, Capability[]][] = [
   ["employees/[id]/consent", "POST", ["faces.enroll"]], ["employees/[id]/faces", "POST", ["faces.enroll"]], ["employees/[id]/faces", "DELETE", ["faces.enroll"]],
   ["departments", "POST", ["org.manage"]], ["departments/[id]", "PATCH", ["org.manage"]], ["departments/[id]", "DELETE", ["org.manage"]],
   ["holidays/[date]", "PATCH", ["org.manage"]],
+  ["job-titles", "POST", ["org.manage"]], ["job-titles/[id]", "PATCH", ["org.manage"]], ["job-titles/[id]", "DELETE", ["org.manage"]],
+  ["specialties", "POST", ["org.manage"]], ["specialties/[id]", "PATCH", ["org.manage"]], ["specialties/[id]", "DELETE", ["org.manage"]],
   ["shifts", "POST", ["org.manage"]], ["shifts/[id]", "PATCH", ["org.manage"]], ["shifts/[id]", "DELETE", ["org.manage"]],
   ["work-patterns", "POST", ["org.manage"]], ["work-patterns/[id]", "PATCH", ["org.manage"]], ["work-patterns/[id]", "DELETE", ["org.manage"]],
   ["holidays", "POST", ["org.manage"]], ["holidays/[date]", "DELETE", ["org.manage"]],
@@ -127,7 +129,7 @@ describe("RBAC endpoint matrix: default roles and anonymous", () => {
       else expect(res.status).toBe(403);
     });
   }
-  for (const path of ["departments", "shifts", "work-patterns", "holidays", "requests", "requests/prefill", "me/attendance", "me/overview", "me/notifications", "me/zalo", "me/links", "auth/me", "employees/[id]", "snapshots/[...path]"]) {
+  for (const path of ["departments", "shifts", "work-patterns", "holidays", "job-titles", "specialties", "requests", "requests/prefill", "me/attendance", "me/overview", "me/notifications", "me/zalo", "me/links", "auth/me", "employees/[id]", "snapshots/[...path]"]) {
     it(`GET ${path}: anonymous => 401`, async () => {
       expect((await call(path, "GET", undefined, undefined, { id: "0", path: ["invalid"] })).status).toBe(401);
     });

@@ -6,10 +6,10 @@ import { reportToXlsx, type DetailRow, type SummaryRow } from "@/lib/reports";
 import * as xlsxRoute from "@/app/api/reports/attendance.xlsx/route";
 
 const SUMMARY_HEADERS = [
-  "Mã NV", "Họ tên", "Phòng ban", "Ngày công", "Giờ công", "Số lần trễ", "Tổng phút trễ", "Số lần về sớm",
+  "Mã NV", "Họ tên", "Phòng ban", "Chức danh", "Chuyên khoa", "Ngày công", "Giờ công", "Số lần trễ", "Tổng phút trễ", "Số lần về sớm",
   "Tổng phút về sớm", "Giờ OT", "Ngày nghỉ phép", "Ngày vắng không phép", "Số ngày thiếu giờ ra", "Số lần bổ sung công",
 ];
-const DETAIL_HEADERS = ["Mã NV", "Họ tên", "Phòng ban", "Ngày", "Ca", "Giờ vào", "Giờ ra", "Phút trễ", "Phút sớm", "Phút OT", "Công", "Giờ công", "Trạng thái", "Ghi chú"];
+const DETAIL_HEADERS = ["Mã NV", "Họ tên", "Phòng ban", "Chức danh", "Chuyên khoa", "Ngày", "Ca", "Giờ vào", "Giờ ra", "Phút trễ", "Phút sớm", "Phút OT", "Công", "Giờ công", "Trạng thái", "Ghi chú"];
 
 async function load(buf: Buffer | ArrayBuffer) {
   const wb = new ExcelJS.Workbook();
@@ -19,12 +19,12 @@ async function load(buf: Buffer | ArrayBuffer) {
 const headerOf = (ws: ExcelJS.Worksheet) => (ws.getRow(1).values as unknown[]).slice(1).map(String);
 
 const sum = (o: Partial<SummaryRow> = {}): SummaryRow => ({
-  employeeId: 1, code: "007", name: "Nguyễn Thị Ánh Tuyết", department: "Phòng Kế toán – Tài vụ",
+  employeeId: 1, code: "007", name: "Nguyễn Thị Ánh Tuyết", department: "Phòng Kế toán – Tài vụ", jobTitle: "Kế toán", specialty: "",
   workDays: 0.5, workMinutes: 270, lateCount: 1, lateMinutes: 5, earlyCount: 0, earlyMinutes: 0,
   otMinutes: 50, leaveDays: 0.5, absentDays: 0, missingOutDays: 0, correctionCount: 0, ...o,
 });
 const det = (o: Partial<DetailRow> = {}): DetailRow => ({
-  employeeId: 1, code: "007", name: "Nguyễn Thị Ánh Tuyết", department: "Phòng Kế toán – Tài vụ", date: "2026-09-01",
+  employeeId: 1, code: "007", name: "Nguyễn Thị Ánh Tuyết", department: "Phòng Kế toán – Tài vụ", jobTitle: "Kế toán", specialty: "", date: "2026-09-01",
   shift: "Ca sáng 08:00–12:00", inTime: "08:05", outTime: "", lateMinutes: 5, earlyMinutes: 0, otMinutes: 0,
   workDayUnits: 0.5, workMinutes: 235, status: "Đi trễ", note: "", ...o,
 });
@@ -42,33 +42,34 @@ describe("reportToXlsx (exceljs)", () => {
     const wb = await load(await reportToXlsx({ summary: [sum()], detail: [det()] }));
     const s = wb.getWorksheet("Tổng hợp")!;
     const widths = (ws: ExcelJS.Worksheet) => ws.columns.map((c) => c.width);
-    expect(widths(s)).toEqual([8, 24, 22, 10, 9.5, 10, 13, 13, 16, 8, 14, 18, 18, 18]);
+    expect(widths(s)).toEqual([8, 24, 22, 14, 16, 10, 9.5, 10, 13, 13, 16, 8, 14, 18, 18, 18]);
     const d = wb.getWorksheet("Chi tiết")!;
-    expect(widths(d)).toEqual([8, 24, 22, 11, 26, 8, 8, 9.5, 9.5, 9.5, 6, 9.5, 16, 50]);
+    expect(widths(d)).toEqual([8, 24, 22, 14, 16, 11, 26, 8, 8, 9.5, 9.5, 9.5, 6, 9.5, 16, 50]);
 
     const r = s.getRow(2);
     expect(r.getCell(1).value).toBe("007");
     expect(r.getCell(1).type).toBe(ExcelJS.ValueType.String);
     expect(r.getCell(2).value).toBe("Nguyễn Thị Ánh Tuyết");
     expect(r.getCell(3).value).toBe("Phòng Kế toán – Tài vụ");
-    expect(r.getCell(4).value).toBe(0.5);
-    expect(r.getCell(4).type).toBe(ExcelJS.ValueType.Number);
-    expect(r.getCell(10).value).toBe(0.83); // 50 phút OT -> 0.83 giờ
-    expect(r.getCell(11).value).toBe(0.5);
+    expect(r.getCell(4).value).toBe("Kế toán"); // Chức danh (v1.7.0)
+    expect(r.getCell(6).value).toBe(0.5);
+    expect(r.getCell(6).type).toBe(ExcelJS.ValueType.Number);
+    expect(r.getCell(12).value).toBe(0.83); // 50 phút OT -> 0.83 giờ
+    expect(r.getCell(13).value).toBe(0.5);
 
     const dr = d.getRow(2);
-    expect(dr.getCell(5).value).toBe("Ca sáng 08:00–12:00");
-    expect(dr.getCell(11).value).toBe(0.5);
-    expect(dr.getCell(11).type).toBe(ExcelJS.ValueType.Number);
+    expect(dr.getCell(7).value).toBe("Ca sáng 08:00–12:00");
+    expect(dr.getCell(13).value).toBe(0.5);
+    expect(dr.getCell(13).type).toBe(ExcelJS.ValueType.Number);
     // Ô chuỗi rỗng không được biến thành số/lỗi.
-    expect([null, ""]).toContain(dr.getCell(7).value);
+    expect([null, ""]).toContain(dr.getCell(9).value);
   });
 
   // exceljs bỏ qua cột có width đúng bằng 9 (DEFAULT_COLUMN_WIDTH) khi ghi file => reports.ts dùng 9.5.
   it("cột hẹp (Giờ công, Phút trễ/sớm/OT) giữ đúng độ rộng sau khi ghi file", async () => {
     const wb = await load(await reportToXlsx({ summary: [sum()], detail: [det()] }));
-    expect(wb.getWorksheet("Tổng hợp")!.getColumn(5).width).toBe(9.5);
-    expect(wb.getWorksheet("Chi tiết")!.getColumn(8).width).toBe(9.5);
+    expect(wb.getWorksheet("Tổng hợp")!.getColumn(7).width).toBe(9.5);
+    expect(wb.getWorksheet("Chi tiết")!.getColumn(10).width).toBe(9.5);
   });
 
   it("chuỗi bắt đầu bằng '=' không bị hiểu là công thức; ký tự điều khiển không làm hỏng file", async () => {
@@ -82,7 +83,7 @@ describe("reportToXlsx (exceljs)", () => {
     expect(c.value).toBe("=HYPERLINK(\"http://x\",\"a\")");
     const d = wb.getWorksheet("Chi tiết")!.getRow(2);
     expect(d.getCell(2).value).toBe("+1-2");
-    expect(d.getCell(14).value).toBe("Đơn #1 <Nghỉ phép> & \"x\" 'y'");
+    expect(d.getCell(16).value).toBe("Đơn #1 <Nghỉ phép> & \"x\" 'y'");
   });
 
   it("sheet Ghi chú: tiêu đề + mỗi ghi chú một dòng, rộng 100", async () => {

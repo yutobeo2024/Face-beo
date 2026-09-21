@@ -11,6 +11,7 @@ import { invalidateFaceCache } from "@/lib/face-matcher";
 import { FACE_MODEL_VERSION } from "@/lib/roles";
 import { can, requirePerm } from "@/lib/permissions";
 import { assertCanModify } from "@/lib/employee-guards";
+import { assertCatalogIds } from "@/lib/catalogs";
 import { announce, onceKey } from "@/lib/announce";
 import { ROLE_LABEL, type Role } from "@/lib/roles";
 
@@ -71,6 +72,7 @@ export const PATCH = handle<{ id: string }>(async (req, ctx) => {
   if (fields.workPatternId && !(await prisma.workPattern.findUnique({ where: { id: fields.workPatternId } }))) throw badRequest("Mẫu tuần không tồn tại");
   if (fields.defaultShiftId && !(await prisma.shift.findUnique({ where: { id: fields.defaultShiftId } }))) throw badRequest("Ca mặc định không tồn tại");
   if (fields.departmentId && !(await prisma.department.findUnique({ where: { id: fields.departmentId } }))) throw badRequest("Phòng ban không tồn tại");
+  await assertCatalogIds(fields);
   // Mật khẩu tạm ngẫu nhiên (không dùng mật khẩu mặc định đoán được), bắt buộc đổi ở lần đăng nhập sau.
   const tempPassword = resetPassword ? randomTempPassword() : null;
   if (resetPassword) {
@@ -127,6 +129,8 @@ export const PATCH = handle<{ id: string }>(async (req, ctx) => {
   if (fields.scheduleType && fields.scheduleType !== e.scheduleType) changes.push(fields.scheduleType === "ROTATING" ? "chuyển sang XOAY CA" : "chuyển sang CA CỐ ĐỊNH");
   if (fields.workPatternId !== undefined && fields.workPatternId !== e.workPatternId) changes.push("đổi mẫu tuần làm việc");
   if (fields.name && fields.name !== e.name) changes.push("đổi họ tên");
+  if (fields.jobTitleId !== undefined && fields.jobTitleId !== e.jobTitleId) changes.push("đổi chức danh");
+  if (fields.specialtyId !== undefined && fields.specialtyId !== e.specialtyId) changes.push("đổi chuyên khoa");
   if (fields.phone && fields.phone !== e.phone) changes.push("đổi số điện thoại");
   if (fields.active === false && e.active) changes.push("CHO NGHỈ VIỆC (đã xóa dữ liệu khuôn mặt, thoát mọi thiết bị)");
   if (fields.active === true && !e.active) changes.push("kích hoạt lại tài khoản");
@@ -155,7 +159,7 @@ export const DELETE = handle<{ id: string }>(async (req, ctx) => {
   await assertCanModify(u, e, { active: false });
   const [logs, requests, schedules, locked, locks, weeks, links, facesForOthers, actions, notifications] = await Promise.all([
     prisma.attendanceLog.count({ where: { OR: [{ employeeId: id }, { createdById: id }] } }),
-    prisma.leaveRequest.count({ where: { OR: [{ employeeId: id }, { approverId: id }, { executedById: id }] } }),
+    prisma.leaveRequest.count({ where: { OR: [{ employeeId: id }, { approverId: id }, { managerApproverId: id }, { executedById: id }] } }),
     prisma.workSchedule.count({ where: { employeeId: id } }),
     prisma.lockedDay.count({ where: { employeeId: id } }),
     prisma.payrollLock.count({ where: { lockedById: id } }),

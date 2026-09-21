@@ -19,6 +19,7 @@ type Row = {
   defaultShiftId: number;
   scheduleType: "FIXED" | "ROTATING";
   patternName: string | null;
+  title: string | null;
   cells: Record<string, Cell>;
 };
 type DeptWeek = { name: string; status: "DRAFT" | "REGISTERED"; registeredAt: string | null; canEdit: boolean; needReason: boolean; lockReason: string | null; canRegister: boolean };
@@ -296,6 +297,7 @@ function RosterInner() {
                           <tr key={e.id}>
                             <td className="sticky left-0 z-10 border-r border-b border-slate-100 bg-white px-3 py-1.5">
                               <p className="truncate font-semibold text-slate-800">{e.name}</p>
+                              {e.title && <p className="truncate text-xs font-medium text-brand-800">{e.title}</p>}
                               <p className="truncate text-xs text-slate-500">
                                 {e.code} · {e.department.name}
                                 <span className={e.scheduleType === "ROTATING" ? "ml-1 text-brand-700" : "ml-1"}>

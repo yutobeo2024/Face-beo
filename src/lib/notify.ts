@@ -20,17 +20,29 @@ async function roleHas(role: string, cap: "requests.decide" | "attendance.execut
   return can({ role }, cap);
 }
 
+/** Quản lý phòng của nhân viên còn hiệu lực duyệt (đang làm, không phải chính người tạo đơn, vai trò Quản lý còn quyền duyệt). */
+async function activeDeptManager(employeeId: number, managerId: number | null): Promise<number | null> {
+  if (!managerId || managerId === employeeId || !(await roleHas("MANAGER", "requests.decide"))) return null;
+  const m = await prisma.employee.findUnique({ where: { id: managerId }, select: { active: true } });
+  return m?.active ? managerId : null;
+}
+
 /**
  * Tuyến duyệt đơn theo vai trò người tạo (không ai tự duyệt đơn của mình):
- *  - Nhân viên → quản lý phòng; phòng chưa có quản lý → Nhân sự; không có Nhân sự → Quản trị.
+ *  - Nhân viên, phòng có quản lý: theo `Department.approvalMode` (v1.7.0)
+ *      MANAGER_OR_HR — quản lý phòng HOẶC Nhân sự (ai duyệt trước cũng có hiệu lực);
+ *      TWO_STEP — bước 1 quản lý phòng (đơn PENDING), bước 2 Nhân sự (đơn MANAGER_APPROVED);
+ *      MANAGER_ONLY — chỉ quản lý phòng.
+ *    Phòng chưa có quản lý → Nhân sự; không có Nhân sự → Quản trị.
  *  - Quản lý → Nhân sự; không có → Quản trị.
  *  - Nhân sự → Quản trị.
  *  - Quản trị → Quản trị khác; không có → Nhân sự.
+ * `status` = trạng thái hiện tại của đơn (mặc định PENDING — đơn mới tạo).
  */
-export async function approversFor(employeeId: number): Promise<number[]> {
+export async function approversFor(employeeId: number, status: string = "PENDING"): Promise<number[]> {
   const emp = await prisma.employee.findUnique({
     where: { id: employeeId },
-    select: { role: true, department: { select: { managerId: true } } },
+    select: { role: true, department: { select: { managerId: true, approvalMode: true } } },
   });
   const chain = async (...roles: string[]) => {
     for (const r of roles) {
@@ -49,25 +61,48 @@ export async function approversFor(employeeId: number): Promise<number[]> {
     case "MANAGER":
       return chain("HR", "ADMIN");
     default: {
-      const managerId = emp.department.managerId;
-      if (managerId && managerId !== employeeId && (await roleHas("MANAGER", "requests.decide"))) {
-        const m = await prisma.employee.findUnique({ where: { id: managerId }, select: { active: true } });
-        if (m?.active) return [managerId];
+      // Đơn đã qua bước 1 (trưởng phòng duyệt) luôn chờ Nhân sự — kể cả khi phòng đã đổi cách duyệt hoặc đổi/gỡ quản lý giữa chừng.
+      if (status === "MANAGER_APPROVED") return chain("HR", "ADMIN");
+      const managerId = await activeDeptManager(employeeId, emp.department.managerId);
+      if (!managerId) return chain("HR", "ADMIN");
+      switch (emp.department.approvalMode) {
+        case "MANAGER_ONLY":
+          return [managerId];
+        case "TWO_STEP":
+          return [managerId];
+        default:
+          return [...new Set([managerId, ...(await chain("HR", "ADMIN"))])];
       }
-      return chain("HR", "ADMIN");
     }
   }
 }
 
-/** Người dùng có được duyệt đơn này không: có quyền `requests.decide`, không phải đơn của mình, và nằm trong tuyến duyệt (Quản trị luôn được). */
-export async function canDecideRequest(user: { id: number; role: string }, req: { employeeId: number }): Promise<boolean> {
+/**
+ * Lần duyệt này chỉ là BƯỚC 1 (trưởng phòng) của phòng duyệt 2 bước? Đúng khi: phòng TWO_STEP, đơn đang PENDING của Nhân viên,
+ * người duyệt chính là quản lý phòng đó và không phải Nhân sự/Quản trị (Nhân sự/Quản trị duyệt là quyết định cuối).
+ */
+export async function isManagerStep(user: { id: number; role: string }, req: { employeeId: number; status: string }): Promise<boolean> {
+  if (req.status !== "PENDING" || user.role === "HR" || user.role === "ADMIN") return false;
+  const emp = await prisma.employee.findUnique({
+    where: { id: req.employeeId },
+    select: { role: true, department: { select: { managerId: true, approvalMode: true } } },
+  });
+  if (!emp || emp.role !== "EMPLOYEE" || emp.department.approvalMode !== "TWO_STEP") return false;
+  return (await activeDeptManager(req.employeeId, emp.department.managerId)) === user.id;
+}
+
+/**
+ * Người dùng có được duyệt đơn này không: có quyền `requests.decide`, không phải đơn của mình, và nằm trong tuyến duyệt ứng với
+ * trạng thái hiện tại của đơn (Quản trị luôn được). `status` bỏ trống = PENDING.
+ */
+export async function canDecideRequest(user: { id: number; role: string }, req: { employeeId: number; status?: string }): Promise<boolean> {
   if (!(await can(user, "requests.decide"))) return false;
   if (req.employeeId === user.id) {
     // Ngoại lệ duy nhất: Quản trị không còn ai khác để duyệt (không có Quản trị khác lẫn Nhân sự) — được tự duyệt, có ghi nhật ký.
-    return user.role === "ADMIN" && (await approversFor(req.employeeId)).length === 0;
+    return user.role === "ADMIN" && (await approversFor(req.employeeId, req.status)).length === 0;
   }
   if (user.role === "ADMIN") return true;
-  return (await approversFor(req.employeeId)).includes(user.id);
+  return (await approversFor(req.employeeId, req.status)).includes(user.id);
 }
 
 /**
@@ -143,6 +178,35 @@ export async function notifyRequestCreated(r: LeaveRequest) {
       }),
     ),
   );
+}
+
+/** Trưởng phòng đã duyệt bước 1 (phòng duyệt 2 bước): báo Nhân sự (bước 2) + nhóm đơn từ. */
+export async function notifyManagerApproved(r: LeaveRequest) {
+  const [emp, manager] = await Promise.all([
+    prisma.employee.findUniqueOrThrow({ where: { id: r.employeeId }, select: { name: true, code: true } }),
+    r.managerApproverId ? prisma.employee.findUnique({ where: { id: r.managerApproverId }, select: { name: true } }) : null,
+  ]);
+  const hr = await approversFor(r.employeeId, "MANAGER_APPROVED");
+  await announceStaff({
+    category: "DON_TU",
+    employeeId: r.employeeId,
+    icon: "☑️",
+    text: `Đơn #${r.id} ${requestSummary(r)} đã được trưởng phòng ${manager?.name ?? ""} duyệt\nĐang chờ ${(await namesOf(hr)) || "Nhân sự"} duyệt`,
+    key: `req-mgr:${r.id}`,
+  });
+  const data = {
+    requestId: r.id,
+    employeeName: emp.name,
+    employeeCode: emp.code,
+    typeLabel: REQUEST_TYPE_LABEL[r.type as RequestTypeT] ?? r.type,
+    fromText: fmtDT(r.fromTime),
+    toText: fmtDT(r.toTime),
+    correctionText: correctionText(r),
+    reason: r.reason,
+    managerName: manager?.name ?? "",
+    managerNote: r.managerNote ?? "",
+  };
+  return Promise.all(hr.map((toId) => sendZaloMessage({ toEmployeeId: toId, messageType: "REQUEST_STAGE2", data, dedupeKey: `req-stage2:${r.id}:${toId}` })));
 }
 
 /** Nhân viên tự hủy đơn đang chờ: báo nhóm đơn từ (để tin "đang chờ duyệt" trước đó không treo). */

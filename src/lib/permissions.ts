@@ -30,7 +30,7 @@ export const CAPABILITIES = [
   { key: "employees.view", group: "Nhân viên", label: "Xem danh sách nhân viên" },
   { key: "employees.manage", group: "Nhân viên", label: "Thêm / sửa / cho nghỉ việc, đặt lại mật khẩu" },
   { key: "faces.enroll", group: "Nhân viên", label: "Enroll / xóa khuôn mặt" },
-  { key: "org.manage", group: "Tổ chức", label: "Phòng ban & quản lý, ngày lễ, định nghĩa ca, mẫu tuần" },
+  { key: "org.manage", group: "Tổ chức", label: "Phòng ban & quản lý, ngày lễ, định nghĩa ca, mẫu tuần, chức danh & chuyên khoa" },
   { key: "links.manage", group: "Tổ chức", label: "Thông tin: thêm / sửa liên kết nhanh (web app, Google Sheet, Drive…)" },
   { key: "settings.system", group: "Hệ thống", label: "Cấu hình hệ thống (ngưỡng, Zalo, lưu trữ)", locked: true },
   { key: "devices.manage", group: "Hệ thống", label: "Ghép / thu hồi thiết bị kiosk", locked: true },

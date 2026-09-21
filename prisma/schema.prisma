@@ -13,6 +13,23 @@ model Department {
   managerId Int?
   manager   Employee?  @relation("DeptManager", fields: [managerId], references: [id])
   employees Employee[] @relation("DeptMembers")
+  // Cách duyệt đơn của Nhân viên trong phòng có quản lý (v1.7.0): MANAGER_OR_HR | TWO_STEP | MANAGER_ONLY
+  approvalMode String @default("MANAGER_OR_HR")
+}
+
+// Danh mục chức danh / chuyên khoa (v1.7.0): thuộc tính của nhân viên, không ảnh hưởng phân quyền.
+model JobTitle {
+  id        Int        @id @default(autoincrement())
+  name      String     @unique
+  sortOrder Int        @default(0)
+  employees Employee[]
+}
+
+model Specialty {
+  id        Int        @id @default(autoincrement())
+  name      String     @unique
+  sortOrder Int        @default(0)
+  employees Employee[]
 }
 
 model Employee {
@@ -33,6 +50,10 @@ model Employee {
   scheduleType       String            @default("FIXED") // FIXED (theo mẫu tuần) | ROTATING (phải đăng ký ca tuần)
   workPatternId      Int?
   workPattern        WorkPattern?      @relation(fields: [workPatternId], references: [id])
+  jobTitleId         Int?
+  jobTitle           JobTitle?         @relation(fields: [jobTitleId], references: [id])
+  specialtyId        Int?
+  specialty          Specialty?        @relation(fields: [specialtyId], references: [id])
   avatarUrl          String?
   active             Boolean           @default(true)
   leftAt             DateTime? // thời điểm cho nghỉ việc: sau ngày này không còn lịch làm (không tính vắng)
@@ -46,6 +67,7 @@ model Employee {
   faceTemplates      FaceTemplate[]
   requests           LeaveRequest[]    @relation("Requester")
   decidedRequests    LeaveRequest[]    @relation("Approver")
+  managerDecidedRequests LeaveRequest[] @relation("ManagerApprover")
   notifications      NotificationLog[]
 }
 
@@ -145,11 +167,16 @@ model LeaveRequest {
   fromTime     DateTime
   toTime       DateTime
   reason       String
-  status       String    @default("PENDING") // PENDING | APPROVED | REJECTED | CANCELLED
+  status       String    @default("PENDING") // PENDING | MANAGER_APPROVED (duyệt 2 bước: chờ HR) | APPROVED | REJECTED | CANCELLED
   approverId   Int?
   approver     Employee? @relation("Approver", fields: [approverId], references: [id])
   decidedAt    DateTime?
   decisionNote String?
+  // Duyệt 2 bước (phòng TWO_STEP): bước 1 của trưởng phòng; approverId/decidedAt/decisionNote là quyết định cuối.
+  managerApproverId Int?
+  managerApprover   Employee? @relation("ManagerApprover", fields: [managerApproverId], references: [id])
+  managerDecidedAt  DateTime?
+  managerNote       String?
   // Đơn bổ sung công (quên chấm vào/ra): giờ cần bổ sung, và bước 2 "chấm tay" do Nhân sự thực hiện.
   correctionAt   DateTime?
   correctionKind String? // IN | OUT

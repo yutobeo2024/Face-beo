@@ -7,13 +7,16 @@ import { assertDept } from "@/lib/auth";
 import { assertCanModify } from "@/lib/employee-guards";
 import { announce } from "@/lib/announce";
 import { parseIds } from "@/lib/info-links";
+import { APPROVAL_MODES, APPROVAL_MODE_LABEL } from "@/lib/roles";
 
 const schema = z.object({
   name: z.string().trim().min(2).max(80).optional(),
   managerId: z.number().int().positive().nullable().optional(),
+  // Không .default(): PATCH chỉ đổi trường được gửi.
+  approvalMode: z.enum(APPROVAL_MODES).optional(),
 });
 
-/** Đổi tên hoặc gán quản lý phòng ban. Người được gán tự lên vai trò MANAGER nếu đang là EMPLOYEE. */
+/** Đổi tên, gán quản lý, đổi cách duyệt đơn của phòng ban. Người được gán tự lên vai trò MANAGER nếu đang là EMPLOYEE. */
 export const PATCH = handle<{ id: string }>(async (req, ctx) => {
   const u = await requirePerm(req, "org.manage");
   const id = await idParam(ctx);
@@ -22,6 +25,9 @@ export const PATCH = handle<{ id: string }>(async (req, ctx) => {
   if (!d) throw notFound();
   assertDept(u, id);
   if (body.name && body.name !== d.name && (await prisma.department.findUnique({ where: { name: body.name } }))) throw badRequest("Tên phòng ban đã tồn tại");
+  // Cách duyệt đơn quyết định Nhân sự có được kiểm soát hay không: Quản lý không tự đổi được kể cả khi được cấp org.manage
+  // (mặc định chỉ Quản trị có org.manage; Nhân sự đổi được nếu Quản trị cấp quyền "Tổ chức").
+  if (body.approvalMode !== undefined && u.role !== "ADMIN" && u.role !== "HR") throw forbidden("Quản lý không được đổi cách duyệt đơn của phòng");
   let promoted: { id: number; code: string; name: string } | null = null;
   if (body.managerId) {
     const m = await prisma.employee.findUnique({ where: { id: body.managerId } });
@@ -47,6 +53,13 @@ export const PATCH = handle<{ id: string }>(async (req, ctx) => {
     await announce(u, `đã ${m ? `gán ${m.code} — ${m.name} làm quản lý` : "gỡ quản lý"} phòng ${d.name}`, {
       key: `dept-manager:${id}:${Date.now()}`,
       detail: promoted ? "Tự động nâng vai trò Nhân viên → Quản lý" : undefined,
+    });
+  }
+  if (body.approvalMode !== undefined && body.approvalMode !== d.approvalMode) {
+    // Đơn đang ở bước 1 xong (MANAGER_APPROVED) vẫn chờ Nhân sự như cũ; luật mới áp cho các lần duyệt tiếp theo.
+    await announce(u, `đã đổi cách duyệt đơn của phòng ${d.name}`, {
+      key: `dept-approval:${id}:${Date.now()}`,
+      detail: `${APPROVAL_MODE_LABEL[d.approvalMode as keyof typeof APPROVAL_MODE_LABEL] ?? d.approvalMode} → ${APPROVAL_MODE_LABEL[body.approvalMode]}`,
     });
   }
   return json({ ok: true });

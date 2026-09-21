@@ -32,6 +32,8 @@ export const GET = handle(async (req) => {
       defaultShiftId: true,
       scheduleType: true,
       workPattern: { select: { name: true } },
+      jobTitle: { select: { name: true } },
+      specialty: { select: { name: true } },
     },
   });
   const ids = emps.map((e) => e.id);
@@ -77,6 +79,8 @@ export const GET = handle(async (req) => {
       defaultShiftId: e.defaultShiftId,
       scheduleType: e.scheduleType,
       patternName: e.workPattern?.name ?? null,
+      // Chức danh · chuyên khoa: giúp xếp lịch đủ người theo chuyên khoa (vd. mỗi ngày có 1 bác sĩ TMH).
+      title: [e.jobTitle?.name, e.specialty?.name].filter(Boolean).join(" · ") || null,
       cells: Object.fromEntries(
         dates.map((d) => {
           const raw = planner.rawSchedule(e.id, d);

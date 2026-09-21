@@ -12,9 +12,12 @@ import { assertCanCreate } from "@/lib/employee-guards";
 import { announce } from "@/lib/announce";
 import { ROLE_LABEL, type Role } from "@/lib/roles";
 import { randomTempPassword } from "@/lib/temp-password";
+import { assertCatalogIds } from "@/lib/catalogs";
 
 const listQuery = z.object({
   departmentId: optId,
+  jobTitleId: optId,
+  specialtyId: optId,
   q: z.string().trim().max(50).optional(),
   includeInactive: z.enum(["0", "1"]).optional(),
 });
@@ -28,6 +31,8 @@ export const GET = handle(async (req) => {
       ...employeeScopeWhere(u, q.departmentId),
       ...(q.includeInactive === "1" && manage ? {} : { active: true }),
       ...(q.q ? { OR: [{ name: { contains: q.q } }, { code: { contains: q.q } }, { phone: { contains: q.q } }] } : {}),
+      ...(q.jobTitleId ? { jobTitleId: q.jobTitleId } : {}),
+      ...(q.specialtyId ? { specialtyId: q.specialtyId } : {}),
     },
     orderBy: [{ departmentId: "asc" }, { code: "asc" }],
     select: {
@@ -44,6 +49,10 @@ export const GET = handle(async (req) => {
       scheduleType: true,
       workPatternId: true,
       workPattern: { select: { name: true } },
+      jobTitleId: true,
+      jobTitle: { select: { name: true } },
+      specialtyId: true,
+      specialty: { select: { name: true } },
       zaloUserId: true,
       zaloLinkedAt: true,
       biometricConsentAt: true,
@@ -77,6 +86,7 @@ export const POST = handle(async (req) => {
   if (!(await prisma.shift.findUnique({ where: { id: body.defaultShiftId } }))) throw badRequest("Ca mặc định không tồn tại");
   if (!(await prisma.department.findUnique({ where: { id: body.departmentId } }))) throw badRequest("Phòng ban không tồn tại");
   if (body.workPatternId && !(await prisma.workPattern.findUnique({ where: { id: body.workPatternId } }))) throw badRequest("Mẫu tuần không tồn tại");
+  await assertCatalogIds(body);
   // Không có mật khẩu mặc định chung: không truyền thì sinh mật khẩu tạm ngẫu nhiên, trả về MỘT LẦN cho người tạo đưa cho nhân viên.
   const tempPassword = body.password ? null : randomTempPassword();
   const e = await prisma.employee.create({
@@ -89,6 +99,8 @@ export const POST = handle(async (req) => {
       defaultShiftId: body.defaultShiftId,
       scheduleType: body.scheduleType ?? "FIXED",
       workPatternId: (body.scheduleType ?? "FIXED") === "FIXED" ? (body.workPatternId ?? null) : null,
+      jobTitleId: body.jobTitleId ?? null,
+      specialtyId: body.specialtyId ?? null,
       passwordHash: await bcrypt.hash(body.password ?? tempPassword!, 10),
       mustChangePassword: true,
     },

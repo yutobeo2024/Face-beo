@@ -45,7 +45,7 @@ export type ScheduleType = "FIXED" | "ROTATING";
 export type WeekPattern = Partial<Record<1 | 2 | 3 | 4 | 5 | 6 | 7, number | null>>;
 
 export type RequestType = "NGHI_PHEP" | "VE_SOM" | "TANG_CA_OT";
-export type RequestStatus = "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
+export type RequestStatus = "PENDING" | "MANAGER_APPROVED" | "APPROVED" | "REJECTED" | "CANCELLED";
 
 export type RequestLite = {
   id: number;
@@ -631,7 +631,7 @@ export function summarizeDay(args: {
 
   base.pendingLeave = requests.some(
     (r) =>
-      r.status === "PENDING" &&
+      (r.status === "PENDING" || r.status === "MANAGER_APPROVED") &&
       r.type === "NGHI_PHEP" &&
       r.fromTime.getTime() < iv.end.getTime() &&
       r.toTime.getTime() > iv.start.getTime(),
@@ -698,7 +698,7 @@ export function shouldSendLateReminder(isLate: boolean, workDate: string, shift:
   if (!isLate) return false;
   const start = shiftInterval(workDate, shift).start;
   return !requests.some(
-    (r) => (r.status === "APPROVED" || r.status === "PENDING") && (r.type === "NGHI_PHEP" || r.type === "VE_SOM") && requestCovers(r, start),
+    (r) => (r.status === "APPROVED" || r.status === "PENDING" || r.status === "MANAGER_APPROVED") && (r.type === "NGHI_PHEP" || r.type === "VE_SOM") && requestCovers(r, start),
   );
 }
 
@@ -734,7 +734,7 @@ export function decideAbsence(args: {
   const iv = shiftInterval(plan.workDate, plan.shift);
   const pending = requests.some(
     (r) =>
-      r.status === "PENDING" &&
+      (r.status === "PENDING" || r.status === "MANAGER_APPROVED") &&
       r.type === "NGHI_PHEP" &&
       r.fromTime.getTime() < iv.end.getTime() &&
       r.toTime.getTime() > iv.start.getTime(),

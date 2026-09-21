@@ -32,8 +32,8 @@ npm run admin:create -- --code AD01 --name "Họ Tên Quản Trị" --phone 09xx
 ```
 
 Sau đó đăng nhập bằng mã hoặc SĐT vừa tạo, vào Cài đặt kiểm tra ca/hệ số công (ca "Sáng thứ Bảy" 4 giờ = 0.5 công), tạo phòng ban,
-nhân viên. Lệnh `admin:create` từ chối khi DB đã có Quản trị đang hoạt động. `db:seed:base` chạy lại được nhưng so theo tên: ca/mẫu
-tuần đã đổi tên sẽ được tạo lại bản gốc.
+nhân viên. Lệnh `admin:create` từ chối khi DB đã có Quản trị đang hoạt động. `db:seed:base` chạy lại an toàn: mỗi danh mục (ca, mẫu
+tuần, ngày lễ, chức danh, chuyên khoa) chỉ được tạo khi bảng còn trống — mục đã xóa/đổi tên không bị tạo lại (v1.7.0).
 
 - Nên bỏ `--password` (npm in lại cả dòng lệnh, lịch sử shell cũng lưu) — dùng mật khẩu tạm rồi đổi khi đăng nhập.
 - Quên mật khẩu / Quản trị bị khóa đăng nhập: `npm run admin:create -- --reset AD01` → mật khẩu tạm mới, mở khóa, thu hồi mọi phiên cũ.

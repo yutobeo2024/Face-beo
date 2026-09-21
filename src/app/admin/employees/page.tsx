@@ -29,7 +29,12 @@ type Emp = {
   scheduleType: "FIXED" | "ROTATING";
   workPatternId: number | null;
   workPattern: { name: string } | null;
+  jobTitleId: number | null;
+  jobTitle: { name: string } | null;
+  specialtyId: number | null;
+  specialty: { name: string } | null;
 };
+type CatalogItem = { id: number; name: string };
 type Shift = { id: number; name: string; startTime: string; endTime: string };
 type Form = {
   id?: number;
@@ -42,6 +47,8 @@ type Form = {
   active: boolean;
   scheduleType: "FIXED" | "ROTATING";
   workPatternId: string;
+  jobTitleId: string;
+  specialtyId: string;
 };
 type Pattern = { id: number; name: string; monShiftId: number | null };
 
@@ -67,17 +74,21 @@ export default function EmployeesPage() {
   const [q, setQ] = useState("");
   const [dept, setDept] = useState("");
   const [inactive, setInactive] = useState(false);
+  const [jobTitle, setJobTitle] = useState("");
+  const [specialty, setSpecialty] = useState("");
   const [form, setForm] = useState<Form | null>(null);
   const [busy, setBusy] = useState(false);
   const [tempPw, setTempPw] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<Emp | null>(null);
-  const { data, error, loading, reload } = useApi<{ employees: Emp[] }>(`/api/employees${qs({ q, departmentId: dept, includeInactive: inactive ? 1 : "" })}`);
+  const { data, error, loading, reload } = useApi<{ employees: Emp[] }>(`/api/employees${qs({ q, departmentId: dept, jobTitleId: jobTitle, specialtyId: specialty, includeInactive: inactive ? 1 : "" })}`);
   const depts = useDepartments();
   const shifts = useApi<{ shifts: Shift[] }>("/api/shifts");
   const patterns = useApi<{ patterns: Pattern[] }>("/api/work-patterns");
+  const jobTitles = useApi<{ items: CatalogItem[] }>("/api/job-titles");
+  const specialties = useApi<{ items: CatalogItem[] }>("/api/specialties");
 
   function openCreate() {
-    setForm({ code: "", name: "", phone: "", role: "EMPLOYEE", departmentId: String(depts.data?.departments[0]?.id ?? ""), defaultShiftId: String(shifts.data?.shifts[0]?.id ?? ""), active: true, scheduleType: "FIXED", workPatternId: String(patterns.data?.patterns.find((p) => p.monShiftId === shifts.data?.shifts[0]?.id)?.id ?? "") });
+    setForm({ code: "", name: "", phone: "", role: "EMPLOYEE", departmentId: String(depts.data?.departments[0]?.id ?? ""), defaultShiftId: String(shifts.data?.shifts[0]?.id ?? ""), active: true, scheduleType: "FIXED", workPatternId: String(patterns.data?.patterns.find((p) => p.monShiftId === shifts.data?.shifts[0]?.id)?.id ?? ""), jobTitleId: "", specialtyId: "" });
   }
 
   async function save() {
@@ -92,6 +103,8 @@ export default function EmployeesPage() {
         defaultShiftId: Number(form.defaultShiftId),
         scheduleType: form.scheduleType,
         workPatternId: form.scheduleType === "FIXED" && form.workPatternId ? Number(form.workPatternId) : null,
+        jobTitleId: form.jobTitleId ? Number(form.jobTitleId) : null,
+        specialtyId: form.specialtyId ? Number(form.specialtyId) : null,
       };
       if (form.id) {
         await api(`/api/employees/${form.id}`, { method: "PATCH", body: { ...body, active: form.active } });
@@ -166,12 +179,32 @@ export default function EmployeesPage() {
           )
         }
       />
-      <Card className="mb-3 grid gap-2 p-3 sm:grid-cols-[1fr_auto_auto] sm:items-center">
+      <Card className="mb-3 grid gap-2 p-3 sm:grid-cols-2 lg:grid-cols-[1fr_auto_auto_auto_auto] lg:items-center">
         <div className="relative">
           <Icon name="search" className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400" />
           <input className="input pl-9" placeholder="Tìm theo tên, mã, số điện thoại…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Tìm nhân viên" />
         </div>
-        <DeptSelect value={dept} onChange={setDept} className="sm:w-52" />
+        <DeptSelect value={dept} onChange={setDept} className="lg:w-48" />
+        {!!jobTitles.data?.items.length && (
+          <Select className="lg:w-40" aria-label="Lọc theo chức danh" value={jobTitle} onChange={(e) => setJobTitle(e.target.value)}>
+            <option value="">Mọi chức danh</option>
+            {jobTitles.data.items.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name}
+              </option>
+            ))}
+          </Select>
+        )}
+        {!!specialties.data?.items.length && (
+          <Select className="lg:w-44" aria-label="Lọc theo chuyên khoa" value={specialty} onChange={(e) => setSpecialty(e.target.value)}>
+            <option value="">Mọi chuyên khoa</option>
+            {specialties.data.items.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name}
+              </option>
+            ))}
+          </Select>
+        )}
         <label className="inline-flex h-11 items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700">
           <input type="checkbox" className="size-4 accent-brand-700" checked={inactive} onChange={(e) => setInactive(e.target.checked)} /> Hiện đã nghỉ việc
         </label>
@@ -195,6 +228,9 @@ export default function EmployeesPage() {
                   <p className="truncate text-xs text-slate-500">
                     {e.code} · {ROLE[e.role]} · {e.department.name}
                   </p>
+                  {(e.jobTitle || e.specialty) && (
+                    <p className="truncate text-xs font-medium text-brand-800">{[e.jobTitle?.name, e.specialty?.name].filter(Boolean).join(" · ")}</p>
+                  )}
                   <p className="truncate text-xs text-slate-500">
                     {e.scheduleType === "ROTATING" ? `Xoay ca · mặc định ${e.defaultShift.name}` : `Cố định · ${e.workPattern?.name ?? `${e.defaultShift.name} ${e.defaultShift.startTime}–${e.defaultShift.endTime}`}`}
                     {e.phone && ` · ${e.phone}`}
@@ -230,6 +266,8 @@ export default function EmployeesPage() {
                       active: e.active,
                       scheduleType: e.scheduleType,
                       workPatternId: e.workPatternId ? String(e.workPatternId) : "",
+                      jobTitleId: e.jobTitleId ? String(e.jobTitleId) : "",
+                      specialtyId: e.specialtyId ? String(e.specialtyId) : "",
                     })
                   }
                 >
@@ -297,6 +335,30 @@ export default function EmployeesPage() {
                   {shifts.data?.shifts.map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.name} {s.startTime}–{s.endTime}
+                    </option>
+                  ))}
+                </Select>
+              )}
+            </Field>
+            <Field label="Chức danh" hint="Chỉ để mô tả, lọc và xuất Excel — không ảnh hưởng quyền.">
+              {(id) => (
+                <Select id={id} value={form.jobTitleId} onChange={(e) => setForm({ ...form, jobTitleId: e.target.value })}>
+                  <option value="">— Chưa chọn —</option>
+                  {jobTitles.data?.items.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                    </option>
+                  ))}
+                </Select>
+              )}
+            </Field>
+            <Field label="Chuyên khoa / chuyên môn">
+              {(id) => (
+                <Select id={id} value={form.specialtyId} onChange={(e) => setForm({ ...form, specialtyId: e.target.value })}>
+                  <option value="">— Chưa chọn —</option>
+                  {specialties.data?.items.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
                     </option>
                   ))}
                 </Select>

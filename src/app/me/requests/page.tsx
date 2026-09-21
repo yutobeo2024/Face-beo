@@ -17,6 +17,8 @@ type Req = {
   createdAt: string;
   decisionNote: string | null;
   approver: { name: string } | null;
+  managerApprover?: { name: string } | null;
+  managerNote?: string | null;
   canCancel: boolean;
   correctionAt: string | null;
   correctionKind: string | null;
@@ -240,6 +242,12 @@ function MyRequestsInner() {
                     : `${fmtDateTime(r.fromTime)} → ${fmtDateTime(r.toTime)}`}
                 </p>
                 <p className="mt-1 text-sm text-slate-600">{r.reason}</p>
+                {r.managerApprover && (
+                  <p className="mt-2 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                    <b>Trưởng phòng {r.managerApprover.name}</b> đã duyệt bước 1{r.status === "MANAGER_APPROVED" ? " — đang chờ Nhân sự duyệt" : ""}
+                    {r.managerNote ? `: ${r.managerNote}` : ""}
+                  </p>
+                )}
                 {r.decisionNote && (
                   <p className="mt-2 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600">
                     <b>{r.approver?.name ?? "Quản lý"}:</b> {r.decisionNote}

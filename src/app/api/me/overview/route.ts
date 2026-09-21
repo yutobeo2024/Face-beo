@@ -23,7 +23,7 @@ export const GET = handle(async (req) => {
       where: { id: u.id },
       select: { code: true, name: true, zaloLinkedAt: true, department: { select: { name: true } }, defaultShift: { select: { name: true, startTime: true, endTime: true } } },
     }),
-    prisma.leaveRequest.count({ where: { employeeId: u.id, status: "PENDING" } }),
+    prisma.leaveRequest.count({ where: { employeeId: u.id, status: { in: ["PENDING", "MANAGER_APPROVED"] } } }),
     prisma.faceTemplate.count({ where: { employeeId: u.id, modelVersion: FACE_MODEL_VERSION } }),
   ]);
   return json({

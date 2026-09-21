@@ -260,7 +260,8 @@ describe("QC-C7 danh sách: cờ canDecide / canExecute", () => {
     const row = (rows: Array<Record<string, unknown>>, id: number) => rows.find((x) => x.id === id);
 
     const hrTeam = await list(H, "scope=team");
-    expect(row(hrTeam, p.id)).toMatchObject({ canDecide: false, canExecute: false });
+    // v1.7.0: mặc định MANAGER_OR_HR — Nhân sự cũng duyệt được đơn chờ của phòng có quản lý.
+    expect(row(hrTeam, p.id)).toMatchObject({ canDecide: true, canExecute: false });
     expect(row(hrTeam, a.id)).toMatchObject({ canDecide: false, canExecute: true });
     expect(row(hrTeam, hrOwn.id)?.canExecute ?? false).toBe(false);
     const adTeam = await list(A, "scope=team");

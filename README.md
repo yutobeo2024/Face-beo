@@ -87,6 +87,12 @@ Các luật khóa cứng trong code (ma trận không đổi được):
 
 ### Tuyến duyệt đơn
 
+**v1.7.0 — cách duyệt theo phòng** (Cấu hình → Phòng ban, ô "Duyệt đơn"; áp cho đơn của Nhân viên trong phòng có quản lý):
+*Trưởng phòng hoặc Nhân sự* (mặc định, ai duyệt trước có hiệu lực) · *Trưởng phòng → Nhân sự* (2 bước, trạng thái trung gian
+`MANAGER_APPROVED` "Chờ HR duyệt") · *Chỉ trưởng phòng*. Nhân viên còn có **Chức danh** và **Chuyên khoa** (danh mục ở Cấu hình) để lọc,
+hiện trong xếp ca và cột Excel — không ảnh hưởng quyền.
+
+
 | Người tạo đơn | Người duyệt |
 | --- | --- |
 | Nhân viên | Quản lý phòng; không có quản lý thì HR; không có HR thì ADMIN |

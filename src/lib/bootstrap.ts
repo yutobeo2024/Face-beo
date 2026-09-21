@@ -53,47 +53,76 @@ export function patternShiftIds(weekdayId: number, saturdayId: number | null) {
   return { monShiftId: weekdayId, tueShiftId: weekdayId, wedShiftId: weekdayId, thuShiftId: weekdayId, friShiftId: weekdayId, satShiftId: saturdayId, sunShiftId: null };
 }
 
+/** Danh mục chức danh / chuyên khoa mặc định cho phòng khám đa khoa (v1.7.0) — Quản trị sửa được trong Cấu hình. */
+export const BASE_JOB_TITLES = ["Bác sĩ", "Điều dưỡng", "Kỹ thuật viên", "Tiếp nhận", "Thu ngân", "Tạp vụ", "Bảo vệ", "IT", "Kế toán", "Kinh doanh", "Nhân sự", "Hành chính"];
+export const BASE_SPECIALTIES = [
+  "Nội",
+  "Tai Mũi Họng",
+  "Tâm thần",
+  "Y học cổ truyền",
+  "Răng Hàm Mặt",
+  "Phụ sản",
+  "Da liễu",
+  "Mắt",
+  "Chẩn đoán hình ảnh",
+  "Xét nghiệm",
+  "X-quang",
+  "Siêu âm",
+];
+
 type Count = { created: number; existing: number };
 
-/** Tạo cấu hình nền còn thiếu (so theo tên ca / tên mẫu tuần / ngày lễ / khóa cấu hình). Không sửa bản ghi đã có. */
+/**
+ * Tạo cấu hình nền: ca, mẫu tuần, ngày lễ, chức danh, chuyên khoa — mỗi loại CHỈ khi bảng đó còn trống; cấu hình ngưỡng bổ sung
+ * theo từng khóa còn thiếu; ma trận quyền nạp mặc định nếu chưa khởi tạo. Không sửa / không xóa bản ghi đã có, chạy lại an toàn.
+ */
 export async function seedBase(db: Db) {
-  const result = { shifts: { created: 0, existing: 0 } as Count, patterns: { created: 0, existing: 0 } as Count, holidays: { created: 0, existing: 0 } as Count, settings: { created: 0, existing: 0 } as Count, permissionsInitialized: false };
+  const result = {
+    shifts: { created: 0, existing: 0 } as Count,
+    patterns: { created: 0, existing: 0 } as Count,
+    holidays: { created: 0, existing: 0 } as Count,
+    settings: { created: 0, existing: 0 } as Count,
+    jobTitles: { created: 0, existing: 0 } as Count,
+    specialties: { created: 0, existing: 0 } as Count,
+    permissionsInitialized: false,
+  };
 
-  const shiftIds = new Map<string, number>();
-  for (const s of BASE_SHIFTS) {
-    const found = await db.shift.findUnique({ where: { name: s.name } });
-    if (found) {
-      shiftIds.set(s.name, found.id);
-      result.shifts.existing++;
-    } else {
-      shiftIds.set(s.name, (await db.shift.create({ data: s })).id);
-      result.shifts.created++;
+  // Mỗi danh mục chỉ được tạo khi bảng còn TRỐNG (lần cài đầu): chạy lại không làm "sống lại" mục Quản trị đã xóa hoặc đổi tên.
+  if ((result.shifts.existing = await db.shift.count()) === 0) {
+    for (const s of BASE_SHIFTS) await db.shift.create({ data: s });
+    result.shifts.created = BASE_SHIFTS.length;
+  }
+  if ((result.patterns.existing = await db.workPattern.count()) === 0) {
+    const shiftIds = new Map((await db.shift.findMany({ select: { id: true, name: true } })).map((x) => [x.name, x.id]));
+    for (const p of BASE_PATTERNS) {
+      const weekdayId = shiftIds.get(p.weekday);
+      const saturdayId = p.saturday ? shiftIds.get(p.saturday) : null;
+      if (!weekdayId || saturdayId === undefined) continue; // ca gốc không còn (đã đổi tên/xóa) → bỏ qua mẫu này
+      await db.workPattern.create({ data: { name: p.name, ...patternShiftIds(weekdayId, saturdayId) } });
+      result.patterns.created++;
     }
   }
-
-  for (const p of BASE_PATTERNS) {
-    if (await db.workPattern.findUnique({ where: { name: p.name } })) {
-      result.patterns.existing++;
-      continue;
-    }
-    await db.workPattern.create({ data: { name: p.name, ...patternShiftIds(shiftIds.get(p.weekday)!, p.saturday ? shiftIds.get(p.saturday)! : null) } });
-    result.patterns.created++;
+  if ((result.holidays.existing = await db.holiday.count()) === 0) {
+    for (const h of BASE_HOLIDAYS) await db.holiday.create({ data: h });
+    result.holidays.created = BASE_HOLIDAYS.length;
   }
 
-  for (const h of BASE_HOLIDAYS) {
-    if (await db.holiday.findUnique({ where: { date: h.date } })) result.holidays.existing++;
-    else {
-      await db.holiday.create({ data: h });
-      result.holidays.created++;
-    }
-  }
-
+  // Cấu hình ngưỡng: theo từng khóa (không xóa được trên giao diện, chỉ bổ sung khóa còn thiếu).
   for (const [key, value] of Object.entries(DEFAULT_APP_SETTINGS)) {
     if (await db.appSetting.findUnique({ where: { key } })) result.settings.existing++;
     else {
       await db.appSetting.create({ data: { key, value: String(value) } });
       result.settings.created++;
     }
+  }
+
+  if ((result.jobTitles.existing = await db.jobTitle.count()) === 0) {
+    for (const [i, name] of BASE_JOB_TITLES.entries()) await db.jobTitle.create({ data: { name, sortOrder: i } });
+    result.jobTitles.created = BASE_JOB_TITLES.length;
+  }
+  if ((result.specialties.existing = await db.specialty.count()) === 0) {
+    for (const [i, name] of BASE_SPECIALTIES.entries()) await db.specialty.create({ data: { name, sortOrder: i } });
+    result.specialties.created = BASE_SPECIALTIES.length;
   }
 
   result.permissionsInitialized = await ensureDefaultPermissions(db);

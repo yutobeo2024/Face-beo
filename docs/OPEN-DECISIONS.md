@@ -34,6 +34,12 @@ Ghi lại những điểm đã phát hiện trong quá trình làm và test, c�
 - **OT ngày không có ca:** tính theo đơn tăng ca đã duyệt.
 - **Minh bạch:** thao tác duyệt/sửa của HR và ADMIN được gửi vào nhóm Zalo OA. Không gửi lần quét chấm công, cũng như thao tác ngang quyền nhân viên.
 
+## Đã chốt v1.7.0 (21/09/2026)
+
+- **Phòng ban = đơn vị quản lý** (ai duyệt, ai xếp ca); chuyên môn là **Chức danh / Chuyên khoa** của nhân viên (không ảnh hưởng quyền).
+- **Cách duyệt đơn cấu hình theo phòng**: Trưởng phòng hoặc Nhân sự (mặc định) / Trưởng phòng → Nhân sự (2 bước) / Chỉ trưởng phòng.
+- **Chỉ Nhân sự xếp ca**: bỏ quyền "Xếp ca" của vai trò Quản lý trong Phân quyền. Xem PRD v2.1 mục 19.
+
 ## Đã chốt v1.6.0 (21/09/2026)
 
 - **Nhiều nhóm Zalo, mỗi nhóm chọn loại tin** (cấu hình được, không hard-code): Minh bạch / Chấm công nhân viên / Đơn từ nhân viên, lọc

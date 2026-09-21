@@ -67,7 +67,7 @@ afterAll(async () => {
 });
 
 describe("GET /api/reports/inout.xlsx", () => {
-  it("3 dòng tiêu đề, mỗi ngày 2 cột IN/OUT, giờ VN 24h, chỉ 1 lần quét => OUT trống, Chủ nhật tô màu, freeze 3x3", async () => {
+  it("3 dòng tiêu đề, mỗi ngày 2 cột IN/OUT, giờ VN 24h, chỉ 1 lần quét => OUT trống, Chủ nhật tô màu, freeze 4 cột x 3 dòng", async () => {
     const res = await get(A, `from=${SAT}&to=${MON}&departmentId=${deptA}`);
     expect(res.status).toBe(200);
     expect(res.headers.get("content-disposition")).toContain(`GioVaoRa_${SAT.replaceAll("-", "")}_${MON.replaceAll("-", "")}.xlsx`);
@@ -75,17 +75,17 @@ describe("GET /api/reports/inout.xlsx", () => {
     expect(wb.worksheets.map((w) => w.name)).toEqual(["Giờ vào ra", "Ghi chú"]);
     const ws = wb.getWorksheet("Giờ vào ra")!;
     // Tiêu đề cố định + tiêu đề ngày
-    expect([cell(ws, 3, 1), cell(ws, 3, 2), cell(ws, 3, 3)]).toEqual(["STT", "Nhân viên", "Bộ phận"]);
-    expect(cell(ws, 1, 4)).toBe(SAT.split("-").reverse().join("/"));
-    expect(cell(ws, 2, 4)).toBe("T7");
-    expect([cell(ws, 3, 4), cell(ws, 3, 5)]).toEqual(["IN", "OUT"]);
-    expect(cell(ws, 2, 6)).toBe("CN");
-    expect(cell(ws, 2, 8)).toBe("T2");
-    expect(ws.getCell(1, 4).isMerged).toBe(true);
+    expect([cell(ws, 3, 1), cell(ws, 3, 2), cell(ws, 3, 3), cell(ws, 3, 4)]).toEqual(["STT", "Nhân viên", "Bộ phận", "Chức danh"]);
+    expect(cell(ws, 1, 5)).toBe(SAT.split("-").reverse().join("/"));
+    expect(cell(ws, 2, 5)).toBe("T7");
+    expect([cell(ws, 3, 5), cell(ws, 3, 6)]).toEqual(["IN", "OUT"]);
+    expect(cell(ws, 2, 7)).toBe("CN");
+    expect(cell(ws, 2, 9)).toBe("T2");
+    expect(ws.getCell(1, 5).isMerged).toBe(true);
     expect(ws.getCell(1, 1).isMerged).toBe(false); // không merge dọc để bộ lọc/sort của Excel hoạt động
-    expect(ws.autoFilter).toBe("A3:I3"); // bộ lọc phủ đủ 9 cột (3 cố định + 3 ngày × 2)
+    expect(ws.autoFilter).toBe("A3:J3"); // bộ lọc phủ đủ 10 cột (4 cố định + 3 ngày × 2)
     // Dòng dữ liệu (thứ tự theo mã)
-    const rows = [4, 5].map((r) => ({ stt: cell(ws, r, 1), name: cell(ws, r, 2), dept: cell(ws, r, 3), satIn: cell(ws, r, 4), satOut: cell(ws, r, 5), sunIn: cell(ws, r, 6), sunOut: cell(ws, r, 7), monIn: cell(ws, r, 8), monOut: cell(ws, r, 9) }));
+    const rows = [4, 5].map((r) => ({ stt: cell(ws, r, 1), name: cell(ws, r, 2), dept: cell(ws, r, 3), satIn: cell(ws, r, 5), satOut: cell(ws, r, 6), sunIn: cell(ws, r, 7), sunOut: cell(ws, r, 8), monIn: cell(ws, r, 9), monOut: cell(ws, r, 10) }));
     const ra = rows.find((x) => x.name === `${tag} EMPLOYEE ${deptA}` && x.satIn === "07:58")!;
     expect(ra).toMatchObject({ dept: `${tag} A`, satIn: "07:58", satOut: "17:05", monIn: "08:10" });
     expect(ra.monOut ?? null).toBeNull(); // chỉ 1 lần quét
@@ -95,11 +95,11 @@ describe("GET /api/reports/inout.xlsx", () => {
     expect(rows.map((x) => x.stt)).toEqual([1, 2]);
     expect(cell(ws, 6, 2) ?? null).toBeNull(); // không có nhân viên phòng B
     // Chủ nhật tô hồng (tiêu đề và ô dữ liệu), thứ Bảy không
-    const sunFill = ws.getCell(2, 6).fill as ExcelJS.FillPattern;
+    const sunFill = ws.getCell(2, 7).fill as ExcelJS.FillPattern;
     expect(sunFill?.fgColor?.argb).toBe("FFF4B6B6");
-    expect((ws.getCell(4, 6).fill as ExcelJS.FillPattern)?.fgColor?.argb).toBe("FFF4B6B6");
-    expect((ws.getCell(4, 4).fill as ExcelJS.FillPattern)?.fgColor?.argb).not.toBe("FFF4B6B6");
-    expect(ws.views[0]).toMatchObject({ state: "frozen", xSplit: 3, ySplit: 3 });
+    expect((ws.getCell(4, 7).fill as ExcelJS.FillPattern)?.fgColor?.argb).toBe("FFF4B6B6");
+    expect((ws.getCell(4, 5).fill as ExcelJS.FillPattern)?.fgColor?.argb).not.toBe("FFF4B6B6");
+    expect(ws.views[0]).toMatchObject({ state: "frozen", xSplit: 4, ySplit: 3 });
     expect(sheetText(wb.getWorksheet("Ghi chú")!)).toContain("IN = lần quét đầu");
   });
   it("phạm vi: Quản lý phòng B chỉ thấy phòng B, không lộ nhân viên phòng A; nhân viên 403; ẩn danh 401; quá 62 ngày 400", async () => {

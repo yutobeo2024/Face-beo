@@ -259,8 +259,9 @@ công được tính trực tiếp từ planner. Quản lý được cấp `org.
   khoản Quản trị thật phải sửa NV001 rồi cho nghỉ việc các nhân viên mẫu (không xóa được vì đã có log) — dữ liệu mẫu lẫn vào DB thật.
 - **`npm run db:seed:base`** (`prisma db seed -- --base`, logic `seedBase` trong `src/lib/bootstrap.ts`): tạo phần còn thiếu của cấu
   hình nền — ca Hành chính 08:00–17:00, Sáng sớm 07:00–17:00, Ca đêm 22:00–06:00, Sáng thứ Bảy 08:00–12:00 (**0.5 công**); mẫu tuần
-  "HC T2–T6 + T7 sáng", "HC T2–T7", "Sáng sớm T2–T7"; ngày lễ; ma trận quyền mặc định; cấu hình ngưỡng. So theo tên/khóa, không sửa bản
-  ghi đã có, không xóa gì, không tạo phòng ban hay nhân viên → chạy lại bao nhiêu lần cũng được.
+  "HC T2–T6 + T7 sáng", "HC T2–T7", "Sáng sớm T2–T7"; ngày lễ; ma trận quyền mặc định; cấu hình ngưỡng. Không sửa bản ghi đã có, không xóa
+  gì, không tạo phòng ban hay nhân viên → chạy lại bao nhiêu lần cũng được. Từ v1.7.0: mỗi danh mục chỉ tạo khi bảng còn TRỐNG (trước đó so
+  theo tên nên từng tạo lại ca "Ca đêm" Quản trị đã xóa); cấu hình ngưỡng vẫn bổ sung theo từng khóa.
 - **`npm run admin:create -- --code AD01 --name "…" --phone 09…`** (`scripts/create-admin.ts`): tạo tài khoản ADMIN, loại lịch cố định,
   ca mặc định "Hành chính" (`--shift` để đổi), phòng "Ban quản trị" (`--dept`, chưa có thì tạo). Kiểm tra mã/SĐT như form tạo nhân
   viên; mật khẩu tự đặt (`--password`) phải ≥ 8 ký tự có chữ và số, không đặt thì sinh mật khẩu tạm và **chỉ in một lần** ra màn hình;
@@ -297,3 +298,29 @@ công được tính trực tiếp từ planner. Quản lý được cấp `org.
   `ZALO_GROUP_ROUTING` và báo nhóm minh bạch. Quyền `settings.system` (chỉ Quản trị).
 - **Test không gọi Zalo thật**: `tests/setup.ts` chặn @next/env và Prisma Client nạp `.env` của máy (khai báo trước khóa rỗng) — lỗi cũ chỉ lộ
   ra trên máy có `.env` chứa khóa Zalo thật. `TRUSTED_PROXY_HOPS=` để trống giờ được hiểu là mặc định 1.
+
+## 19. Cách duyệt đơn theo phòng; Chức danh & Chuyên khoa (v1.7.0, 21/09/2026)
+
+- **Bối cảnh.** Công ty là phòng khám đa khoa. Phòng ban = đơn vị quản lý ("ai duyệt, ai xếp ca cho ai"); chuyên môn (bác sĩ TMH, KTV siêu
+  âm…) là thuộc tính của người. Duyệt đơn ở hầu hết phòng là **trưởng phòng + Nhân sự**; trước đây `approversFor` chỉ trả về quản lý
+  phòng nên Nhân sự không duyệt được đơn của phòng có quản lý.
+- **`Department.approvalMode`** (chỉ áp cho đơn của Nhân viên trong phòng có quản lý đang làm; đơn của Quản lý/HR/Quản trị giữ tuyến cũ;
+  phòng không có quản lý → Nhân sự). **Lưu ý nâng cấp:** mọi phòng có sẵn được gán `MANAGER_OR_HR` — khác trước (chỉ quản lý phòng):
+  Nhân sự giờ duyệt được và mọi Nhân sự nhận tin có đơn mới; muốn giữ như cũ thì chọn "Chỉ trưởng phòng". Cách duyệt đổi bằng quyền
+  `org.manage` (mặc định chỉ Quản trị; Nhân sự nếu được cấp) và Quản lý không bao giờ tự đổi được:
+  | Mã | Luật |
+  |---|---|
+  | `MANAGER_OR_HR` (mặc định; migration gán cho mọi phòng) | Trưởng phòng **hoặc** Nhân sự duyệt, ai trước có hiệu lực; cả hai nhận `REQUEST_CREATED` |
+  | `TWO_STEP` | Trưởng phòng duyệt đơn `PENDING` → `MANAGER_APPROVED` (ghi `managerApproverId/At/Note`, chưa hiệu lực, không tính lại công); Nhân sự duyệt → `APPROVED`. Từ chối ở bước nào cũng `REJECTED`. Nhân sự không duyệt thay bước 1 (403); Quản trị duyệt ở bước nào cũng là quyết định cuối |
+  | `MANAGER_ONLY` | Chỉ trưởng phòng (hành vi cũ) |
+- **`MANAGER_APPROVED` = đơn còn chờ**: tính như `PENDING` ở mọi nơi (không bị báo vắng / vắng không phép, nhắc trễ bỏ qua, chặn tạo đơn
+  trùng, đếm đơn tồn khi chốt công, dashboard, trang cá nhân), hủy được; job quá hạn bước 2 tính giờ từ `managerDecidedAt`, nhắc Nhân sự
+  (`req2-overdue24/48`). Tin riêng mới `REQUEST_STAGE2` cho Nhân sự; tin nhóm Đơn từ "☑️ trưởng phòng đã duyệt, chờ HR".
+- **Đổi cách duyệt giữa chừng**: đơn đang `MANAGER_APPROVED` vẫn chờ bước cuối; người duyệt bước cuối theo cách duyệt mới của phòng. Gỡ
+  quản lý khỏi phòng → đơn chuyển Nhân sự.
+- **Chỉ HR xếp ca**: cấu hình bằng Phân quyền (bỏ "Xếp ca" của vai trò Quản lý), không cần code.
+- **Chức danh / Chuyên khoa**: bảng `JobTitle`, `Specialty` (tên duy nhất, thứ tự); `Employee.jobTitleId`, `specialtyId` tùy chọn. Quản lý
+  danh mục bằng quyền `org.manage`; ai đăng nhập cũng đọc được. Xóa mục đang dùng → nhân viên được để trống. Không ảnh hưởng phân quyền,
+  duyệt đơn, lịch (không tạo bản ghi phân công mới). Hiện ở danh sách nhân viên (lọc được), bảng xếp ca, Excel (Bảng công: 2 cột sau Phòng
+  ban; Giờ vào ra: cột Chức danh sau Bộ phận). Tháng đã chốt hiển thị chức danh hiện tại (như tên, mã). `db:seed:base` tạo sẵn 12 chức danh
+  và 12 chuyên khoa cho phòng khám (chỉ khi danh mục còn trống).

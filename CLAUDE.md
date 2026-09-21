@@ -7,7 +7,7 @@
   MiniFASNetV2 phía server), đơn từ, tính công/chốt công tháng, xuất Excel, thông báo Zalo OA (nhiều nhóm theo loại tin: minh bạch / chấm công / đơn từ + tin riêng).
 - Stack: Next.js 15 App Router, Prisma 6 (SQLite WAL), zod 4, luxon, exceljs, node-cron, jose JWT (HS256, 7 ngày, `sessionVersion`),
   vitest 4 (test tích hợp gọi thẳng route handler, DB `data/test.db`).
-- Phiên bản hiện tại: **v1.6.0** (tag GitHub `v1.6.0`, repo `yutobeo2024/Face-beo`). Phiên bản ghi trong prose (README, PRD,
+- Phiên bản hiện tại: **v1.7.0** (tag GitHub `v1.7.0`, repo `yutobeo2024/Face-beo`). Phiên bản ghi trong prose (README, PRD,
   OPEN-DECISIONS), không có CHANGELOG; `package.json` version không dùng để đánh số.
 
 ## Lệnh
@@ -40,6 +40,9 @@ Server production đang được chạy bằng `next start` (không phải dev).
   Phạm vi dữ liệu theo vai trò: `deptScope()` / `employeeScopeWhere()` trong `src/lib/auth.ts` (`{ id: -1 }` = không thấy gì; kết hợp bằng
   `AND`, không spread). Quản lý chỉ thấy/sửa phòng mình; luật chống leo thang ở `src/lib/employee-guards.ts`.
 - Không tự duyệt đơn của mình; không tự đổi vai trò/tự khóa mình; HR không sửa tài khoản HR/ADMIN.
+- Duyệt đơn: `approversFor(employeeId, status)` trong `src/lib/notify.ts` theo `Department.approvalMode` (MANAGER_OR_HR mặc định /
+  TWO_STEP qua trạng thái `MANAGER_APPROVED` / MANAGER_ONLY). Đơn "còn chờ" = `OPEN_REQUEST_STATUSES` (`src/lib/roles.ts`) — thêm chỗ
+  lọc đơn chờ mới thì dùng hằng này, đừng so `=== "PENDING"`. Chức danh/Chuyên khoa (`src/lib/catalogs.ts`) chỉ mô tả, không đụng quyền.
 - Lịch sử là bất biến: không xóa cứng nhân viên/ca/mẫu tuần/phòng đã có dữ liệu (route DELETE chặn kèm lý do); "nghỉ việc" = `active=false`
   + xóa mẫu khuôn mặt + thu hồi phiên. Tháng đã chốt (`LockedDay`) không tính lại.
 - Thay đổi cấu hình lịch của nhân viên chỉ có hiệu lực từ hôm nay (`ScheduleAssignment` snapshot).

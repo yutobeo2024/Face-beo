@@ -80,20 +80,23 @@ export const GET = handle(async (req) => {
     prisma.leaveRequest
       .findMany({
         where: {
-          status: "PENDING",
+          status: { in: ["PENDING", "MANAGER_APPROVED"] },
           employee: employeeScopeWhere(u, q.departmentId),
         },
-        select: { employeeId: true, createdAt: true },
+        select: { employeeId: true, createdAt: true, status: true, managerDecidedAt: true },
       })
       .then(async (rows) => {
-        const memo = new Map<number, boolean>();
+        const memo = new Map<string, boolean>();
         let n = 0;
         let overdue = 0;
         for (const r of rows) {
-          if (!memo.has(r.employeeId)) memo.set(r.employeeId, await canDecideRequest(u, r));
-          if (!memo.get(r.employeeId)) continue;
+          const k = `${r.employeeId}|${r.status}`;
+          if (!memo.has(k)) memo.set(k, await canDecideRequest(u, r));
+          if (!memo.get(k)) continue;
           n++;
-          if (r.createdAt <= overdueBefore && r.createdAt >= overdueSince) overdue++;
+          // Bước 2 (chờ Nhân sự) tính quá hạn từ lúc trưởng phòng duyệt bước 1.
+          const since = r.status === "MANAGER_APPROVED" && r.managerDecidedAt ? r.managerDecidedAt : r.createdAt;
+          if (since <= overdueBefore && since >= overdueSince) overdue++;
         }
         return [n, overdue] as const;
       }),

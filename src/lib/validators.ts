@@ -32,6 +32,9 @@ export const employeeCreateSchema = z.object({
   // Không đặt .default(): schema sửa (partial) sẽ âm thầm điền "FIXED" => mặc định xử lý ở route tạo.
   scheduleType: z.enum(["FIXED", "ROTATING"]).optional(),
   workPatternId: z.number().int().positive().nullable().optional(),
+  // Chức danh / chuyên khoa (v1.7.0): chỉ để mô tả, lọc, xuất Excel — không ảnh hưởng phân quyền.
+  jobTitleId: z.number().int().positive().nullable().optional(),
+  specialtyId: z.number().int().positive().nullable().optional(),
   password: z.string().min(6).max(128).optional(),
 });
 

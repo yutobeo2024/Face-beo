@@ -6,8 +6,8 @@ import { badRequest, handle, json, parseJson, parseQuery } from "@/lib/api";
 import { employeeScopeWhere, requireUser } from "@/lib/auth";
 import { optId, requestCreateSchema } from "@/lib/validators";
 import { addDays, todayVN, vnDate } from "@/lib/attendance";
-import { canDecideRequest, canExecuteCorrection, notifyRequestCreated } from "@/lib/notify";
-import { REQUEST_STATUSES, REQUEST_TYPES } from "@/lib/roles";
+import { canDecideRequest, canExecuteCorrection, isManagerStep, notifyRequestCreated } from "@/lib/notify";
+import { OPEN_REQUEST_STATUSES, REQUEST_STATUSES, REQUEST_TYPES, isOpenRequest } from "@/lib/roles";
 import { can } from "@/lib/permissions";
 import { withLock } from "@/lib/mutex";
 
@@ -27,7 +27,8 @@ export const GET = handle(async (req) => {
   const u = await requireUser(req);
   const q = parseQuery(req, listQuery);
   const filters = {
-    ...(q.status ? { status: q.status } : {}),
+    // "Chờ duyệt" gồm cả đơn đã qua bước 1 (trưởng phòng) đang chờ Nhân sự.
+    ...(q.status ? { status: q.status === "PENDING" ? { in: [...OPEN_REQUEST_STATUSES] } : q.status } : {}),
     ...(q.type ? { type: q.type } : {}),
   };
   const decider = await can(u, "requests.decide");
@@ -37,14 +38,14 @@ export const GET = handle(async (req) => {
       where: { employeeId: u.id, ...filters },
       orderBy: { createdAt: "desc" },
       take: 200,
-      include: { approver: { select: { name: true } } },
+      include: { approver: { select: { name: true } }, managerApprover: { select: { name: true } } },
     });
     return json({
       requests: rows.map((r) => ({
         ...r,
         canDecide: false,
         canExecute: false,
-        canCancel: r.status === "PENDING",
+        canCancel: isOpenRequest(r.status),
       })),
     });
   }
@@ -72,24 +73,30 @@ export const GET = handle(async (req) => {
         },
       },
       approver: { select: { name: true } },
+      managerApprover: { select: { name: true } },
     },
   });
   // Quyền duyệt / chấm tay theo tuyến (notify.ts); ghi nhớ theo người tạo đơn để tránh truy vấn lặp.
-  const memoDecide = new Map<number, boolean>();
+  const memoDecide = new Map<string, boolean>();
   const memoExec = new Map<number, boolean>();
   const out = [];
   for (const r of rows) {
     let canDecide = false;
     let canExecute = false;
-    if (r.status === "PENDING" && decider) {
-      if (!memoDecide.has(r.employeeId)) memoDecide.set(r.employeeId, await canDecideRequest(u, r));
-      canDecide = memoDecide.get(r.employeeId)!;
+    let step1 = false;
+    if (isOpenRequest(r.status) && decider) {
+      // Tuyến duyệt phụ thuộc cả người tạo lẫn bước hiện tại (duyệt 2 bước).
+      const k = `${r.employeeId}|${r.status}`;
+      if (!memoDecide.has(k)) memoDecide.set(k, await canDecideRequest(u, r));
+      canDecide = memoDecide.get(k)!;
+      // Trưởng phòng ở phòng duyệt 2 bước: nút "Duyệt" chỉ là bước 1 (giao diện ghi rõ).
+      if (canDecide && r.status === "PENDING") step1 = await isManagerStep(u, r);
     }
     if (r.type === "BO_SUNG_CONG" && r.status === "APPROVED" && !r.executedAt && executor) {
       if (!memoExec.has(r.employeeId)) memoExec.set(r.employeeId, await canExecuteCorrection(u, r));
       canExecute = memoExec.get(r.employeeId)!;
     }
-    out.push({ ...r, canDecide, canExecute, canCancel: false });
+    out.push({ ...r, canDecide, canExecute, step1, canCancel: false });
   }
   return json({ requests: out });
 });
@@ -123,7 +130,7 @@ export const POST = handle(async (req) => {
       where: {
         employeeId: u.id,
         type: body.type,
-        status: { in: ["PENDING", "APPROVED"] },
+        status: { in: ["PENDING", "MANAGER_APPROVED", "APPROVED"] },
         fromTime: {
           lt: body.type === "BO_SUNG_CONG" ? new Date(toTime.getTime() + 15 * 60_000) : toTime,
         },

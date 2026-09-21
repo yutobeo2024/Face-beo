@@ -105,14 +105,14 @@ footer{color:var(--muted);font-size:.85rem;text-align:center;padding:10px}
 <div class="layout">
 <nav class="toc" id="toc">
   <div class="brand">💬 Zalo OA trong Face Beo</div>
-  <div class="sub">Tài liệu tích hợp · bản v1.6.0</div>
+  <div class="sub">Tài liệu tích hợp · bản v1.7.0</div>
   <button class="menu-mobile" onclick="document.getElementById('toc').classList.toggle('open')">☰ Mục lục</button>
   <ol>
     <li class="grp">Cho mọi người</li>
     <li><a href="#tong-quan">1. Zalo OA là gì, Face Beo dùng để làm gì</a></li>
     <li><a href="#luong">2. Các luồng hoạt động (sơ đồ)</a></li>
     <li><a href="#dinh-tuyen">2.5 Nhiều nhóm theo loại tin</a></li>
-    <li><a href="#tin">3. 14 loại tin nhắn</a></li>
+    <li><a href="#tin">3. 15 loại tin nhắn</a></li>
     <li><a href="#cron">4. Lịch tự động (job nền)</a></li>
     <li class="grp">Quản trị</li>
     <li><a href="#cai-dat">5. Cài đặt &amp; vận hành</a></li>
@@ -287,7 +287,7 @@ sequenceDiagram
     <tr><th>Loại tin</th><th>Gồm những gì</th><th>Ai gây ra</th></tr>
     <tr><td><b>Minh bạch (quản trị)</b></td><td>Toàn bộ tin nhóm cũ (mục 3.1): duyệt/sửa của Nhân sự &amp; Quản trị, đăng ký/sửa ca, chốt công, phân quyền, báo cáo thứ Hai, đơn quá 48 giờ — <b>kèm lý do/ghi chú</b>, chỉ dành cho nhóm quản lý</td><td>Luật cũ giữ nguyên: HR/Quản trị, trừ thao tác gắn cờ <code>always</code></td></tr>
     <tr><td><b>Chấm công nhân viên</b></td><td>⏰ Chưa chấm giờ vào (sau "tính vắng sau N phút", không có đơn) · 🚪 Quên chấm giờ ra · ❌ Vắng không phép (hết ca, không có lần quét nào, không có đơn nghỉ đã duyệt hoặc đang chờ)</td><td>Job nền (mỗi 5 / 30 phút)</td></tr>
-    <tr><td><b>Đơn từ nhân viên</b></td><td>📝 Đã gửi đơn → đang chờ ai duyệt · ✅/❌ Đã duyệt / bị từ chối bởi ai (kể cả Quản lý duyệt) · ↩️ Tự hủy đơn · 🛠️ Bổ sung công đã được chấm tay. <b>Không</b> kèm lý do xin nghỉ và ghi chú duyệt/từ chối</td><td>Mọi vai trò</td></tr>
+    <tr><td><b>Đơn từ nhân viên</b></td><td>📝 Đã gửi đơn → đang chờ ai duyệt · ☑️ Trưởng phòng đã duyệt bước 1, chờ Nhân sự (phòng duyệt 2 bước) · ✅/❌ Đã duyệt / bị từ chối bởi ai (kể cả Quản lý duyệt) · ↩️ Tự hủy đơn · 🛠️ Bổ sung công đã được chấm tay. <b>Không</b> kèm lý do xin nghỉ và ghi chú duyệt/từ chối</td><td>Mọi vai trò</td></tr>
   </table></div>
   <div class="diagram">
 <pre class="mermaid">
@@ -311,7 +311,7 @@ flowchart LR
 
 <!-- 3 -->
 <section id="tin">
-  <h2><span class="num">3.</span>14 loại tin nhắn</h2>
+  <h2><span class="num">3.</span>15 loại tin nhắn</h2>
   <p class="lead">Nội dung tin lấy từ <code>src/lib/zalo-templates.ts</code>. Mỗi tin có link mở đúng màn hình trong Face Beo (địa chỉ gốc lấy từ <code>APP_BASE_URL</code>).</p>
   <h3>3.1 Tin gửi vào nhóm</h3>
   <div class="tw"><table>
@@ -325,6 +325,7 @@ flowchart LR
   <div class="tw"><table>
     <tr><th>Loại</th><th>Ai nhận</th><th>Khi nào</th><th>Nội dung mẫu</th></tr>
     <tr><td><code>REQUEST_CREATED</code></td><td>Người duyệt (quản lý phòng, hoặc HR/Quản trị); HR nhận bản "theo dõi" với đơn bổ sung công</td><td>Nhân viên gửi đơn</td><td>📝 Đơn mới cần duyệt — Lan (NV007) gửi đơn Nghỉ phép. Thời gian … Lý do … Duyệt tại: /admin/requests</td></tr>
+    <tr><td><code>REQUEST_STAGE2</code> (v1.7.0)</td><td>Nhân sự (bước 2)</td><td>Phòng duyệt 2 bước: trưởng phòng vừa duyệt bước 1</td><td>☑️ Đơn chờ Nhân sự duyệt (trưởng phòng … đã duyệt bước 1) · Lý do … · Ghi chú trưởng phòng …</td></tr>
     <tr><td><code>REQUEST_DECIDED</code></td><td>Người gửi đơn</td><td>Đơn được duyệt / từ chối</td><td>✅ Đơn của bạn đã được duyệt · Loại … · Người xử lý … · Xem: /me/requests</td></tr>
     <tr><td><code>CORRECTION_READY</code></td><td>HR / Quản trị (người chấm tay)</td><td>Đơn bổ sung công vừa được duyệt</td><td>🛠️ Đơn bổ sung công #… đã được duyệt — chờ chấm tay</td></tr>
     <tr><td><code>CORRECTION_DONE</code></td><td>Nhân viên</td><td>HR chấm tay xong</td><td>✅ Đã bổ sung giờ ra lúc 17:05 theo đơn #…</td></tr>
@@ -436,7 +437,7 @@ cloudflared tunnel --url http://localhost:3000
     <tr><th>File</th><th>Vai trò</th><th>Hàm / hằng đáng chú ý</th></tr>
     <tr><td><code>src/lib/zalo-oa.ts</code></td><td>Điểm gửi tin duy nhất, không bao giờ ném lỗi</td><td><code>sendZaloMessage({toEmployeeId?, toGroupId?, messageType, data, dedupeKey})</code>; <code>UNCONFIGURED_GROUP</code>; thử lại 3 lần, làm mới token 1 lần</td></tr>
     <tr><td><code>src/lib/zalo-token.ts</code></td><td>Token + gọi HTTP Zalo</td><td><code>refreshZaloToken(force)</code>, <code>getAccessToken()</code>, <code>isZaloSimulated()</code>, <code>getOaInfo()</code>, <code>getGroupInfo()</code>, <code>getZaloTokenStatus()</code>, <code>getZaloRefreshError()</code>, <code>transport</code>/<code>groupTransport</code> (thay được trong test)</td></tr>
-    <tr><td><code>src/lib/zalo-templates.ts</code></td><td>Nội dung 14 loại tin</td><td><code>renderMessage(type, data)</code>, <code>zaloTemplates</code></td></tr>
+    <tr><td><code>src/lib/zalo-templates.ts</code></td><td>Nội dung 15 loại tin</td><td><code>renderMessage(type, data)</code>, <code>zaloTemplates</code></td></tr>
     <tr><td><code>src/lib/zalo-routing.ts</code> (v1.6.0)</td><td>Định tuyến tin nhóm theo loại tin + phòng</td><td><code>ZALO_CATEGORIES</code>, <code>groupsFor(category, departmentId?)</code>, <code>announceStaff({category, employeeId, icon, text, key})</code>, <code>parseGroupInput()</code> (tách <code>gid</code> từ link, chặn <code>oaid</code>); khóa dedupe thêm <code>@groupId</code> khi nhiều nhóm cùng loại</td></tr>
     <tr><td><code>src/lib/announce.ts</code></td><td>Luật tin nhóm minh bạch (gửi tới mọi nhóm tích Minh bạch)</td><td><code>announce(actor, action, {key, detail, reason, always})</code>, <code>announceSystem</code>, <code>ANNOUNCED_ROLES = {HR, ADMIN}</code>, <code>onceKey()</code></td></tr>
     <tr><td><code>src/lib/notify.ts</code></td><td>Chọn người nhận tin riêng (người duyệt, HR, quản lý phòng…) + tin nhóm Đơn từ</td><td>hàm cho REQUEST_*, CORRECTION_*, LATE_REMINDER</td></tr>
@@ -496,7 +497,7 @@ cloudflared tunnel --url http://localhost:3000
   <p>Tài liệu nội bộ liên quan: <code>README.md</code> mục "Cấu hình Zalo OA", <code>docs/PRD-v2-Face-Beo.md</code> §7, <code>docs/PRD-v2.1-HR.md</code> §7, <code>docs/OPEN-DECISIONS.md</code> D4, cẩm nang sử dụng mục 15.</p>
 </section>
 
-<footer>Face Beo · Tài liệu Zalo OA · cập nhật 21/09/2026 (phiên bản ứng dụng v1.6.0)</footer>
+<footer>Face Beo · Tài liệu Zalo OA · cập nhật 21/09/2026 (phiên bản ứng dụng v1.7.0)</footer>
 </main>
 </div>
 

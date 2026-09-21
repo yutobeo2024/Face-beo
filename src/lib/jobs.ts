@@ -302,14 +302,19 @@ export function correctionStillExecutable(r: { correctionAt: Date | null }, lock
 
 /**
  * D3 — đơn chờ quá lâu (không bao giờ tự duyệt):
- *  - chờ duyệt (PENDING, tính từ lúc tạo) / chờ chấm tay (bổ sung công đã duyệt, tính từ lúc duyệt)
+ *  - chờ duyệt (PENDING, tính từ lúc tạo) / chờ Nhân sự duyệt bước 2 (MANAGER_APPROVED, tính từ lúc trưởng phòng duyệt)
+ *    / chờ chấm tay (bổ sung công đã duyệt, tính từ lúc duyệt)
  *  - quá 24h: nhắc lại người phải xử lý; quá 48h: báo mọi Quản trị + nhóm Zalo. Mỗi mốc gửi một lần.
  */
 export async function requestOverdue(now = new Date()) {
   const remindBefore = new Date(now.getTime() - OVERDUE_REMIND_HOURS * HOUR);
   const since = new Date(now.getTime() - OVERDUE_LOOKBACK_DAYS * 24 * HOUR); // bỏ qua đơn quá cũ
-  const [pending, awaitingExec] = await Promise.all([
+  const [pending, stage2, awaitingExec] = await Promise.all([
     prisma.leaveRequest.findMany({ where: { status: "PENDING", createdAt: { lte: remindBefore, gte: since } }, include: { employee: { select: { name: true, code: true } } } }),
+    prisma.leaveRequest.findMany({
+      where: { status: "MANAGER_APPROVED", managerDecidedAt: { lte: remindBefore, gte: since } },
+      include: { employee: { select: { name: true, code: true } } },
+    }),
     prisma.leaveRequest.findMany({
       where: { type: "BO_SUNG_CONG", status: "APPROVED", executedAt: null, decidedAt: { lte: remindBefore, gte: since } },
       include: { employee: { select: { name: true, code: true } } },
@@ -323,6 +328,7 @@ export async function requestOverdue(now = new Date()) {
   let escalated = 0;
   const items = [
     ...pending.map((r) => ({ r, stage: "duyệt", since: r.createdAt, key: "req", handlers: () => approversFor(r.employeeId) })),
+    ...stage2.map((r) => ({ r, stage: "duyệt bước 2 (Nhân sự)", since: r.managerDecidedAt!, key: "req2", handlers: () => approversFor(r.employeeId, "MANAGER_APPROVED") })),
     // Bổ sung công quá cửa sổ chấm tay / thuộc tháng đã chốt: không còn chấm được => không nhắc.
     ...awaitingExec
       .filter((r) => correctionStillExecutable(r, locked, now))
@@ -357,7 +363,7 @@ export async function requestOverdue(now = new Date()) {
       });
     }
   }
-  return { pending: pending.length, awaitingExecution: awaitingExec.length, reminded, escalated };
+  return { pending: pending.length + stage2.length, awaitingExecution: awaitingExec.length, reminded, escalated };
 }
 
 export async function runJob(name: JobName, now = new Date()) {

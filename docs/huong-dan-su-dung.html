@@ -257,6 +257,9 @@ npm run admin:create -- --code AD01 --name "Nguyễn Văn A" --phone 0901234567<
     <tr><td>🔒 Cấu hình hệ thống, thiết bị, phân quyền, gán vai trò HR/QT, <b>mở khóa tháng</b></td><td class="y">✔</td><td colspan="3">Luôn chỉ Quản trị, không chỉnh được</td></tr>
   </table></div>
 
+  <div class="callout"><b>Muốn chỉ Nhân sự xếp ca (Quản lý chỉ duyệt đơn và xem công)</b>
+    <p>Phân quyền → bỏ tích <b>"Xếp ca / đăng ký tuần"</b> ở cột <b>Quản lý</b> → Lưu (ghi lý do). Từ đó chỉ Nhân sự/Quản trị xếp và đăng ký ca cho mọi phòng; nhắc đăng ký ca thứ Sáu tự chuyển cho Nhân sự. Quản lý vẫn xem lịch, duyệt đơn, xem công phòng mình.</p>
+  </div>
   <div class="callout warn"><b>Không nên cấp quyền "Phòng ban, ngày lễ, định nghĩa ca, mẫu tuần" cho Quản lý</b>
     <p>Quyền này (<code>org.manage</code>) chạm vào cấu hình <b>chung toàn công ty</b>: giờ ca, hệ số chung của ca, ngày lễ, mẫu tuần. Ca và ngày lễ không thuộc phòng nào nên không giới hạn được "chỉ phòng mình". Ví dụ: Quản lý phòng Kho được cấp quyền này có thể đổi hệ số ca "Sáng thứ Bảy" từ 0.5 thành 1 cho <b>mọi phòng</b>. Phòng nào cần đổi ca hay hệ số thì đề nghị Quản trị làm.</p>
   </div>
@@ -341,7 +344,27 @@ gantt
   <p><b>Xóa mẫu:</b> chỉ khi không nhân viên <b>đang làm</b> nào dùng (nút xóa mờ đi khi còn người dùng; đổi mẫu cho họ trong hồ sơ trước). Người đã nghỉ việc từng dùng mẫu được tự gỡ liên kết, lịch sử công của họ không đổi.</p>
 
   <h3>5.2 Phòng ban &amp; quản lý</h3>
-  <p>Tạo phòng ban và chọn một hoặc nhiều quản lý. Quản lý chỉ thấy và duyệt đơn của nhân viên trong các phòng mình quản lý. Nhân viên thường gửi đơn thì <b>quản lý phòng</b> là người duyệt đầu tiên.</p>
+  <p>Tạo phòng ban và chọn quản lý (trưởng phòng). Một người có thể quản lý nhiều phòng. Quản lý chỉ thấy dữ liệu và duyệt đơn của nhân viên trong các phòng mình quản lý. <b>Phòng ban nên đặt theo "ai quản lý, ai xếp ca cho ai"</b>, không theo chuyên môn — chuyên môn ghi ở <b>Chức danh / Chuyên khoa</b> (mục 6.1).</p>
+  <p><b>Cách duyệt đơn</b> (ô thứ hai dưới tên quản lý, áp cho đơn của Nhân viên trong phòng có quản lý):</p>
+  <div class="tw"><table>
+    <tr><th>Lựa chọn</th><th>Ai duyệt</th><th>Hợp với</th></tr>
+    <tr><td><b>Trưởng phòng hoặc Nhân sự</b> (mặc định)</td><td>Trưởng phòng <b>hoặc</b> Nhân sự — ai bấm Duyệt trước thì đơn có hiệu lực. Cả hai đều nhận tin có đơn mới.</td><td>Hầu hết các phòng: trưởng phòng nghỉ thì HR vẫn duyệt được, đơn không bị treo.</td></tr>
+    <tr><td><b>Trưởng phòng duyệt trước → Nhân sự duyệt sau</b></td><td>Bước 1 trưởng phòng đồng ý (đơn chuyển "Chờ HR duyệt", <b>chưa</b> có hiệu lực) → bước 2 Nhân sự duyệt mới có hiệu lực. Từ chối ở bước nào cũng kết thúc đơn.</td><td>Phòng cần cả ý kiến chuyên môn lẫn HR, vd. Khoa Khám bệnh (Giám đốc chuyên môn → HR).</td></tr>
+    <tr><td><b>Chỉ trưởng phòng</b></td><td>Chỉ trưởng phòng (cách cũ trước v1.7.0).</td><td>Phòng tự quản hoàn toàn.</td></tr>
+  </table></div>
+  <div class="ex"><div class="t">Gợi ý cơ cấu cho phòng khám đa khoa</div>
+    <div class="tw"><table>
+      <tr><th>Phòng ban</th><th>Gồm</th><th>Trưởng phòng</th><th>Cách duyệt gợi ý</th></tr>
+      <tr><td>Khoa Khám bệnh</td><td>Bác sĩ mọi chuyên khoa</td><td>Giám đốc chuyên môn</td><td>Trưởng → HR (2 bước) hoặc Trưởng hoặc HR</td></tr>
+      <tr><td>Điều dưỡng</td><td>Điều dưỡng</td><td>Điều dưỡng trưởng</td><td>Trưởng hoặc HR</td></tr>
+      <tr><td>Xét nghiệm</td><td>KTV xét nghiệm</td><td>Leader xét nghiệm</td><td>Trưởng hoặc HR</td></tr>
+      <tr><td>Chẩn đoán hình ảnh</td><td>KTV X-quang, siêu âm, KTV mắt</td><td>(không có — HR)</td><td>—</td></tr>
+      <tr><td>Tiếp nhận – Thu ngân</td><td>Tiếp nhận, thu ngân</td><td>(không có — HR)</td><td>—</td></tr>
+      <tr><td>Kế toán</td><td>Kế toán</td><td>Kế toán trưởng</td><td>Trưởng hoặc HR</td></tr>
+      <tr><td>Hành chính – Nhân sự, Kinh doanh, IT, Hỗ trợ – An ninh (tạp vụ, bảo vệ)</td><td>—</td><td>Theo thực tế</td><td>Trưởng hoặc HR</td></tr>
+    </table></div>
+    <p>Phòng <b>không có trưởng phòng</b> thì đơn tự chuyển cho Nhân sự duyệt.</p>
+  </div>
   <p><b>Đổi tên phòng</b> (nút ✎): chỉ đổi nhãn — nhân viên, lịch, phạm vi quản lý, số liệu đã chốt đều giữ nguyên. <b>Xóa phòng</b> (nút 🗑): chỉ khi phòng <b>trống hoàn toàn</b> — không nhân viên (kể cả đã nghỉ việc, vì hồ sơ vẫn ghi phòng), không tuần đã đăng ký ca, không ngày đã chốt công. Phòng đã từng có người thì không xóa được, đúng chủ đích để bảng công và lương cũ còn tên phòng; muốn gộp phòng thì chuyển hết nhân viên sang phòng mới rồi đổi tên phòng cũ. Xóa phòng sẽ xóa hệ số công riêng của phòng và gỡ phòng khỏi các liên kết ở mục Thông tin (liên kết chỉ dành riêng phòng đó sẽ tạm ẩn).</p>
 
   <h3>5.3 Ngày lễ</h3>
@@ -396,6 +419,7 @@ flowchart TD
   <ol class="steps">
     <li>Bấm <b>Thêm nhân viên</b>, nhập mã, họ tên, phòng ban, vai trò (Nhân sự không gán được vai trò Nhân sự/Quản trị).</li>
     <li>Chọn <b>loại lịch</b>: <b>Cố định</b> (chọn mẫu tuần hoặc ca mặc định) hoặc <b>Xoay ca</b> (theo lịch tuần quản lý xếp).</li>
+    <li>Chọn <b>Chức danh</b> (Bác sĩ, Điều dưỡng, Kỹ thuật viên…) và <b>Chuyên khoa / chuyên môn</b> (Tai Mũi Họng, Mắt, Siêu âm…). Hai mục này chỉ để mô tả: hiện dưới tên nhân viên, trong bảng xếp ca (vd. "Bác sĩ · Tai Mũi Họng"), lọc danh sách và thêm cột trong Excel — <b>không</b> ảnh hưởng quyền hay người duyệt đơn. Quản trị sửa danh sách ở <b>Cấu hình → Chức danh &amp; chuyên khoa</b> (xóa một mục thì người đang dùng được để trống).</li>
     <li>Mật khẩu ban đầu: nhập tay, hoặc để trống để hệ thống <b>sinh mật khẩu tạm ngẫu nhiên</b> (hiện <b>một lần</b> sau khi lưu — ghi lại và đưa cho nhân viên). Nhân viên bắt buộc đổi ở lần đăng nhập đầu. Sau này có thể <b>đặt lại mật khẩu</b> trong hồ sơ.</li>
     <li>Enroll khuôn mặt (6.3).</li>
   </ol>
@@ -548,15 +572,25 @@ flowchart LR
   <div class="diagram">
 <pre class="mermaid">
 flowchart LR
-  E["Nhân viên"] -->|"duyệt"| M["Quản lý phòng"]
-  M -.->|"dự phòng"| H1["Nhân sự"] -.-> A1["Quản trị"]
+  E["Nhân viên"] -->|"theo cách duyệt của phòng"| M["Trưởng phòng / Nhân sự"]
+  M -.->|"phòng chưa có trưởng"| H1["Nhân sự"] -.-> A1["Quản trị"]
   MG["Quản lý"] -->|"duyệt"| H2["Nhân sự"]
   H2 -.->|"dự phòng"| A2["Quản trị"]
   HR["Nhân sự"] -->|"duyệt"| A3["Quản trị"]
   AD["Quản trị"] -->|"duyệt"| A4["Quản trị khác"]
   A4 -.->|"dự phòng"| H3["Nhân sự"]
 </pre>
-    <div class="cap">Hình 7. Tuyến duyệt. Nét đứt = người dự phòng khi người duyệt chính không có. Quản trị chỉ tự duyệt được đơn của mình khi không còn ai khác.</div>
+    <div class="cap">Hình 7. Tuyến duyệt. Nét đứt = người dự phòng khi người duyệt chính không có. Quản trị chỉ tự duyệt được đơn của mình khi không còn ai khác. Đơn của Nhân viên đi theo <b>cách duyệt</b> của phòng (mục 5.2).</div>
+  </div>
+  <div class="diagram">
+<pre class="mermaid">
+flowchart LR
+  N["Nhân viên gửi đơn"] --> P{"Cách duyệt của phòng"}
+  P -- "Trưởng phòng hoặc Nhân sự" --> A1["Trưởng HOẶC HR duyệt"] --> OK1["✅ Có hiệu lực"]
+  P -- "2 bước" --> S1["Trưởng phòng duyệt bước 1"] --> W["⏳ Chờ HR duyệt"] --> S2["HR duyệt bước 2"] --> OK2["✅ Có hiệu lực"]
+  P -- "Chỉ trưởng phòng" --> A3["Trưởng duyệt"] --> OK3["✅ Có hiệu lực"]
+</pre>
+    <div class="cap">Hình 7b. Ba cách duyệt. Đơn "Chờ HR duyệt" vẫn tính là đơn chờ: chưa đổi công, không bị báo vắng; nhân viên còn hủy được. Quá 24 giờ chưa duyệt bước 2 → nhắc Nhân sự; 48 giờ → báo Quản trị.</div>
   </div>
 
   <h3>9.3 Duyệt đơn</h3>
@@ -710,15 +744,15 @@ flowchart TD
   <h3>13.1 Hai mẫu Excel</h3>
   <p><b>Mẫu 1 — Bảng công</b> (<code>BangCong_…xlsx</code>): để tính lương, gồm hai sheet.</p>
   <div class="grid">
-    <div class="card"><h4>Tổng hợp (mỗi người một dòng)</h4><p>Mã NV · Họ tên · Phòng ban · <b>Ngày công</b> · Giờ công · Số lần trễ · Tổng phút trễ · Số lần về sớm · Tổng phút về sớm · <b>Giờ OT</b> · <b>Ngày nghỉ phép</b> · Ngày vắng không phép · Số ngày thiếu giờ ra · Số lần bổ sung công</p></div>
-    <div class="card"><h4>Chi tiết (mỗi người mỗi ngày)</h4><p>Mã NV · Họ tên · Phòng ban · Ngày · Ca · Giờ vào · Giờ ra · Phút trễ · Phút sớm · Phút OT · Công · Giờ công · Trạng thái · Ghi chú (đơn liên quan, sửa thủ công, làm ngày lễ, thiếu giờ ra...)</p></div>
+    <div class="card"><h4>Tổng hợp (mỗi người một dòng)</h4><p>Mã NV · Họ tên · Phòng ban · Chức danh · Chuyên khoa · <b>Ngày công</b> · Giờ công · Số lần trễ · Tổng phút trễ · Số lần về sớm · Tổng phút về sớm · <b>Giờ OT</b> · <b>Ngày nghỉ phép</b> · Ngày vắng không phép · Số ngày thiếu giờ ra · Số lần bổ sung công</p></div>
+    <div class="card"><h4>Chi tiết (mỗi người mỗi ngày)</h4><p>Mã NV · Họ tên · Phòng ban · Chức danh · Chuyên khoa · Ngày · Ca · Giờ vào · Giờ ra · Phút trễ · Phút sớm · Phút OT · Công · Giờ công · Trạng thái · Ghi chú (đơn liên quan, sửa thủ công, làm ngày lễ, thiếu giờ ra...)</p></div>
   </div>
   <p><b>Mẫu 2 — Giờ vào/ra theo ngày</b> (<code>GioVaoRa_…xlsx</code>): để đối chiếu, gửi trưởng phòng, hoặc nhập vào phần mềm lương khác. Sheet <b>Giờ vào ra</b> là một ma trận:</p>
   <div class="tw"><table>
-    <tr><th rowspan="3">STT</th><th rowspan="3">Nhân viên</th><th rowspan="3">Bộ phận</th><th colspan="2">01/09/2026</th><th colspan="2">02/09/2026</th><th colspan="2" style="background:#f4b6b6">06/09/2026</th></tr>
+    <tr><th rowspan="3">STT</th><th rowspan="3">Nhân viên</th><th rowspan="3">Bộ phận</th><th rowspan="3">Chức danh</th><th colspan="2">01/09/2026</th><th colspan="2">02/09/2026</th><th colspan="2" style="background:#f4b6b6">06/09/2026</th></tr>
     <tr><th colspan="2">T3</th><th colspan="2">T4</th><th colspan="2" style="background:#f4b6b6">CN</th></tr>
     <tr><th>IN</th><th>OUT</th><th>IN</th><th>OUT</th><th style="background:#f4b6b6">IN</th><th style="background:#f4b6b6">OUT</th></tr>
-    <tr><td>1</td><td>Nguyễn Văn An</td><td>Hành chính</td><td>07:58</td><td>17:05</td><td>08:10</td><td></td><td style="background:#fbe3e3"></td><td style="background:#fbe3e3"></td></tr>
+    <tr><td>1</td><td>Nguyễn Văn An</td><td>Hành chính</td><td>Nhân sự</td><td>07:58</td><td>17:05</td><td>08:10</td><td></td><td style="background:#fbe3e3"></td><td style="background:#fbe3e3"></td></tr>
   </table></div>
   <ul>
     <li><b>IN</b> = lần quét đầu tiên trong ngày, <b>OUT</b> = lần quét cuối cùng. Giờ Việt Nam, định dạng 24h.</li>
@@ -874,7 +908,7 @@ stateDiagram-v2
   <details><summary>Đăng xuất trên điện thoại thì máy tính cũng bị thoát?</summary><p>Đúng, có chủ đích: đăng xuất ở bất kỳ đâu sẽ thoát tài khoản trên mọi thiết bị (kể cả phiên lỡ để lại ở máy dùng chung). Đăng nhập lại là được. Đổi mật khẩu cũng vậy.</p></details>
 </section>
 
-<footer>Face Beo · Cẩm nang sử dụng · cập nhật 21/09/2026 (phiên bản ứng dụng v1.6.0)</footer>
+<footer>Face Beo · Cẩm nang sử dụng · cập nhật 21/09/2026 (phiên bản ứng dụng v1.7.0)</footer>
 </main>
 </div>
 

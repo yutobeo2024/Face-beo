@@ -117,7 +117,8 @@ beforeAll(async () => {
   patA = await prisma.workPattern.create({ data: { name: `QCP A ${TS}`, ...wk(shHC.id, shHalf.id, null) } });
   patNight = await prisma.workPattern.create({ data: { name: `QCP Đêm ${TS}`, ...wk(shNight.id, shNight.id, shNight.id) } });
   patOff = await prisma.workPattern.create({ data: { name: `QCP Nghỉ ${TS}`, ...wk(null, null, null) } });
-  deptP = await prisma.department.create({ data: { name: `QCP Phòng ${TS}` } });
+  // Các kịch bản nhắc quá hạn ở file này viết cho tuyến "chỉ quản lý phòng" (trước v1.7.0) — giữ nguyên bằng MANAGER_ONLY.
+  deptP = await prisma.department.create({ data: { name: `QCP Phòng ${TS}`, approvalMode: "MANAGER_ONLY" } });
   mgrP = await mkEmp(1, "QCP Quản lý", "MANAGER", "FIXED", patA.id);
   await prisma.department.update({ where: { id: deptP.id }, data: { managerId: mgrP.id } });
   e1 = await mkEmp(2, "QCP Một", "EMPLOYEE", "FIXED", patA.id);

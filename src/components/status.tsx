@@ -23,6 +23,7 @@ export function DayStatusBadge({ status }: { status: string }) {
 
 export const REQ_STATUS: Record<string, { label: string; tone: Tone }> = {
   PENDING: { label: "Chờ duyệt", tone: "late" },
+  MANAGER_APPROVED: { label: "Chờ HR duyệt", tone: "leave" },
   APPROVED: { label: "Đã duyệt", tone: "ontime" },
   REJECTED: { label: "Từ chối", tone: "absent" },
   CANCELLED: { label: "Đã hủy", tone: "neutral" },

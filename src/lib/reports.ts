@@ -27,6 +27,9 @@ export type SummaryRow = {
   code: string;
   name: string;
   department: string;
+  /** Chức danh / chuyên khoa HIỆN TẠI của nhân viên (giống tên, mã: không chụp theo tháng đã chốt). */
+  jobTitle: string;
+  specialty: string;
   /** Tổng ngày công theo hệ số (có thể lẻ 0.5). */
   workDays: number;
   workMinutes: number;
@@ -46,6 +49,8 @@ export type DetailRow = {
   code: string;
   name: string;
   department: string;
+  jobTitle: string;
+  specialty: string;
   date: string;
   shift: string;
   inTime: string;
@@ -96,7 +101,15 @@ export async function listReportEmployees(where: object, from: string, to: strin
         deptIds ? { OR: [{ departmentId: { in: deptIds } }, { id: { in: [...frozen, ...movedIn].map((x) => x.employeeId) } }] } : {},
       ],
     },
-    select: { id: true, code: true, name: true, departmentId: true, department: { select: { name: true } } },
+    select: {
+      id: true,
+      code: true,
+      name: true,
+      departmentId: true,
+      department: { select: { name: true } },
+      jobTitle: { select: { name: true } },
+      specialty: { select: { name: true } },
+    },
     orderBy: [{ departmentId: "asc" }, { code: "asc" }],
   });
 }
@@ -129,6 +142,8 @@ export async function buildAttendanceReport(where: object, from: string, to: str
       code: e.code,
       name: e.name,
       department: e.department.name,
+      jobTitle: e.jobTitle?.name ?? "",
+      specialty: e.specialty?.name ?? "",
       workDays: 0,
       workMinutes: 0,
       lateCount: 0,
@@ -179,6 +194,8 @@ export async function buildAttendanceReport(where: object, from: string, to: str
         code: e.code,
         name: e.name,
         department: deptName.get(dayDept) ?? e.department.name,
+        jobTitle: e.jobTitle?.name ?? "",
+        specialty: e.specialty?.name ?? "",
         date: s.workDate,
         shift: s.shift ? `${s.shift.name} ${s.shift.startTime}–${s.shift.endTime}` : "",
         inTime: s.inTime ? vnTime(s.inTime) : "",
@@ -216,6 +233,8 @@ const SUMMARY_HEADERS = [
   "Mã NV",
   "Họ tên",
   "Phòng ban",
+  "Chức danh",
+  "Chuyên khoa",
   "Ngày công",
   "Giờ công",
   "Số lần trễ",
@@ -228,7 +247,7 @@ const SUMMARY_HEADERS = [
   "Số ngày thiếu giờ ra",
   "Số lần bổ sung công",
 ];
-const DETAIL_HEADERS = ["Mã NV", "Họ tên", "Phòng ban", "Ngày", "Ca", "Giờ vào", "Giờ ra", "Phút trễ", "Phút sớm", "Phút OT", "Công", "Giờ công", "Trạng thái", "Ghi chú"];
+const DETAIL_HEADERS = ["Mã NV", "Họ tên", "Phòng ban", "Chức danh", "Chuyên khoa", "Ngày", "Ca", "Giờ vào", "Giờ ra", "Phút trễ", "Phút sớm", "Phút OT", "Công", "Giờ công", "Trạng thái", "Ghi chú"];
 
 export async function reportToXlsx(r: { summary: SummaryRow[]; detail: DetailRow[] }, notes: string[] = []): Promise<Buffer> {
   const wb = new ExcelJS.Workbook();
@@ -240,6 +259,8 @@ export async function reportToXlsx(r: { summary: SummaryRow[]; detail: DetailRow
       "Mã NV": x.code,
       "Họ tên": x.name,
       "Phòng ban": x.department,
+      "Chức danh": x.jobTitle,
+      "Chuyên khoa": x.specialty,
       "Ngày công": x.workDays,
       "Giờ công": r2(x.workMinutes / 60),
       "Số lần trễ": x.lateCount,
@@ -252,7 +273,7 @@ export async function reportToXlsx(r: { summary: SummaryRow[]; detail: DetailRow
       "Số ngày thiếu giờ ra": x.missingOutDays,
       "Số lần bổ sung công": x.correctionCount,
     })),
-    [8, 24, 22, 10, 9.5, 10, 13, 13, 16, 8, 14, 18, 18, 18],
+    [8, 24, 22, 14, 16, 10, 9.5, 10, 13, 13, 16, 8, 14, 18, 18, 18],
     SUMMARY_HEADERS,
   );
   addSheet(
@@ -262,6 +283,8 @@ export async function reportToXlsx(r: { summary: SummaryRow[]; detail: DetailRow
       "Mã NV": x.code,
       "Họ tên": x.name,
       "Phòng ban": x.department,
+      "Chức danh": x.jobTitle,
+      "Chuyên khoa": x.specialty,
       "Ngày": x.date.split("-").reverse().join("/"),
       "Ca": x.shift,
       "Giờ vào": x.inTime,
@@ -274,7 +297,7 @@ export async function reportToXlsx(r: { summary: SummaryRow[]; detail: DetailRow
       "Trạng thái": x.status,
       "Ghi chú": x.note,
     })),
-    [8, 24, 22, 11, 26, 8, 8, 9.5, 9.5, 9.5, 6, 9.5, 16, 50],
+    [8, 24, 22, 14, 16, 11, 26, 8, 8, 9.5, 9.5, 9.5, 6, 9.5, 16, 50],
     DETAIL_HEADERS,
   );
   if (notes.length) addSheet(wb, "Ghi chú", notes.map((n) => ({ "Ghi chú": n })), [100], ["Ghi chú"]);
@@ -290,7 +313,7 @@ export type InOutMatrix = {
   to: string;
   dates: string[];
   holidays: Map<string, string>;
-  rows: { code: string; name: string; department: string; days: Record<string, { in: string; out: string }> }[];
+  rows: { code: string; name: string; department: string; jobTitle: string; days: Record<string, { in: string; out: string }> }[];
 };
 
 export async function buildInOutMatrix(where: object, from: string, to: string, now = new Date()): Promise<InOutMatrix> {
@@ -316,7 +339,7 @@ export async function buildInOutMatrix(where: object, from: string, to: string, 
       days[d] = { in: s.inTime ? vnTime(s.inTime) : "", out: s.outTime ? vnTime(s.outTime) : "" };
     }
     if (!count) continue;
-    rows.push({ code: e.code, name: e.name, department: (lastDept != null && deptName.get(lastDept)) || e.department.name, days });
+    rows.push({ code: e.code, name: e.name, department: (lastDept != null && deptName.get(lastDept)) || e.department.name, jobTitle: e.jobTitle?.name ?? "", days });
   }
   return { from, to, dates, holidays, rows };
 }
@@ -339,13 +362,14 @@ export async function inOutToXlsx(m: InOutMatrix): Promise<Buffer> {
   wb.creator = "Face Beo";
   const ws = wb.addWorksheet("Giờ vào ra");
   const HEAD_ROWS = 3;
-  const FIXED = 3; // STT, Nhân viên, Bộ phận
+  const FIXED = 4; // STT, Nhân viên, Bộ phận, Chức danh
   const lastCol = FIXED + m.dates.length * 2;
   ws.getColumn(1).width = 6;
   ws.getColumn(2).width = 26;
   ws.getColumn(3).width = 18;
+  ws.getColumn(4).width = 14;
   // Nhãn cột cố định đặt ở dòng 3 (không merge dọc) để bộ lọc/sắp xếp của Excel không vướng ô gộp.
-  ["STT", "Nhân viên", "Bộ phận"].forEach((t, i) => {
+  ["STT", "Nhân viên", "Bộ phận", "Chức danh"].forEach((t, i) => {
     const col = i + 1;
     for (let r = 1; r <= HEAD_ROWS; r++) {
       const c = ws.getCell(r, col);
@@ -388,9 +412,11 @@ export async function inOutToXlsx(m: InOutMatrix): Promise<Buffer> {
     ws.getCell(r, 1).value = idx + 1;
     ws.getCell(r, 2).value = row.name;
     ws.getCell(r, 3).value = row.department;
+    ws.getCell(r, 4).value = row.jobTitle;
     ws.getCell(r, 1).alignment = CENTER;
     ws.getCell(r, 2).font = { bold: true, size: 10 };
     ws.getCell(r, 3).font = { size: 9 };
+    ws.getCell(r, 4).font = { size: 9 };
     m.dates.forEach((d, i) => {
       const col = FIXED + 1 + i * 2;
       const v = row.days[d];
