@@ -38,7 +38,12 @@ async function reply(zaloUserId: string, text: string) {
 
 export const POST = handle(async (req) => {
   if (!rateLimit(`zalo-webhook:${clientIp(req)}`, 120).ok) throw new HttpError(429, "Quá nhiều yêu cầu");
-  if (!process.env.ZALO_WEBHOOK_SECRET && process.env.NODE_ENV === "production") throw new HttpError(503, "Chưa cấu hình ZALO_WEBHOOK_SECRET");
+  // Chưa có khóa ký: Zalo chỉ cấp "OA Secret Key" SAU khi đã lưu Webhook URL, mà lưu URL lại cần URL trả 200 → trả 200 nhưng
+  // KHÔNG xử lý gì (không kiểm được chữ ký thì không tin sự kiện). Có khóa rồi thì chữ ký sai vẫn 401 như cũ.
+  if (!process.env.ZALO_WEBHOOK_SECRET && process.env.NODE_ENV === "production") {
+    console.warn("[zalo webhook] chưa đặt ZALO_WEBHOOK_SECRET — bỏ qua sự kiện");
+    return NextResponse.json({ ok: true, ignored: "no-webhook-secret" });
+  }
   const raw = await req.text();
   let body: { event_name?: string; timestamp?: string | number; sender?: { id?: string }; message?: { text?: string }; group_id?: string; oa_id?: string };
   try {
@@ -88,3 +93,6 @@ export const POST = handle(async (req) => {
   await reply(senderId, `✅ Đã liên kết Zalo với tài khoản ${emp.code} — ${emp.name}. Bạn sẽ nhận thông báo chấm công và đơn từ tại đây.`);
   return NextResponse.json({ ok: true, linked: true });
 });
+
+/** Zalo (và người quản trị) kiểm tra URL còn sống: trả 200, không làm gì. */
+export const GET = () => NextResponse.json({ ok: true });
