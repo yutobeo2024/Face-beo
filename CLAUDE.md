@@ -21,9 +21,10 @@ npm run db:seed                  # dữ liệu mẫu demo: XÓA SẠCH; tự d�
 npm run build && LIVENESS_SERVER=true npx next start -p 3000
 npm test | npm run lint | npm run typecheck
 ```
-Server production: đang chuyển lên VPS `root@103.142.27.210` (Docker compose `facebeo` + Cloudflare Tunnel, xem `docs/DEPLOY-VPS.md`;
+Server production: **https://face.ydsg.website** trên VPS `root@103.142.27.210` (từ 21/09/2026) (Docker compose `facebeo` + Cloudflare Tunnel, xem `docs/DEPLOY-VPS.md`;
 cập nhật bằng `deploy/update.sh`). VPS chạy chung dự án khác — không đụng Caddy/ufw/container khác. Máy local chỉ để phát triển: **không**
-chạy cron / khóa Zalo thật song song với VPS (refresh token Zalo dùng một lần).
+chạy cron / khóa Zalo thật song song với VPS (refresh token Zalo dùng một lần) — `.env` local đã tắt Zalo + `DISABLE_CRON=true`
+(bản đủ khóa cũ: `.env.pre-vps.bak`, không commit). Dữ liệu thật nằm ở VPS `/opt/facebeo/data`; test local vẫn dùng `data/test.db`.
 
 ## Cách làm việc đã thống nhất với chủ dự án (tiếng Việt)
 - Chạy liền mạch, **không dừng hỏi xác nhận từng bước**; chỉ hỏi khi lựa chọn làm khác hẳn kết quả hoặc thao tác phá hủy/ra ngoài.

@@ -13,3 +13,5 @@ public/models/
 next-env.d.ts
 .orchestrator/
 models/*.onnx
+.env.*
+!.env.example
