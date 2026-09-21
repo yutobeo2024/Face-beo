@@ -83,8 +83,8 @@ function fail(message: string) {
   process.exitCode = 1;
 }
 
-function printPassword(code: string, phone: string, password: string) {
-  console.log(`   Đăng nhập bằng mã ${code} hoặc SĐT ${phone}, mật khẩu: ${password}`);
+function printPassword(code: string, phone: string | null, password: string) {
+  console.log(`   Đăng nhập bằng mã ${code}${phone ? ` hoặc SĐT ${phone}` : ""}, mật khẩu: ${password}`);
   console.log("   Mật khẩu chỉ hiện một lần — hệ thống sẽ bắt đổi ở lần đăng nhập đầu.\n");
 }
 

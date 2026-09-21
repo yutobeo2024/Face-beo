@@ -7,7 +7,7 @@
   MiniFASNetV2 phía server), đơn từ, tính công/chốt công tháng, xuất Excel, thông báo Zalo OA (nhiều nhóm theo loại tin: minh bạch / chấm công / đơn từ + tin riêng).
 - Stack: Next.js 15 App Router, Prisma 6 (SQLite WAL), zod 4, luxon, exceljs, node-cron, jose JWT (HS256, 7 ngày, `sessionVersion`),
   vitest 4 (test tích hợp gọi thẳng route handler, DB `data/test.db`).
-- Phiên bản hiện tại: **v1.7.0** (tag GitHub `v1.7.0`, repo `yutobeo2024/Face-beo`). Phiên bản ghi trong prose (README, PRD,
+- Phiên bản hiện tại: **v1.8.0** (tag GitHub `v1.8.0`, repo `yutobeo2024/Face-beo`). Phiên bản ghi trong prose (README, PRD,
   OPEN-DECISIONS), không có CHANGELOG; `package.json` version không dùng để đánh số.
 
 ## Lệnh
@@ -46,14 +46,14 @@ Server production đang được chạy bằng `next start` (không phải dev).
 - Lịch sử là bất biến: không xóa cứng nhân viên/ca/mẫu tuần/phòng đã có dữ liệu (route DELETE chặn kèm lý do); "nghỉ việc" = `active=false`
   + xóa mẫu khuôn mặt + thu hồi phiên. Tháng đã chốt (`LockedDay`) không tính lại.
 - Thay đổi cấu hình lịch của nhân viên chỉ có hiệu lực từ hôm nay (`ScheduleAssignment` snapshot).
+- Dữ liệu cá nhân (SĐT, CCCD, ngày sinh, giới tính, địa chỉ): chỉ vai trò HR/ADMIN + chính chủ (`canSeePersonal`/`maskPersonal`), không vào Zalo, nhật ký
+  dùng `redactPersonal`. Tạo nhân viên qua `createEmployee` (`src/lib/employees.ts`); nhập Excel ở `src/lib/employee-import.ts`.
 - Zalo: tin nhóm định tuyến theo `ZaloGroup.categories` (`src/lib/zalo-routing.ts`): MINH_BACH = `announce()` chỉ cho thao tác HR/ADMIN
   (trừ `always: true`); CHAM_CONG/DON_TU = `announceStaff()` tin nhân viên, **không** kèm lý do/ghi chú, lọc theo phòng. `sendZaloMessage`
   không bao giờ ném lỗi; mô phỏng khi thiếu cấu hình. Test: `tests/setup.ts` chặn Next/Prisma nạp `.env` thật (máy server có khóa Zalo thật).
 - zod 4: schema PATCH không được có `.default()` (`.partial()` vẫn áp default → xóa dữ liệu). Cột JSON trong SQLite lưu chuỗi.
 
 ## Việc còn mở (21/09/2026)
-- Nhập nhân viên hàng loạt từ Excel (chưa làm; thiết kế: cột Mã NV, Họ tên, SĐT, Phòng ban, Vai trò, Loại lịch, Mẫu tuần, Ca mặc định,
-  xem trước lỗi từng dòng, file kết quả có mật khẩu tạm).
 - Chạy thử một phòng. Dữ liệu hiện có (máy cũ và seed demo) chỉ là mockup; máy mới/vận hành thật bắt đầu sạch theo `docs/HANDOFF.md`
   mục 1b: `db:deploy` → `db:seed:base` → `admin:create` (v1.5.4, logic ở `src/lib/bootstrap.ts`). Rà lại hệ số ca, ngày lễ trong năm.
 - D4 tin Zalo cá nhân (ZNS hay tin tư vấn); Cloudflare Tunnel cho webhook; sản xuất: Windows service, HTTPS trong LAN, backup ra ngoài máy.

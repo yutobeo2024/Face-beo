@@ -21,7 +21,21 @@ export const GET = handle(async (req) => {
   const [emp, pending, faces] = await Promise.all([
     prisma.employee.findUniqueOrThrow({
       where: { id: u.id },
-      select: { code: true, name: true, zaloLinkedAt: true, department: { select: { name: true } }, defaultShift: { select: { name: true, startTime: true, endTime: true } } },
+      select: {
+        code: true,
+        name: true,
+        zaloLinkedAt: true,
+        department: { select: { name: true } },
+        defaultShift: { select: { name: true, startTime: true, endTime: true } },
+        // Thông tin cá nhân của chính mình (chỉ đọc; sai thì báo Nhân sự sửa).
+        phone: true,
+        nationalId: true,
+        dateOfBirth: true,
+        gender: true,
+        address: true,
+        jobTitle: { select: { name: true } },
+        specialty: { select: { name: true } },
+      },
     }),
     prisma.leaveRequest.count({ where: { employeeId: u.id, status: { in: ["PENDING", "MANAGER_APPROVED"] } } }),
     prisma.faceTemplate.count({ where: { employeeId: u.id, modelVersion: FACE_MODEL_VERSION } }),

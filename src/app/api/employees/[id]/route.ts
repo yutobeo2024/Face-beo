@@ -9,9 +9,10 @@ import { employeeUpdateSchema } from "@/lib/validators";
 import { audit } from "@/lib/audit";
 import { invalidateFaceCache } from "@/lib/face-matcher";
 import { FACE_MODEL_VERSION } from "@/lib/roles";
-import { can, requirePerm } from "@/lib/permissions";
+import { requirePerm } from "@/lib/permissions";
 import { assertCanModify } from "@/lib/employee-guards";
 import { assertCatalogIds } from "@/lib/catalogs";
+import { PERSONAL_KEYS, assertUniqueEmployee, canSeePersonal, maskPersonal, redactPersonal } from "@/lib/employees";
 import { announce, onceKey } from "@/lib/announce";
 import { ROLE_LABEL, type Role } from "@/lib/roles";
 
@@ -25,6 +26,10 @@ export const GET = handle<{ id: string }>(async (req, ctx) => {
       code: true,
       name: true,
       phone: true,
+      nationalId: true,
+      dateOfBirth: true,
+      gender: true,
+      address: true,
       role: true,
       active: true,
       departmentId: true,
@@ -37,8 +42,8 @@ export const GET = handle<{ id: string }>(async (req, ctx) => {
   });
   if (!e) throw notFound();
   if (!canViewEmployee(u, e)) throw forbidden();
-  const { faceTemplates, ...rest } = e;
-  if (e.id !== u.id && !(await can(u, "employees.manage"))) (rest as { phone?: string }).phone = undefined;
+  const { faceTemplates, ...all } = e;
+  const rest = maskPersonal(all, u);
   return json({
     employee: {
       ...rest,
@@ -55,10 +60,11 @@ export const PATCH = handle<{ id: string }>(async (req, ctx) => {
   const e = await prisma.employee.findUnique({ where: { id } });
   if (!e) throw notFound();
   await assertCanModify(u, e, { role: body.role, active: body.active, departmentId: body.departmentId });
-  if (body.phone && body.phone !== e.phone && (await prisma.employee.findUnique({ where: { phone: body.phone } }))) {
-    throw badRequest("Số điện thoại đã tồn tại");
-  }
+  await assertUniqueEmployee({ phone: body.phone !== e.phone ? body.phone : undefined, nationalId: body.nationalId !== e.nationalId ? body.nationalId : undefined }, id);
   const { resetPassword, unlinkZalo, ...fields } = body;
+  // Không phải Nhân sự / Quản trị (vd. Quản lý được cấp quyền quản lý nhân viên): bỏ qua trường cá nhân của người khác — form của họ
+  // không có các ô này, không để giá trị rỗng xóa mất dữ liệu.
+  if (!canSeePersonal(u) && id !== u.id) for (const k of PERSONAL_KEYS) delete (fields as Record<string, unknown>)[k];
   const data: Record<string, unknown> = { ...fields };
   // Ngày nghỉ việc: sau ngày này không còn lịch làm (không tính vắng); kích hoạt lại => xóa.
   if (fields.active === false && e.active) {
@@ -120,7 +126,7 @@ export const PATCH = handle<{ id: string }>(async (req, ctx) => {
     action: resetPassword ? "PASSWORD_RESET" : "EMPLOYEE_UPDATE",
     entity: "Employee",
     entityId: id,
-    detail: { ...fields, resetPassword: !!resetPassword, unlinkZalo: !!unlinkZalo },
+    detail: redactPersonal({ ...fields, resetPassword: !!resetPassword, unlinkZalo: !!unlinkZalo }),
   });
   const changes: string[] = [];
   if (fields.role && fields.role !== e.role) changes.push(`vai trò ${ROLE_LABEL[e.role as Role] ?? e.role} → ${ROLE_LABEL[fields.role as Role]}`);
@@ -131,7 +137,8 @@ export const PATCH = handle<{ id: string }>(async (req, ctx) => {
   if (fields.name && fields.name !== e.name) changes.push("đổi họ tên");
   if (fields.jobTitleId !== undefined && fields.jobTitleId !== e.jobTitleId) changes.push("đổi chức danh");
   if (fields.specialtyId !== undefined && fields.specialtyId !== e.specialtyId) changes.push("đổi chuyên khoa");
-  if (fields.phone && fields.phone !== e.phone) changes.push("đổi số điện thoại");
+  // Thông tin cá nhân: chỉ ghi là có cập nhật, không đưa giá trị vào tin nhóm.
+  if ((["phone", "nationalId", "dateOfBirth", "gender", "address"] as const).some((k) => fields[k] !== undefined && fields[k] !== e[k])) changes.push("cập nhật thông tin cá nhân");
   if (fields.active === false && e.active) changes.push("CHO NGHỈ VIỆC (đã xóa dữ liệu khuôn mặt, thoát mọi thiết bị)");
   if (fields.active === true && !e.active) changes.push("kích hoạt lại tài khoản");
   if (resetPassword) changes.push("đặt lại mật khẩu");
@@ -198,7 +205,7 @@ export const DELETE = handle<{ id: string }>(async (req, ctx) => {
     throw err;
   }
   invalidateFaceCache();
-  await audit({ actorId: u.id, action: "EMPLOYEE_DELETE", entity: "Employee", entityId: id, detail: { code: e.code, name: e.name, phone: e.phone, role: e.role, departmentId: e.departmentId } });
+  await audit({ actorId: u.id, action: "EMPLOYEE_DELETE", entity: "Employee", entityId: id, detail: { code: e.code, name: e.name, role: e.role, departmentId: e.departmentId } });
   await announce(u, `đã xóa tài khoản tạo nhầm ${e.code} — ${e.name}`, { key: `emp-delete:${id}`, detail: "Tài khoản chưa có chấm công / đơn từ / lịch" });
   return json({ ok: true });
 });

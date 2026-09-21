@@ -22,10 +22,39 @@ export const changePasswordSchema = z.object({
     .refine((s) => /[A-Za-z]/.test(s) && /\d/.test(s), "cần có cả chữ và số"),
 });
 
+/** Ô để trống ("" hoặc toàn khoảng trắng) = không có giá trị (null) — form và file Excel đều gửi chuỗi rỗng. */
+const blankToNull = (v: unknown) => (typeof v === "string" && v.trim() === "" ? null : v);
+export const PHONE_RE = /^0\d{9,10}$/;
+export const phoneSchema = z.string().trim().regex(PHONE_RE, "số điện thoại VN 10–11 số");
+export const GENDERS = ["NAM", "NU", "KHAC"] as const;
+export const GENDER_LABEL: Record<(typeof GENDERS)[number], string> = { NAM: "Nam", NU: "Nữ", KHAC: "Khác" };
+
+/** Ngày sinh "YYYY-MM-DD" hợp lệ, tuổi 15–100 (tính theo năm hiện tại). */
+export const dateOfBirthSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "định dạng YYYY-MM-DD")
+  .refine((s) => {
+    const d = new Date(`${s}T00:00:00Z`);
+    return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s;
+  }, "ngày không tồn tại")
+  .refine((s) => {
+    const age = new Date().getUTCFullYear() - Number(s.slice(0, 4));
+    return age >= 15 && age <= 100;
+  }, "tuổi phải từ 15 đến 100");
+
+/** Thông tin cá nhân (v1.8.0): tất cả không bắt buộc; trống = null. Chỉ Nhân sự/Quản trị và chính chủ xem (maskPersonal). */
+export const personalFields = {
+  phone: z.preprocess(blankToNull, phoneSchema.nullable().optional()),
+  nationalId: z.preprocess(blankToNull, z.string().trim().regex(/^(\d{9}|\d{12})$/, "CCCD 12 số (hoặc CMND 9 số)").nullable().optional()),
+  dateOfBirth: z.preprocess(blankToNull, dateOfBirthSchema.nullable().optional()),
+  gender: z.preprocess(blankToNull, z.enum(GENDERS).nullable().optional()),
+  address: z.preprocess(blankToNull, z.string().trim().max(300, "tối đa 300 ký tự").nullable().optional()),
+};
+
 export const employeeCreateSchema = z.object({
   code: z.string().trim().regex(/^[A-Za-z0-9_-]{2,20}$/, "chỉ gồm chữ, số, - và _"),
   name: z.string().trim().min(2).max(100),
-  phone: z.string().trim().regex(/^0\d{9,10}$/, "số điện thoại VN 10–11 số"),
+  ...personalFields,
   role: z.enum(ROLES),
   departmentId: idNum,
   defaultShiftId: idNum,

@@ -420,6 +420,7 @@ flowchart TD
     <li>Bấm <b>Thêm nhân viên</b>, nhập mã, họ tên, phòng ban, vai trò (Nhân sự không gán được vai trò Nhân sự/Quản trị).</li>
     <li>Chọn <b>loại lịch</b>: <b>Cố định</b> (chọn mẫu tuần hoặc ca mặc định) hoặc <b>Xoay ca</b> (theo lịch tuần quản lý xếp).</li>
     <li>Chọn <b>Chức danh</b> (Bác sĩ, Điều dưỡng, Kỹ thuật viên…) và <b>Chuyên khoa / chuyên môn</b> (Tai Mũi Họng, Mắt, Siêu âm…). Hai mục này chỉ để mô tả: hiện dưới tên nhân viên, trong bảng xếp ca (vd. "Bác sĩ · Tai Mũi Họng"), lọc danh sách và thêm cột trong Excel — <b>không</b> ảnh hưởng quyền hay người duyệt đơn. Quản trị sửa danh sách ở <b>Cấu hình → Chức danh &amp; chuyên khoa</b> (xóa một mục thì người đang dùng được để trống).</li>
+    <li><b>Thông tin cá nhân</b> (v1.8.0): SĐT (không bắt buộc — nhân viên đăng nhập bằng mã NV), <b>CCCD</b> (12 số), <b>ngày sinh</b>, <b>giới tính</b>, <b>địa chỉ</b>. Chỉ Nhân sự, Quản trị và chính chủ xem được; trưởng phòng không thấy. Không đưa vào tin Zalo, nhật ký chỉ ghi "đã đổi". Nhân viên xem thông tin của mình ở Trang cá nhân.</li>
     <li>Mật khẩu ban đầu: nhập tay, hoặc để trống để hệ thống <b>sinh mật khẩu tạm ngẫu nhiên</b> (hiện <b>một lần</b> sau khi lưu — ghi lại và đưa cho nhân viên). Nhân viên bắt buộc đổi ở lần đăng nhập đầu. Sau này có thể <b>đặt lại mật khẩu</b> trong hồ sơ.</li>
     <li>Enroll khuôn mặt (6.3).</li>
   </ol>
@@ -451,6 +452,30 @@ flowchart TD
   <div class="callout ok"><b>Mẹo để nhận diện chính xác</b>
     <p>• Bỏ khẩu trang, mũ; kính thường được nhưng nên enroll đúng như khi đi làm. • Người có nét giống nhau (anh chị em) vẫn phân biệt được, nhưng enroll kỹ cả 5 góc. • Danh sách nhân viên hiện <b>"Enroll lại"</b> khi mẫu cũ không còn dùng được sau khi nâng cấp mô hình.</p>
   </div>
+
+  <h3 id="nhap-excel">6.4 Nhập nhân viên hàng loạt từ Excel</h3>
+  <p class="lead"><span class="pill h">Nhân sự</span> <span class="pill a">Quản trị</span> Trang <b>Nhân viên</b> → <b>Tải file mẫu</b> / <b>Nhập từ Excel</b>.</p>
+  <ol class="steps">
+    <li><b>Tải file mẫu</b>. File có sẵn cột và <b>danh sách thả xuống</b> lấy đúng từ dữ liệu hiện tại (phòng ban, chức danh, chuyên khoa, ca, mẫu tuần, giới tính, vai trò, loại lịch) — chọn thay vì gõ để không sai chính tả. Sheet "Hướng dẫn" ghi cách điền từng cột.</li>
+    <li>Điền mỗi người một dòng. <b>Chỉ Mã NV và Họ tên bắt buộc</b>; các cột khác để trống được, bổ sung sau.</li>
+    <li>Bấm <b>Nhập từ Excel</b>, chọn <b>mặc định cho ô trống</b> của người mới (phòng — thường là "Chưa phân phòng", ca, mẫu tuần), chọn file, bấm <b>Kiểm tra file</b>.</li>
+    <li>Xem bảng kết quả từng dòng: <b>Tạo mới</b> / <b>Cập nhật</b> (ghi rõ trường nào đổi) / <b>Không đổi</b> / <b>Lỗi</b> (ghi rõ lý do). Còn dòng lỗi thì sửa trong Excel rồi chọn lại file — hệ thống <b>không nhập dòng nào</b> khi còn lỗi.</li>
+    <li>Bấm <b>Nhập N dòng</b>. Máy tự tải về file <b>KetQuaNhap_….xlsx</b> có <b>mật khẩu tạm</b> của người mới — chỉ có trong file này, phát riêng cho từng người; lần đăng nhập đầu bắt buộc đổi mật khẩu.</li>
+  </ol>
+  <div class="tw"><table>
+    <tr><th>Cột</th><th>Để trống thì</th><th>Lưu ý</th></tr>
+    <tr><td>Mã NV*, Họ tên*</td><td>Dòng báo lỗi</td><td>Mã đã có trong hệ thống → <b>cập nhật</b> các ô có điền của người đó; ô trống giữ nguyên</td></tr>
+    <tr><td>SĐT</td><td>Không có SĐT — đăng nhập bằng mã NV</td><td>Được viết 090 123 4567, +84…; ô số bị mất số 0 đầu hệ thống tự thêm lại (có cảnh báo)</td></tr>
+    <tr><td>CCCD, Ngày sinh, Giới tính, Địa chỉ</td><td>Bổ sung sau</td><td>CCCD 12 số (CMND 9 số), không trùng; ngày sinh dd/mm/yyyy</td></tr>
+    <tr><td>Phòng ban</td><td>Phòng mặc định chọn khi nhập (vd. "Chưa phân phòng")</td><td>Phải có sẵn trong Cấu hình — gõ sai chính tả sẽ báo lỗi, không tự tạo phòng mới</td></tr>
+    <tr><td>Ca mặc định, Mẫu tuần</td><td>Mặc định chọn khi nhập</td><td>Chỉnh ca theo giờ thật của phòng khám trước khi nhập</td></tr>
+    <tr><td>Vai trò</td><td>Nhân viên</td><td>Chỉ áp cho người mới; đổi vai trò người đã có làm trong hồ sơ. Nhân sự không nhập được vai trò Nhân sự/Quản trị</td></tr>
+    <tr><td>Loại lịch</td><td>Cố định</td><td>Xoay ca thì bỏ qua cột Mẫu tuần</td></tr>
+  </table></div>
+  <div class="ex"><div class="t">Ví dụ báo lỗi khi kiểm tra</div>
+    <p>Dòng 7 · NV107 · <b>Lỗi</b>: SĐT đã được dùng (NV005)<br/>Dòng 12 · NV112 · <b>Lỗi</b>: phòng ban "Ke toan" không có trong danh mục<br/>Dòng 15 · NV015 · <b>Cập nhật</b>: CCCD, ngày sinh · ⚠ SĐT "901234567" — hiểu là 0901234567</p>
+  </div>
+  <div class="callout"><b>Dùng file để bổ sung dần</b><p>Lần 1 nhập Mã + Họ tên + Phòng cho cả công ty; lần sau dùng lại file, điền thêm CCCD, ngày sinh… rồi nhập lại — người đã có chỉ được cập nhật các ô có điền. Đổi phòng / ca / mẫu tuần qua file có hiệu lực từ hôm nay như sửa tay. Nên nhập ngoài giờ cao điểm chấm công nếu file vài trăm dòng.</p></div>
 </section>
 
 <!-- 7 -->
@@ -908,7 +933,7 @@ stateDiagram-v2
   <details><summary>Đăng xuất trên điện thoại thì máy tính cũng bị thoát?</summary><p>Đúng, có chủ đích: đăng xuất ở bất kỳ đâu sẽ thoát tài khoản trên mọi thiết bị (kể cả phiên lỡ để lại ở máy dùng chung). Đăng nhập lại là được. Đổi mật khẩu cũng vậy.</p></details>
 </section>
 
-<footer>Face Beo · Cẩm nang sử dụng · cập nhật 21/09/2026 (phiên bản ứng dụng v1.7.0)</footer>
+<footer>Face Beo · Cẩm nang sử dụng · cập nhật 21/09/2026 (phiên bản ứng dụng v1.8.0)</footer>
 </main>
 </div>
 

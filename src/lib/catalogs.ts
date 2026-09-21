@@ -49,9 +49,9 @@ async function nameTaken(kind: CatalogKind, name: string, exceptId?: number) {
 const delegate = (kind: CatalogKind) => (kind === "jobTitle" ? prisma.jobTitle : prisma.specialty) as unknown as Delegate;
 
 /** Kiểm tra id chức danh / chuyên khoa gửi lên tồn tại (null/undefined = bỏ trống, hợp lệ). */
-export async function assertCatalogIds(ids: { jobTitleId?: number | null; specialtyId?: number | null }) {
-  if (ids.jobTitleId && !(await prisma.jobTitle.findUnique({ where: { id: ids.jobTitleId } }))) throw badRequest("Chức danh không tồn tại");
-  if (ids.specialtyId && !(await prisma.specialty.findUnique({ where: { id: ids.specialtyId } }))) throw badRequest("Chuyên khoa không tồn tại");
+export async function assertCatalogIds(ids: { jobTitleId?: number | null; specialtyId?: number | null }, db: Pick<typeof prisma, "jobTitle" | "specialty"> = prisma) {
+  if (ids.jobTitleId && !(await db.jobTitle.findUnique({ where: { id: ids.jobTitleId } }))) throw badRequest("Chức danh không tồn tại");
+  if (ids.specialtyId && !(await db.specialty.findUnique({ where: { id: ids.specialtyId } }))) throw badRequest("Chuyên khoa không tồn tại");
 }
 
 export function catalogRoutes(kind: CatalogKind) {

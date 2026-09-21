@@ -12,7 +12,7 @@ import { ensureDefaultPermissions } from "./permissions";
 import { DEFAULT_APP_SETTINGS } from "./settings";
 import { BASELINE_DATE, snapshotAssignment } from "./schedule-assignments";
 import { randomTempPassword } from "./temp-password";
-import { changePasswordSchema, employeeCreateSchema } from "./validators";
+import { changePasswordSchema, employeeCreateSchema, phoneSchema } from "./validators";
 
 type Db = typeof prisma;
 
@@ -161,7 +161,9 @@ const isUniqueViolation = (e: unknown) => typeof e === "object" && e !== null &&
 /** Tạo ADMIN đầu tiên. Trả về tài khoản và mật khẩu (để in một lần ra màn hình). */
 export async function createFirstAdmin(db: Db, input: FirstAdminInput) {
   const parsed = employeeCreateSchema
-    .pick({ code: true, phone: true })
+    .pick({ code: true })
+    // Quản trị đầu tiên bắt buộc có SĐT (liên lạc khi quên mật khẩu), khác nhân viên thường (v1.8.0: SĐT không bắt buộc).
+    .extend({ phone: phoneSchema })
     .extend({ name: z.string().trim().min(2, "tối thiểu 2 ký tự").max(100, "tối đa 100 ký tự") })
     .safeParse(input);
   if (!parsed.success) throw new BootstrapError(`Thông tin không hợp lệ — ${zodMessage(parsed.error)}`);

@@ -34,6 +34,12 @@ Ghi lại những điểm đã phát hiện trong quá trình làm và test, c�
 - **OT ngày không có ca:** tính theo đơn tăng ca đã duyệt.
 - **Minh bạch:** thao tác duyệt/sửa của HR và ADMIN được gửi vào nhóm Zalo OA. Không gửi lần quét chấm công, cũng như thao tác ngang quyền nhân viên.
 
+## Đã chốt v1.8.0 (21/09/2026)
+
+- **Hồ sơ nhân viên có CCCD, ngày sinh, giới tính, địa chỉ; SĐT không bắt buộc.** Chỉ Nhân sự, Quản trị và chính chủ xem.
+- **Nhập Excel**: chỉ Mã NV + Họ tên bắt buộc; mã đã có → cập nhật ô có điền; phòng trống → "Chưa phân phòng"; ca / mẫu tuần mặc định chọn khi
+  nhập; còn lỗi thì không nhập dòng nào. Xem PRD v2.1 mục 20.
+
 ## Đã chốt v1.7.0 (21/09/2026)
 
 - **Phòng ban = đơn vị quản lý** (ai duyệt, ai xếp ca); chuyên môn là **Chức danh / Chuyên khoa** của nhân viên (không ảnh hưởng quyền).

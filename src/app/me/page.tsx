@@ -27,7 +27,22 @@ type Day = {
   pendingLeave: boolean;
 };
 type Overview = {
-  me: { code: string; name: string; role: string; faceEnrolled: boolean; zaloLinkedAt: string | null; department: { name: string }; defaultShift: { name: string; startTime: string; endTime: string } };
+  me: {
+    code: string;
+    name: string;
+    role: string;
+    faceEnrolled: boolean;
+    zaloLinkedAt: string | null;
+    department: { name: string };
+    defaultShift: { name: string; startTime: string; endTime: string };
+    phone: string | null;
+    nationalId: string | null;
+    dateOfBirth: string | null;
+    gender: string | null;
+    address: string | null;
+    jobTitle: { name: string } | null;
+    specialty: { name: string } | null;
+  };
   today: Day;
   week: string;
   days: Day[];
@@ -213,6 +228,8 @@ export default function MeHome() {
         )}
       </Card>
 
+      {data && <PersonalInfo me={data.me} />}
+
       {data?.me.faceEnrolled && (
         <div className="mt-4 text-center">
           <button className="text-xs text-slate-400 underline hover:text-slate-600" onClick={() => setWithdraw(true)}>
@@ -238,5 +255,34 @@ export default function MeHome() {
         <p className="text-sm text-slate-600">Toàn bộ mẫu khuôn mặt của bạn sẽ bị xóa ngay. Bạn sẽ không chấm công tại kiosk được nữa và chuyển sang chấm công thủ công do quản lý xác nhận.</p>
       </Modal>
     </>
+  );
+}
+
+/** Thông tin cá nhân của chính mình (chỉ đọc). Nhân sự cập nhật trong hồ sơ nhân viên. */
+function PersonalInfo({ me }: { me: Overview["me"] }) {
+  const GENDER: Record<string, string> = { NAM: "Nam", NU: "Nữ", KHAC: "Khác" };
+  const rows: [string, string | null | undefined][] = [
+    ["Mã nhân viên", me.code],
+    ["Phòng ban", me.department.name],
+    ["Chức danh", [me.jobTitle?.name, me.specialty?.name].filter(Boolean).join(" · ") || null],
+    ["Số điện thoại", me.phone],
+    ["CCCD", me.nationalId],
+    ["Ngày sinh", me.dateOfBirth ? me.dateOfBirth.split("-").reverse().join("/") : null],
+    ["Giới tính", me.gender ? (GENDER[me.gender] ?? me.gender) : null],
+    ["Địa chỉ", me.address],
+  ];
+  return (
+    <Card className="mt-4">
+      <CardHeader title="Thông tin cá nhân" />
+      <dl className="grid gap-x-4 gap-y-1 px-4 py-3 text-sm sm:grid-cols-[10rem_1fr]">
+        {rows.map(([k, v]) => (
+          <div key={k} className="contents">
+            <dt className="text-slate-500">{k}</dt>
+            <dd className="mb-1 text-slate-800 sm:mb-0">{v || <span className="text-slate-400">—</span>}</dd>
+          </div>
+        ))}
+      </dl>
+      <p className="px-4 pb-3 text-xs text-slate-500">Thông tin chưa đúng? Báo Nhân sự để cập nhật. Chỉ bạn, Nhân sự và Quản trị xem được mục này.</p>
+    </Card>
   );
 }

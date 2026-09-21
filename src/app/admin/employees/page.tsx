@@ -7,12 +7,17 @@ import { DeptSelect, useDepartments } from "@/components/dept-select";
 import { Icon } from "@/components/icons";
 import { useToast } from "@/components/toast";
 import { useAdminUser, useCan } from "../admin-nav";
+import { ImportModal } from "./import-modal";
 
 type Emp = {
   id: number;
   code: string;
   name: string;
-  phone?: string;
+  phone?: string | null;
+  nationalId?: string | null;
+  dateOfBirth?: string | null;
+  gender?: string | null;
+  address?: string | null;
   role: string;
   active: boolean;
   departmentId: number;
@@ -41,6 +46,10 @@ type Form = {
   code: string;
   name: string;
   phone: string;
+  nationalId: string;
+  dateOfBirth: string;
+  gender: string;
+  address: string;
   role: string;
   departmentId: string;
   defaultShiftId: string;
@@ -80,6 +89,9 @@ export default function EmployeesPage() {
   const [busy, setBusy] = useState(false);
   const [tempPw, setTempPw] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<Emp | null>(null);
+  const [importing, setImporting] = useState(false);
+  // Thông tin cá nhân (SĐT, CCCD, ngày sinh, giới tính, địa chỉ): chỉ Nhân sự / Quản trị, hoặc chính mình.
+  const showPersonal = (id?: number) => me.role === "ADMIN" || me.role === "HR" || id === me.id;
   const { data, error, loading, reload } = useApi<{ employees: Emp[] }>(`/api/employees${qs({ q, departmentId: dept, jobTitleId: jobTitle, specialtyId: specialty, includeInactive: inactive ? 1 : "" })}`);
   const depts = useDepartments();
   const shifts = useApi<{ shifts: Shift[] }>("/api/shifts");
@@ -88,7 +100,7 @@ export default function EmployeesPage() {
   const specialties = useApi<{ items: CatalogItem[] }>("/api/specialties");
 
   function openCreate() {
-    setForm({ code: "", name: "", phone: "", role: "EMPLOYEE", departmentId: String(depts.data?.departments[0]?.id ?? ""), defaultShiftId: String(shifts.data?.shifts[0]?.id ?? ""), active: true, scheduleType: "FIXED", workPatternId: String(patterns.data?.patterns.find((p) => p.monShiftId === shifts.data?.shifts[0]?.id)?.id ?? ""), jobTitleId: "", specialtyId: "" });
+    setForm({ code: "", name: "", phone: "", nationalId: "", dateOfBirth: "", gender: "", address: "", role: "EMPLOYEE", departmentId: String(depts.data?.departments[0]?.id ?? ""), defaultShiftId: String(shifts.data?.shifts[0]?.id ?? ""), active: true, scheduleType: "FIXED", workPatternId: String(patterns.data?.patterns.find((p) => p.monShiftId === shifts.data?.shifts[0]?.id)?.id ?? ""), jobTitleId: "", specialtyId: "" });
   }
 
   async function save() {
@@ -97,7 +109,10 @@ export default function EmployeesPage() {
     try {
       const body = {
         name: form.name,
-        phone: form.phone,
+        // Ô trống => null (xóa giá trị); server kiểm định dạng khi có. Chỉ gửi khi người sửa được xem các ô này.
+        ...(showPersonal(form.id)
+          ? { phone: form.phone.trim() || null, nationalId: form.nationalId.trim() || null, dateOfBirth: form.dateOfBirth || null, gender: form.gender || null, address: form.address.trim() || null }
+          : {}),
         role: form.role,
         departmentId: Number(form.departmentId),
         defaultShiftId: Number(form.defaultShiftId),
@@ -173,9 +188,21 @@ export default function EmployeesPage() {
         subtitle={data ? `${list.length} nhân viên · ${list.filter((e) => e.faceStatus === "ENROLLED").length} đã enroll · ${list.filter((e) => e.zaloLinked).length} đã liên kết Zalo` : undefined}
         actions={
           manage && (
+            <div className="flex flex-wrap gap-2">
+              <a
+                href="/api/employees/import/template"
+                download
+                className="inline-flex h-11 items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                <Icon name="download" className="size-4" /> Tải file mẫu
+              </a>
+              <Button variant="secondary" icon="file" onClick={() => setImporting(true)}>
+                Nhập từ Excel
+              </Button>
             <Button icon="plus" onClick={openCreate}>
               Thêm nhân viên
             </Button>
+            </div>
           )
         }
       />
@@ -260,6 +287,10 @@ export default function EmployeesPage() {
                       code: e.code,
                       name: e.name,
                       phone: e.phone ?? "",
+                      nationalId: e.nationalId ?? "",
+                      dateOfBirth: e.dateOfBirth ?? "",
+                      gender: e.gender ?? "",
+                      address: e.address ?? "",
                       role: e.role,
                       departmentId: String(e.departmentId),
                       defaultShiftId: String(e.defaultShiftId),
@@ -306,7 +337,30 @@ export default function EmployeesPage() {
             <Field label="Họ tên" className={form.id ? "sm:col-span-2" : ""}>
               {(id) => <input id={id} className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />}
             </Field>
-            <Field label="Số điện thoại">{(id) => <input id={id} className="input" inputMode="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />}</Field>
+            {showPersonal(form.id) && (
+              <>
+            <Field label="Số điện thoại" hint="Không bắt buộc — nhân viên đăng nhập bằng mã NV hoặc SĐT.">
+              {(id) => <input id={id} className="input" inputMode="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />}
+            </Field>
+            <Field label="Số CCCD" hint="12 số (hoặc CMND 9 số). Chỉ Nhân sự, Quản trị và chính chủ xem được.">
+              {(id) => <input id={id} className="input" inputMode="numeric" maxLength={12} value={form.nationalId} onChange={(e) => setForm({ ...form, nationalId: e.target.value.replace(/\D/g, "") })} />}
+            </Field>
+            <Field label="Ngày sinh">{(id) => <input id={id} type="date" className="input" value={form.dateOfBirth} onChange={(e) => setForm({ ...form, dateOfBirth: e.target.value })} />}</Field>
+            <Field label="Giới tính">
+              {(id) => (
+                <Select id={id} value={form.gender} onChange={(e) => setForm({ ...form, gender: e.target.value })}>
+                  <option value="">— Chưa chọn —</option>
+                  <option value="NAM">Nam</option>
+                  <option value="NU">Nữ</option>
+                  <option value="KHAC">Khác</option>
+                </Select>
+              )}
+            </Field>
+            <Field label="Địa chỉ" className="sm:col-span-2">
+              {(id) => <input id={id} className="input" maxLength={300} value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />}
+            </Field>
+              </>
+            )}
             <Field label="Vai trò">
               {(id) => (
                 <Select id={id} value={form.role} disabled={form.id === me.id} onChange={(e) => setForm({ ...form, role: e.target.value })}>
@@ -443,6 +497,16 @@ export default function EmployeesPage() {
         <p className="text-sm text-slate-600">Gửi mật khẩu này cho nhân viên. Họ bắt buộc phải đổi ở lần đăng nhập tới. Mật khẩu chỉ hiển thị một lần.</p>
         <p className="mt-3 rounded-xl bg-slate-900 py-3 text-center font-mono text-2xl font-bold tracking-widest text-white select-all">{tempPw}</p>
       </Modal>
+      {manage && (
+        <ImportModal
+          open={importing}
+          onClose={() => setImporting(false)}
+          onDone={() => void reload()}
+          departments={depts.data?.departments ?? []}
+          shifts={shifts.data?.shifts ?? []}
+          patterns={patterns.data?.patterns ?? []}
+        />
+      )}
     </>
   );
 }

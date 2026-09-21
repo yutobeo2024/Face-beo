@@ -36,7 +36,12 @@ model Employee {
   id                 Int               @id @default(autoincrement())
   code               String            @unique
   name               String
-  phone              String            @unique
+  phone              String?           @unique // v1.8.0: không bắt buộc (đăng nhập bằng mã NV vẫn được); SQLite cho nhiều NULL
+  // Thông tin cá nhân (v1.8.0) — chỉ Nhân sự/Quản trị và chính chủ xem; không vào tin Zalo, không ghi giá trị vào nhật ký.
+  nationalId         String?           @unique // CCCD 12 số hoặc CMND 9 số
+  dateOfBirth        String? // "YYYY-MM-DD"
+  gender             String? // NAM | NU | KHAC
+  address            String?
   passwordHash       String
   mustChangePassword Boolean           @default(true)
   role               String            @default("EMPLOYEE") // ADMIN | HR | MANAGER | EMPLOYEE

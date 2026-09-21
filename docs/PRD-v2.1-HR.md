@@ -324,3 +324,23 @@ công được tính trực tiếp từ planner. Quản lý được cấp `org.
   duyệt đơn, lịch (không tạo bản ghi phân công mới). Hiện ở danh sách nhân viên (lọc được), bảng xếp ca, Excel (Bảng công: 2 cột sau Phòng
   ban; Giờ vào ra: cột Chức danh sau Bộ phận). Tháng đã chốt hiển thị chức danh hiện tại (như tên, mã). `db:seed:base` tạo sẵn 12 chức danh
   và 12 chuyên khoa cho phòng khám (chỉ khi danh mục còn trống).
+
+## 20. Thông tin cá nhân nhân viên + Nhập nhân viên từ Excel (v1.8.0, 21/09/2026)
+
+- **Trường mới** trên `Employee`: `nationalId` (CCCD 12 số / CMND 9 số, duy nhất), `dateOfBirth` ("YYYY-MM-DD", tuổi 15–100), `gender`
+  (NAM | NU | KHAC), `address` (≤ 300). **SĐT không còn bắt buộc** (`phone String? @unique`, SQLite cho nhiều NULL): người không có SĐT đăng
+  nhập bằng mã NV. Quản trị tạo qua `admin:create` vẫn bắt buộc SĐT.
+- **Riêng tư**: SĐT, CCCD, ngày sinh, giới tính, địa chỉ chỉ trả cho **vai trò** Nhân sự/Quản trị và chính chủ (danh sách, chi tiết, `/me`) — theo
+  vai trò, không theo quyền `employees.manage`; Quản lý (kể cả khi được cấp quyền đó) không thấy, không sửa được (trường bị bỏ qua) và không tìm theo SĐT được. Không vào tin Zalo; nhật ký thay giá trị bằng "(đã đặt)/(xóa)".
+- **Nhập Excel** (`src/lib/employee-import.ts`, quyền `employees.manage`):
+  - File mẫu `GET /api/employees/import/template`: sheet "Nhân viên" (14 cột; Mã NV, SĐT, CCCD, Ngày sinh định dạng chữ), danh sách thả xuống
+    500 dòng lấy từ sheet ẩn "DanhMuc" (phòng, chức danh, chuyên khoa, mẫu tuần, ca, giới tính, vai trò theo quyền người tải, loại lịch),
+    sheet "Hướng dẫn".
+  - `POST /api/employees/import?mode=preview|commit` (thân = file .xlsx ≤ 2 MB, ≤ 1000 dòng): đọc theo **tên cột** (có tên thay thế thường gặp),
+    so danh mục không phân biệt hoa/thường, chuẩn hóa dấu; SĐT bỏ khoảng trắng/dấu, +84 → 0, thêm số 0 bị Excel làm mất; CCCD 11 số → thêm 0.
+  - Mỗi dòng: TẠO MỚI / CẬP NHẬT (chỉ ô có điền và khác giá trị hiện tại) / KHÔNG ĐỔI / LỖI (thiếu mã/tên, sai định dạng, trùng trong file hoặc
+    với DB, danh mục không tồn tại, vượt quyền). Vai trò chỉ áp cho người mới. **Chỉ Mã NV + Họ tên bắt buộc**.
+  - Ô trống của người mới dùng **mặc định chọn trên màn hình nhập** (phòng — "Chưa phân phòng" tự tạo khi cần; ca; mẫu tuần hoặc không).
+  - Nhập thật: kiểm lại từ đầu, **còn lỗi thì không nhập dòng nào**; băm mật khẩu tạm trước, rồi một giao dịch; đổi phòng/ca/mẫu tuần/loại lịch
+    có hiệu lực từ hôm nay (như sửa tay, đổi phòng xóa lịch tương lai kèm nhật ký); một tin nhóm minh bạch tổng hợp; trả file kết quả có mật
+    khẩu tạm của người mới (một lần).

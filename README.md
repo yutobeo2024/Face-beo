@@ -331,7 +331,13 @@ Chạy `npm audit` trước mỗi lần phát hành. Mục tiêu là **0 lỗ h�
   Đăng nhập sai trả một thông báo chung, bộ đếm sai tăng nguyên tử, ≥ 5 lần khóa 15 phút. Không có mật khẩu mặc định cho tài khoản mới.
 - Liveness L2 (`LIVENESS_SERVER=true`) lỗi thì **từ chối** quét (503) thay vì hạ xuống điểm L1 của kiosk; kiosk giữ hàng đợi và gửi lại.
   Chi tiết rà soát: `docs/SECURITY-AUDIT-79baa01.md`.
-- Việc cần làm ngoài code: lập hồ sơ đánh giá tác động xử lý dữ liệu cá nhân theo Luật 91/2025/QH15 và Nghị định 356/2025/NĐ-CP.
+- Thông tin cá nhân nhân viên (v1.8.0): SĐT, CCCD, ngày sinh, giới tính, địa chỉ — API chỉ trả cho **vai trò** Nhân sự, Quản trị (kể cả khi
+  Quản lý được cấp quyền quản lý nhân viên, họ vẫn không thấy/không sửa được) và chính chủ (`maskPersonal` trong `src/lib/employees.ts`); trưởng phòng không thấy, không tìm được theo SĐT/CCCD. Không đưa vào tin
+  Zalo; nhật ký chỉ ghi "(đã đặt)/(xóa)" (`redactPersonal`). CCCD và SĐT là duy nhất; SĐT không bắt buộc.
+- Nhập nhân viên từ Excel (v1.8.0): `/api/employees/import` (≤ 2 MB, ≤ 1000 dòng, xem trước rồi nhập — tất cả hoặc không), file kết quả có
+  mật khẩu tạm chỉ trả về một lần, không lưu lại.
+- Việc cần làm ngoài code: lập hồ sơ đánh giá tác động xử lý dữ liệu cá nhân theo Luật 91/2025/QH15 và Nghị định 356/2025/NĐ-CP (nay gồm cả
+  CCCD, ngày sinh, địa chỉ nhân viên).
 
 ## Quyết định còn mở
 
