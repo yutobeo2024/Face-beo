@@ -16,6 +16,21 @@ Ghi lại những điểm đã phát hiện trong quá trình làm và test, c�
 - **Trạng thái:** chờ quyết định. Giai đoạn 1 (v1.4) chỉ gửi tin vào nhóm minh bạch; tin cá nhân vẫn ở chế độ hiện có (gửi tin tư vấn nếu nhân viên
   đã liên kết, không thì ghi `SKIPPED_NO_ZALO`).
 
+### D5. Tự tra cứu GPHN trên medinet (đợt 2 của hồ sơ hành nghề)
+
+- **Ghi nhận:** 21/09/2026 (v1.9.0). Chủ dự án muốn hệ thống tự phát hiện GPHN không hợp lệ, đăng ký hành nghề nơi khác, tình trạng "không còn
+  hoạt động" rồi báo nhóm Zalo minh bạch.
+- **Hiện trạng:** tracuu.medinet.org.vn tải kết quả bằng JavaScript, không có API công khai, có thể có captcha / chặn tự động. Đợt 1 làm tay: nút
+  "Tra cứu medinet" + "Đã đối chiếu hôm nay", nhắc khi quá 12 tháng chưa đối chiếu.
+- **Cần làm:** thử kỹ thuật (gọi endpoint JSON của trang hoặc trình duyệt không giao diện), tần suất nhẹ (vd. mỗi người 1 lần / tháng), so khớp theo
+  quy tắc (số GPHN, họ tên, tình trạng, nơi đăng ký) — không cần AI; nếu bị chặn thì giữ cách làm tay.
+- **Trạng thái:** chưa làm.
+
+## Đã chốt v1.9.0 (21/09/2026)
+
+- **Hồ sơ hành nghề** (GPHN, văn bằng / chứng chỉ / CME kèm file scan) do Nhân sự nhập; có số GPHN thì bắt buộc đủ trường. Chu kỳ CME 5 năm tính
+  từ ngày cấp / gia hạn GPHN (sửa được). Cảnh báo gửi **nhóm Zalo minh bạch**, mỗi vấn đề tối đa 1 lần / tháng. Làm 2 đợt (D5). Xem PRD v2.1 mục 21.
+
 ## Đã chốt (19/09/2026, xem `PRD-v2.1-HR.md`)
 
 - **Vai trò Nhân sự (HR):**

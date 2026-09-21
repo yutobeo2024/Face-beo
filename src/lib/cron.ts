@@ -12,6 +12,7 @@ const SCHEDULE: Record<JobName, string> = {
   "roster-reminder": "0 15 * * 5", // thứ Sáu 15:00
   "roster-report": "0 7 * * 1", // thứ Hai 07:00
   "request-overdue": "*/30 * * * *",
+  "credential-check": "30 7 * * *", // 07:30 hằng ngày, mỗi vấn đề báo tối đa 1 lần / tháng
 };
 
 const g = globalThis as unknown as { __cronStarted?: boolean; __jobRunning?: Set<string> };

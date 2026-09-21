@@ -9,6 +9,11 @@ export const settingsSchema = z.object({
   absentAfterMinutes: z.coerce.number().int().min(5).max(240),
   snapshotRetentionDays: z.coerce.number().int().min(1).max(3650),
   otRoundMinutes: z.coerce.number().int().min(1).max(60),
+  // v1.9.0 — CME (TT 32/2023) và cảnh báo hồ sơ hành nghề.
+  cmeTwoYearHours: z.coerce.number().min(0).max(1000),
+  cmeCycleHours: z.coerce.number().min(0).max(5000),
+  cmeCycleYears: z.coerce.number().int().min(1).max(10),
+  credentialWarnDays: z.coerce.number().int().min(7).max(730),
 });
 export type AppSettings = z.infer<typeof settingsSchema>;
 
@@ -20,6 +25,10 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   absentAfterMinutes: 30,
   snapshotRetentionDays: 90,
   otRoundMinutes: 15,
+  cmeTwoYearHours: 48,
+  cmeCycleHours: 120,
+  cmeCycleYears: 5,
+  credentialWarnDays: 90,
 };
 
 export async function getSettings(): Promise<AppSettings> {
@@ -31,7 +40,8 @@ export async function getSettings(): Promise<AppSettings> {
 }
 
 /** Cấu hình dạng chuỗi (không thuộc bộ ngưỡng số). */
-export const STRING_SETTINGS = ["zaloGroupId"] as const;
+// credentialAlertSent: {"<id nhân viên>:<loại vấn đề>": "YYYY-MM"} — vấn đề hồ sơ hành nghề đã báo nhóm trong tháng (job credential-check).
+export const STRING_SETTINGS = ["zaloGroupId", "credentialAlertSent"] as const;
 export type StringSettingKey = (typeof STRING_SETTINGS)[number];
 
 export async function getStringSetting(key: StringSettingKey): Promise<string> {

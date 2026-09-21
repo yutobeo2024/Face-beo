@@ -344,3 +344,36 @@ công được tính trực tiếp từ planner. Quản lý được cấp `org.
   - Nhập thật: kiểm lại từ đầu, **còn lỗi thì không nhập dòng nào**; băm mật khẩu tạm trước, rồi một giao dịch; đổi phòng/ca/mẫu tuần/loại lịch
     có hiệu lực từ hôm nay (như sửa tay, đổi phòng xóa lịch tương lai kèm nhật ký); một tin nhóm minh bạch tổng hợp; trả file kết quả có mật
     khẩu tạm của người mới (một lần).
+
+## 21. Hồ sơ hành nghề: GPHN, văn bằng / chứng chỉ / CME, cảnh báo (v1.9.0, 21/09/2026)
+
+- **Mục tiêu**: quản lý điều kiện hành nghề của bác sĩ, y sĩ, điều dưỡng, hộ sinh, KTV, dược sĩ; cảnh báo sớm GPHN không còn hiệu lực và thiếu
+  tiết CME. Làm **2 đợt**: đợt 1 (v1.9.0) nhập tay + tự tính + cảnh báo; đợt 2 thử tự tra cứu medinet (việc mở trong `OPEN-DECISIONS.md`).
+- **Dữ liệu**:
+  - `PracticeLicense` (một bản / nhân viên): số GPHN, ngày cấp, nơi cấp, đối tượng cấp, phạm vi chuyên môn, tình trạng (Hoạt động / Đình chỉ /
+    Thu hồi – không còn hoạt động / Chưa rõ), hạn (trống = CCHN cũ không thời hạn), ngày gia hạn, mốc chu kỳ CME, nơi đăng ký hành nghề, lần đối chiếu.
+    **Có số GPHN thì bắt buộc đủ** ngày cấp, nơi cấp, đối tượng, phạm vi, tình trạng.
+  - `Credential` (nhiều): loại (Văn bằng, Chứng chỉ chuyên môn / định hướng, CME, Chức danh nghề nghiệp, An toàn bức xạ, Ngoại ngữ – tin học,
+    Sư phạm y học, Khác), tên, nơi cấp, số hiệu, ngày cấp, hạn dùng, số tiết (bắt buộc với CME, kèm ngày cấp), file scan tùy chọn.
+  - `JobTitle.requiresLicense`: chức danh bắt buộc GPHN (Cấu hình → Chức danh, ô "GPHN"); seed nền bật cho Bác sĩ, Điều dưỡng, Kỹ thuật viên.
+- **CME (TT 32/2023/TT-BYT, ngưỡng cấu hình được ở Cấu hình → Ngưỡng)**: ≥ `cmeTwoYearHours` (48) tiết trong 24 tháng gần nhất (theo ngày cấp
+  chứng chỉ CME); ≥ `cmeCycleHours` (120) tiết trong chu kỳ `cmeCycleYears` (5) năm tính từ **mốc chu kỳ** = ngày gia hạn, không có thì ngày cấp
+  GPHN (HR sửa được); tiết chu kỳ trước **không cộng sang**. Ví dụ mốc 01/03/2020, hôm nay 21/09/2026 → chu kỳ 01/03/2025–01/03/2030; chứng chỉ
+  100 tiết cấp 06/2024 không tính cho chu kỳ này.
+- **Cảnh báo** (`licenseIssues`): thiếu GPHN (chức danh bắt buộc); GPHN không ở tình trạng Hoạt động; GPHN hết hạn / còn ≤ `credentialWarnDays`
+  (90) ngày; CME 2 năm dưới ngưỡng; chu kỳ còn ≤ 2 × 90 ngày mà chưa đủ tiết; chưa đối chiếu medinet 12 tháng; chứng chỉ có hạn sắp / đã hết hạn.
+  Hiện ở hồ sơ, huy hiệu ⚠ trên thẻ nhân viên, dải "Cảnh báo hành nghề" ở Tổng quan (Nhân sự / Quản trị).
+- **Zalo — nhóm minh bạch (MINH_BACH)**: job `credential-check` 07:30 hằng ngày gom các vấn đề **chưa báo trong tháng** thành **một tin tổng
+  hợp** (≤ 15 dòng / tin), mỗi vấn đề nhắc tối đa 1 lần / tháng (AppSetting `credentialAlertSent` = {"id:loại": "YYYY-MM"}); "chưa đối chiếu
+  medinet" chỉ hiện trên dashboard. Lưu GPHN có tình trạng khác Hoạt động → báo ngay (một lần khi tình trạng đổi). Nội dung: mã, tên, phòng,
+  vấn đề — không file, không CCCD. Người được cấp GPHN chưa đủ 2 năm chưa bị xét mốc 48 tiết / 2 năm.
+- **Quyền**: xem — vai trò Nhân sự / Quản trị và chính chủ (`/me` chỉ đọc, xem được file của mình); sửa — Nhân sự / Quản trị theo luật chống leo
+  thang (Nhân sự không sửa hồ sơ Nhân sự / Quản trị khác) và **không tự cập nhật hồ sơ của chính mình** (trừ Quản trị). Quản lý không xem được kể
+  cả có quyền `employees.manage`. Đổi số GPHN thì xóa lần đối chiếu cũ.
+- **File**: `data/credentials/<id nhân viên>/<uuid>.<pdf|jpg|png>` (ngoài `public`), ≤ 10 MB, kiểm chữ ký file; tải lên bằng thân file thô;
+  xem qua API có kiểm quyền. Xóa chứng chỉ xóa file; xóa tài khoản tạo nhầm xóa cả thư mục. **Sao lưu ngoài máy phải gồm `data/credentials/`**
+  (job `db-backup` chỉ sao lưu DB).
+- **Đối chiếu medinet (đợt 1, tay)**: nút "Tra cứu medinet" mở https://tracuu.medinet.org.vn/; HR đối chiếu rồi bấm "Đã đối chiếu hôm nay"
+  (ghi `verifiedAt`, `verifiedById`); thấy đăng ký hành nghề nơi khác thì ghi vào "Nơi đăng ký hành nghề" và đổi tình trạng nếu cần.
+- **API**: `GET/PUT/DELETE /api/employees/[id]/license`, `POST …/license/verify`, `POST /api/employees/[id]/credentials`,
+  `PATCH/DELETE …/credentials/[cid]`, `GET/POST …/credentials/[cid]/file`, `GET /api/credentials/alerts`. Nhật ký `CREDENTIAL_UPDATE`.

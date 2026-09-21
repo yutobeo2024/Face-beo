@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
+import { deleteCredentialDir } from "@/lib/credential-files";
 import { randomTempPassword } from "@/lib/temp-password";
 import { todayVN } from "@/lib/attendance";
 import { applyScheduleChangeFromToday, ensureBaseline } from "@/lib/schedule-assignments";
@@ -205,6 +206,7 @@ export const DELETE = handle<{ id: string }>(async (req, ctx) => {
     throw err;
   }
   invalidateFaceCache();
+  await deleteCredentialDir(id).catch(() => {}); // file scan văn bằng / chứng chỉ (dòng DB xóa theo cascade)
   await audit({ actorId: u.id, action: "EMPLOYEE_DELETE", entity: "Employee", entityId: id, detail: { code: e.code, name: e.name, role: e.role, departmentId: e.departmentId } });
   await announce(u, `đã xóa tài khoản tạo nhầm ${e.code} — ${e.name}`, { key: `emp-delete:${id}`, detail: "Tài khoản chưa có chấm công / đơn từ / lịch" });
   return json({ ok: true });

@@ -107,7 +107,7 @@ footer{color:var(--muted);font-size:.85rem;text-align:center;padding:10px}
 <div class="layout">
 <nav class="toc" id="toc">
   <div class="brand">📘 Cẩm nang Face Beo</div>
-  <div class="sub">Hướng dẫn sử dụng · bản v1.4</div>
+  <div class="sub">Hướng dẫn sử dụng · bản v1.9</div>
   <button class="menu-mobile" onclick="document.getElementById('toc').classList.toggle('open')">☰ Mục lục</button>
   <ol>
     <li class="grp">Bắt đầu</li>
@@ -118,6 +118,7 @@ footer{color:var(--muted);font-size:.85rem;text-align:center;padding:10px}
     <li><a href="#cau-hinh-ca">4. Cấu hình ca &amp; hệ số công</a></li>
     <li><a href="#mau-tuan">5. Mẫu tuần, phòng ban, ngày lễ</a></li>
     <li><a href="#nhan-vien">6. Nhân viên &amp; khuôn mặt</a></li>
+    <li><a href="#ho-so-hanh-nghe">6.5 Hồ sơ hành nghề &amp; CME</a></li>
     <li><a href="#kiosk">7. Máy chấm công (kiosk)</a></li>
     <li class="grp">Vận hành hằng ngày</li>
     <li><a href="#xep-ca">8. Xếp ca &amp; đăng ký tuần</a></li>
@@ -476,6 +477,28 @@ flowchart TD
     <p>Dòng 7 · NV107 · <b>Lỗi</b>: SĐT đã được dùng (NV005)<br/>Dòng 12 · NV112 · <b>Lỗi</b>: phòng ban "Ke toan" không có trong danh mục<br/>Dòng 15 · NV015 · <b>Cập nhật</b>: CCCD, ngày sinh · ⚠ SĐT "901234567" — hiểu là 0901234567</p>
   </div>
   <div class="callout"><b>Dùng file để bổ sung dần</b><p>Lần 1 nhập Mã + Họ tên + Phòng cho cả công ty; lần sau dùng lại file, điền thêm CCCD, ngày sinh… rồi nhập lại — người đã có chỉ được cập nhật các ô có điền. Đổi phòng / ca / mẫu tuần qua file có hiệu lực từ hôm nay như sửa tay. Nên nhập ngoài giờ cao điểm chấm công nếu file vài trăm dòng.</p></div>
+  <h3 id="ho-so-hanh-nghe">6.5 Hồ sơ hành nghề: GPHN, văn bằng, chứng chỉ, CME</h3>
+  <p class="lead"><span class="pill h">Nhân sự</span> <span class="pill a">Quản trị</span> Trang <b>Nhân viên</b> → nút <b>Hành nghề</b> trên thẻ nhân viên. Dành cho bác sĩ, y sĩ, điều dưỡng, hộ sinh, KTV, dược sĩ.</p>
+  <ol class="steps">
+    <li><b>Chọn chức danh bắt buộc GPHN</b> (một lần): Cấu hình → Chức danh &amp; chuyên khoa → tích ô <b>GPHN</b> cạnh chức danh (mặc định đã tích Bác sĩ, Điều dưỡng, Kỹ thuật viên). Người có chức danh này mà chưa nhập GPHN sẽ bị cảnh báo.</li>
+    <li><b>Nhập GPHN</b>: bấm <b>Nhập GPHN</b>. Đã có số GPHN thì <b>bắt buộc đủ</b>: ngày cấp, nơi cấp, đối tượng cấp, phạm vi chuyên môn, tình trạng. Hạn dùng để trống nếu là CCHN cũ không thời hạn. <b>Mốc chu kỳ CME</b> để trống = ngày gia hạn gần nhất, không có thì ngày cấp.</li>
+    <li><b>Đối chiếu</b>: bấm <b>Tra cứu medinet</b> (mở tracuu.medinet.org.vn), tìm theo số GPHN / họ tên, so tình trạng và nơi đăng ký hành nghề. Khớp thì bấm <b>Đã đối chiếu hôm nay</b>. Thấy đăng ký hành nghề nơi khác thì ghi vào ô "Nơi đăng ký hành nghề"; thấy bị đình chỉ / thu hồi thì đổi <b>Tình trạng</b> — nhóm Zalo minh bạch nhận tin ngay.</li>
+    <li><b>Thêm văn bằng / chứng chỉ</b>: bấm <b>Thêm</b>, chọn loại (Văn bằng, Chứng chỉ chuyên môn / định hướng, CME, Chức danh nghề nghiệp, An toàn bức xạ, Ngoại ngữ – tin học, Sư phạm y học, Khác), nhập tên, nơi cấp, số hiệu, ngày cấp, hạn dùng; đính kèm <b>file scan PDF / JPG / PNG ≤ 10 MB</b>. Với <b>CME</b> bắt buộc ngày cấp và số tiết.</li>
+  </ol>
+  <div class="tw"><table>
+    <tr><th>Quy định CME (TT 32/2023)</th><th>Cách hệ thống tính</th></tr>
+    <tr><td>≥ <b>48 tiết</b> trong 2 năm liên tiếp</td><td>Cộng số tiết các chứng chỉ CME có <b>ngày cấp</b> trong 24 tháng gần nhất</td></tr>
+    <tr><td>≥ <b>120 tiết</b> mỗi chu kỳ <b>5 năm</b> để gia hạn GPHN</td><td>Chu kỳ tính từ mốc chu kỳ (ngày gia hạn / ngày cấp), nối tiếp 5 năm một; <b>tiết chu kỳ trước không cộng sang</b></td></tr>
+  </table></div>
+  <div class="ex"><div class="t">Ví dụ</div>
+    <p>BS. An có GPHN cấp 01/03/2020. Hôm nay 21/09/2026 → chu kỳ hiện tại <b>01/03/2025 – 01/03/2030</b>. Chứng chỉ 100 tiết cấp 06/2024 thuộc chu kỳ trước nên <b>không tính</b>; chứng chỉ 16 tiết (03/2025) + 24 tiết (05/2026) → chu kỳ này <b>40/120 tiết</b>. 24 tháng gần nhất (từ 21/09/2024): 16 + 24 = <b>40/48 tiết</b> → cảnh báo "CME 2 năm gần nhất: 40/48 tiết".</p>
+  </div>
+  <div class="grid">
+    <div class="card"><h4>⚠ Cảnh báo khi nào</h4><ul><li>Chức danh bắt buộc mà chưa có GPHN</li><li>(Người được cấp GPHN chưa đủ 2 năm chưa bị xét mốc 48 tiết)</li><li>GPHN tình trạng khác "Hoạt động"</li><li>GPHN / chứng chỉ đã hết hạn hoặc còn ≤ 90 ngày</li><li>CME 2 năm dưới 48 tiết</li><li>Chu kỳ còn ≤ 180 ngày mà chưa đủ 120 tiết</li><li>Quá 12 tháng chưa đối chiếu medinet</li></ul></div>
+    <div class="card"><h4>📣 Thấy cảnh báo ở đâu</h4><ul><li>Huy hiệu <b>⚠ Hồ sơ hành nghề</b> trên thẻ nhân viên</li><li>Dải <b>Cảnh báo hành nghề</b> ở Tổng quan (bấm để xem từng người)</li><li><b>Nhóm Zalo minh bạch</b> lúc 07:30 — <b>một tin tổng hợp</b> các vấn đề mới, mỗi vấn đề nhắc tối đa <b>1 lần / tháng</b> ("chưa đối chiếu medinet" chỉ hiện trên web)</li></ul></div>
+  </div>
+  <div class="callout"><b>Ai xem được?</b><p>Chỉ Nhân sự, Quản trị và chính chủ (nhân viên xem hồ sơ của mình, mở được file của mình ở Trang cá nhân, không sửa được). Trưởng phòng không xem được. Nhân sự không tự cập nhật hồ sơ hành nghề của chính mình — nhờ Nhân sự khác hoặc Quản trị. Tin Zalo không kèm file hay CCCD. Các ngưỡng 48 / 120 / 5 năm / 90 ngày sửa ở Cấu hình → Ngưỡng.</p></div>
+  <div class="callout warn"><b>Sao lưu file scan</b><p>File scan lưu ở thư mục <code>data/credentials/</code> trên máy chủ. Bản sao lưu tự động hằng đêm chỉ gồm cơ sở dữ liệu — khi chép sao lưu ra ngoài máy, nhớ chép cả thư mục này.</p></div>
 </section>
 
 <!-- 7 -->
@@ -865,7 +888,7 @@ stateDiagram-v2
 
   <h3>15.1 Nhóm minh bạch nhận tin gì</h3>
   <div class="grid">
-    <div class="card"><h4>✅ Có gửi</h4><ul><li>Duyệt đơn, chấm tay của HR/Quản trị</li><li>Thêm/sửa nhân viên, khuôn mặt, mật khẩu</li><li>Đăng ký/sửa ca tuần, hệ số công, mẫu tuần, gán quản lý/xóa phòng</li><li>Phân quyền, chốt/mở khóa công</li><li>Phòng chưa đăng ký ca, đơn quá 48 giờ</li></ul></div>
+    <div class="card"><h4>✅ Có gửi</h4><ul><li>Duyệt đơn, chấm tay của HR/Quản trị</li><li>Thêm/sửa nhân viên, khuôn mặt, mật khẩu</li><li>Đăng ký/sửa ca tuần, hệ số công, mẫu tuần, gán quản lý/xóa phòng</li><li>Phân quyền, chốt/mở khóa công</li><li>Phòng chưa đăng ký ca, đơn quá 48 giờ</li><li>Cảnh báo hồ sơ hành nghề: GPHN không hoạt động / hết hạn, thiếu tiết CME, chứng chỉ hết hạn (mục 6.5)</li></ul></div>
     <div class="card"><h4>❌ Không gửi</h4><ul><li>Từng lần quét chấm công</li><li>Việc cá nhân như HR tự gửi / hủy đơn của mình</li></ul></div>
   </div>
 
@@ -892,6 +915,7 @@ stateDiagram-v2
     <div class="card"><h4>🕘 Chấm công</h4><p>Lịch sử từng ngày: ca, giờ vào/ra, trễ/sớm, trạng thái. Thấy sai thì gửi đơn ngay.</p></div>
     <div class="card"><h4>📝 Đơn từ</h4><p>Chọn loại đơn → ngày → giờ → lý do (≥ 10 ký tự) → gửi. Theo dõi trạng thái: Chờ duyệt / Đã duyệt / Từ chối / Đã hủy.</p></div>
     <div class="card"><h4>🔗 Thông tin</h4><p>Lưới ô liên kết tới công cụ, bảng tính, tài liệu dùng chung (web app, Google Sheet, Drive, Docs…). Bấm ô để mở tab mới. Chỉ thấy các liên kết dành cho vai trò/phòng của mình; thiếu link thì báo HR (mục 5.5). Trên điện thoại: bấm <b>Thêm</b> ở thanh dưới.</p></div>
+    <div class="card"><h4>🩺 Hồ sơ hành nghề</h4><p>Người có GPHN / chứng chỉ thấy khối này ở trang chủ: GPHN, tiến độ CME (vd. 40/48 tiết), danh sách văn bằng, chứng chỉ và file scan của mình. Có chứng chỉ CME mới thì gửi bản scan cho Nhân sự cập nhật.</p></div>
     <div class="card"><h4>🔒 Đổi mật khẩu</h4><p>Nhập mật khẩu hiện tại và mật khẩu mới (≥ 8 ký tự, có chữ và số). Đổi xong, thiết bị khác đang đăng nhập sẽ bị thoát. Quên mật khẩu thì nhờ HR đặt lại.</p></div>
   </div>
   <div class="ex"><div class="t">Tình huống: hôm qua quên chấm ra</div>
@@ -933,7 +957,7 @@ stateDiagram-v2
   <details><summary>Đăng xuất trên điện thoại thì máy tính cũng bị thoát?</summary><p>Đúng, có chủ đích: đăng xuất ở bất kỳ đâu sẽ thoát tài khoản trên mọi thiết bị (kể cả phiên lỡ để lại ở máy dùng chung). Đăng nhập lại là được. Đổi mật khẩu cũng vậy.</p></details>
 </section>
 
-<footer>Face Beo · Cẩm nang sử dụng · cập nhật 21/09/2026 (phiên bản ứng dụng v1.8.0)</footer>
+<footer>Face Beo · Cẩm nang sử dụng · cập nhật 21/09/2026 (phiên bản ứng dụng v1.9.0)</footer>
 </main>
 </div>
 

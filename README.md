@@ -278,6 +278,7 @@ curl -X POST -H "x-cron-secret: $CRON_SECRET" https://<máy-chủ>/api/cron/abse
 | `zalo-token-refresh` | 6 giờ | Refresh token chủ động |
 | `snapshot-cleanup` | 02:00 | Xóa snapshot quá hạn, mã ghép/mã liên kết hết hạn, template của người đã nghỉ việc |
 | `db-backup` | 03:00 | `VACUUM INTO data/backups/`, giữ 14 bản |
+| `credential-check` | 07:30 | Hồ sơ hành nghề: thiếu / hết hạn GPHN, thiếu tiết CME, chứng chỉ sắp hết hạn → nhóm Zalo minh bạch, mỗi vấn đề tối đa 1 lần / tháng |
 
 Mọi job đều idempotent: chạy lại không sinh tin trùng, nhờ ràng buộc unique `NotificationLog.dedupeKey`.
 
@@ -317,7 +318,7 @@ Chạy `npm audit` trước mỗi lần phát hành. Mục tiêu là **0 lỗ h�
 - Chạy `npx prisma migrate deploy` mỗi lần cập nhật. SQLite được bật `journal_mode=WAL` và `busy_timeout=5000` khi khởi động.
 - Cookie session dùng cờ `secure` trong production. Nếu thử nghiệm trong LAN qua HTTP, đặt `INSECURE_COOKIES=true` (không dùng khi chạy thật).
 - Mô hình Human được phục vụ từ `public/models` (do `npm install` chép vào). Nếu chép lại mô hình sau khi build, phải khởi động lại `next start`.
-- Nên đồng bộ `data/backups/` ra một nơi lưu trữ ngoài máy chủ.
+- Nên đồng bộ `data/backups/` **và `data/credentials/`** (file scan văn bằng / chứng chỉ, v1.9.0 — job `db-backup` chỉ sao lưu DB) ra một nơi lưu trữ ngoài máy chủ.
 - Khi vượt khoảng 500 nhân viên hoặc cần nhiều máy chủ: đổi `provider` sang `postgresql`.
 
 ## Bảo mật và dữ liệu cá nhân
@@ -336,12 +337,14 @@ Chạy `npm audit` trước mỗi lần phát hành. Mục tiêu là **0 lỗ h�
   Zalo; nhật ký chỉ ghi "(đã đặt)/(xóa)" (`redactPersonal`). CCCD và SĐT là duy nhất; SĐT không bắt buộc.
 - Nhập nhân viên từ Excel (v1.8.0): `/api/employees/import` (≤ 2 MB, ≤ 1000 dòng, xem trước rồi nhập — tất cả hoặc không), file kết quả có
   mật khẩu tạm chỉ trả về một lần, không lưu lại.
+- Hồ sơ hành nghề (v1.9.0): GPHN, văn bằng, chứng chỉ, CME và file scan chỉ Nhân sự, Quản trị và chính chủ xem; file lưu ngoài `public`
+  (`data/credentials/`), kiểm chữ ký PDF/JPG/PNG, ≤ 10 MB, tải qua API có kiểm quyền. Tin Zalo cảnh báo không kèm file hay CCCD.
 - Việc cần làm ngoài code: lập hồ sơ đánh giá tác động xử lý dữ liệu cá nhân theo Luật 91/2025/QH15 và Nghị định 356/2025/NĐ-CP (nay gồm cả
   CCCD, ngày sinh, địa chỉ nhân viên).
 
 ## Quyết định còn mở
 
-Xem [`docs/OPEN-DECISIONS.md`](docs/OPEN-DECISIONS.md). Hiện có D1: cách trừ giờ nghỉ khi tính giờ công.
+Xem [`docs/OPEN-DECISIONS.md`](docs/OPEN-DECISIONS.md). Hiện có D4 (tin Zalo cá nhân) và D5 (tự tra cứu GPHN trên medinet).
 
 ## Nghiệm thu thủ công trên thiết bị thật (PRD mục 10)
 

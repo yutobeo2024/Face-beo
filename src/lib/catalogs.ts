@@ -19,17 +19,19 @@ const FK: Record<CatalogKind, "jobTitleId" | "specialtyId"> = { jobTitle: "jobTi
 const itemSchema = z.object({
   name: z.string().trim().min(2, "tối thiểu 2 ký tự").max(80, "tối đa 80 ký tự").transform((s) => s.normalize("NFC")),
   sortOrder: z.number().int().min(0).max(9999).optional(),
+  // Chỉ Chức danh: bắt buộc Giấy phép hành nghề (v1.9.0) — thiếu GPHN thì cảnh báo. Chuyên khoa bỏ qua trường này.
+  requiresLicense: z.boolean().optional(),
 });
 // PATCH: không .default() — trường không gửi thì giữ nguyên.
 const patchSchema = itemSchema.partial();
 
-type Row = { id: number; name: string; sortOrder: number };
+type Row = { id: number; name: string; sortOrder: number; requiresLicense?: boolean };
 // Hai model cùng hình dạng: gom lại một kiểu tối thiểu để dùng chung.
 type Delegate = {
   findMany(args: object): Promise<(Row & { _count: { employees: number } })[]>;
   findUnique(args: { where: { id: number } | { name: string } }): Promise<Row | null>;
-  create(args: { data: { name: string; sortOrder?: number } }): Promise<Row>;
-  update(args: { where: { id: number }; data: { name?: string; sortOrder?: number } }): Promise<Row>;
+  create(args: { data: { name: string; sortOrder?: number; requiresLicense?: boolean } }): Promise<Row>;
+  update(args: { where: { id: number }; data: { name?: string; sortOrder?: number; requiresLicense?: boolean } }): Promise<Row>;
   delete(args: { where: { id: number } }): Promise<Row>;
 };
 /** Hai thao tác cùng lúc (trùng tên, sửa/xóa mục vừa bị xóa) → lỗi rõ ràng thay vì 500. */
@@ -44,6 +46,14 @@ async function nameTaken(kind: CatalogKind, name: string, exceptId?: number) {
   const key = name.normalize("NFC").toLocaleLowerCase("vi");
   const rows = await delegate(kind).findMany({ select: { id: true, name: true } });
   return rows.some((r) => r.id !== exceptId && r.name.normalize("NFC").toLocaleLowerCase("vi") === key);
+}
+
+/** Bỏ trường chỉ dành cho Chức danh khi thao tác Chuyên khoa. */
+function only<T extends { requiresLicense?: boolean }>(kind: CatalogKind, body: T): T {
+  if (kind === "jobTitle") return body;
+  const rest = { ...body };
+  delete rest.requiresLicense;
+  return rest;
 }
 
 const delegate = (kind: CatalogKind) => (kind === "jobTitle" ? prisma.jobTitle : prisma.specialty) as unknown as Delegate;
@@ -70,7 +80,7 @@ export function catalogRoutes(kind: CatalogKind) {
     }),
     create: handle(async (req) => {
       const u = await requirePerm(req, "org.manage");
-      const body = await parseJson(req, itemSchema);
+      const body = only(kind, await parseJson(req, itemSchema));
       if (await nameTaken(kind, body.name)) throw badRequest(`${label} "${body.name}" đã tồn tại`);
       const item = await db().create({ data: body }).catch((e) => mapPrismaError(e, label));
       await audit({ actorId: u.id, action: "SETTINGS_UPDATE", entity: kind === "jobTitle" ? "JobTitle" : "Specialty", entityId: item.id, detail: { created: item.name } });
@@ -79,7 +89,7 @@ export function catalogRoutes(kind: CatalogKind) {
     update: handle<{ id: string }>(async (req, ctx) => {
       const u = await requirePerm(req, "org.manage");
       const id = await idParam(ctx);
-      const body = await parseJson(req, patchSchema);
+      const body = only(kind, await parseJson(req, patchSchema));
       const before = await db().findUnique({ where: { id } });
       if (!before) throw notFound();
       if (body.name && (await nameTaken(kind, body.name, id))) throw badRequest(`${label} "${body.name}" đã tồn tại`);

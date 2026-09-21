@@ -55,6 +55,8 @@ export function patternShiftIds(weekdayId: number, saturdayId: number | null) {
 
 /** Danh mục chức danh / chuyên khoa mặc định cho phòng khám đa khoa (v1.7.0) — Quản trị sửa được trong Cấu hình. */
 export const BASE_JOB_TITLES = ["Bác sĩ", "Điều dưỡng", "Kỹ thuật viên", "Tiếp nhận", "Thu ngân", "Tạp vụ", "Bảo vệ", "IT", "Kế toán", "Kinh doanh", "Nhân sự", "Hành chính"];
+/** Chức danh bắt buộc Giấy phép hành nghề (v1.9.0) — thêm/bớt trong Cấu hình → Chức danh. */
+export const LICENSED_JOB_TITLES = new Set(["Bác sĩ", "Điều dưỡng", "Kỹ thuật viên"]);
 export const BASE_SPECIALTIES = [
   "Nội",
   "Tai Mũi Họng",
@@ -117,7 +119,7 @@ export async function seedBase(db: Db) {
   }
 
   if ((result.jobTitles.existing = await db.jobTitle.count()) === 0) {
-    for (const [i, name] of BASE_JOB_TITLES.entries()) await db.jobTitle.create({ data: { name, sortOrder: i } });
+    for (const [i, name] of BASE_JOB_TITLES.entries()) await db.jobTitle.create({ data: { name, sortOrder: i, requiresLicense: LICENSED_JOB_TITLES.has(name) } });
     result.jobTitles.created = BASE_JOB_TITLES.length;
   }
   if ((result.specialties.existing = await db.specialty.count()) === 0) {

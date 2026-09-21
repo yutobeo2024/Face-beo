@@ -98,6 +98,10 @@ export default function EmployeesPage() {
   const patterns = useApi<{ patterns: Pattern[] }>("/api/work-patterns");
   const jobTitles = useApi<{ items: CatalogItem[] }>("/api/job-titles");
   const specialties = useApi<{ items: CatalogItem[] }>("/api/specialties");
+  // Hồ sơ hành nghề (GPHN, chứng chỉ, CME): chỉ Nhân sự / Quản trị — huy hiệu ⚠ cho người có cảnh báo.
+  const hr = me.role === "ADMIN" || me.role === "HR";
+  const credAlerts = useApi<{ items: { id: number; issues: { text: string }[] }[] }>(hr ? "/api/credentials/alerts" : null);
+  const alertOf = new Map((credAlerts.data?.items ?? []).map((a) => [a.id, a.issues]));
 
   function openCreate() {
     setForm({ code: "", name: "", phone: "", nationalId: "", dateOfBirth: "", gender: "", address: "", role: "EMPLOYEE", departmentId: String(depts.data?.departments[0]?.id ?? ""), defaultShiftId: String(shifts.data?.shifts[0]?.id ?? ""), active: true, scheduleType: "FIXED", workPatternId: String(patterns.data?.patterns.find((p) => p.monShiftId === shifts.data?.shifts[0]?.id)?.id ?? ""), jobTitleId: "", specialtyId: "" });
@@ -269,11 +273,25 @@ export default function EmployeesPage() {
                 {e.zaloLinked ? <Badge tone="brand">Zalo ✓</Badge> : <Badge tone="neutral">Chưa liên kết Zalo</Badge>}
                 {!e.active && <Badge tone="absent">Đã nghỉ việc</Badge>}
                 {e.lockedUntil && new Date(e.lockedUntil) > new Date() && <Badge tone="absent">Đang khóa đăng nhập</Badge>}
+                {alertOf.has(e.id) && (
+                  <span title={alertOf.get(e.id)!.map((i) => i.text).join(" · ")}>
+                    <Badge tone="late">⚠ Hồ sơ hành nghề</Badge>
+                  </span>
+                )}
               </div>
               <div className="mt-auto flex gap-2 pt-3">
                 {e.active && enroll && (
                   <Link href={`/admin/employees/${e.id}/enroll`} className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-xl bg-brand-50 text-sm font-semibold text-brand-800 ring-1 ring-brand-200 hover:bg-brand-100">
                     <Icon name="face" className="size-4" /> {e.faceStatus === "ENROLLED" ? "Enroll lại" : "Enroll khuôn mặt"}
+                  </Link>
+                )}
+                {hr && (
+                  <Link
+                    href={`/admin/employees/${e.id}/credentials`}
+                    title="Hồ sơ hành nghề: GPHN, văn bằng, chứng chỉ, CME"
+                    className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl px-3 text-sm font-semibold text-slate-700 ring-1 ring-slate-300 hover:bg-slate-50"
+                  >
+                    <Icon name="briefcase" className="size-4" /> Hành nghề
                   </Link>
                 )}
                 {canEdit(e) && (

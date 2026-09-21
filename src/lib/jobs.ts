@@ -1,5 +1,6 @@
 /** Các job nền (PRD mục 8). Mọi job đều idempotent. */
 import { mkdir, readdir, rm } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { DateTime } from "luxon";
 import { prisma } from "./db";
@@ -19,8 +20,9 @@ import { announceSystem } from "./announce";
 import { lockedMonths } from "./payroll-lock-state";
 import { can } from "./permissions";
 import { startOfWeek } from "./attendance";
+import { credentialAlerts } from "./credential-access";
 
-export const JOBS = ["absence-check", "missing-checkout", "zalo-token-refresh", "snapshot-cleanup", "db-backup", "roster-reminder", "roster-report", "request-overdue"] as const;
+export const JOBS = ["absence-check", "missing-checkout", "zalo-token-refresh", "snapshot-cleanup", "db-backup", "roster-reminder", "roster-report", "request-overdue", "credential-check"] as const;
 export type JobName = (typeof JOBS)[number];
 
 type DigestItem = { name: string; code: string; note?: string };
@@ -366,6 +368,52 @@ export async function requestOverdue(now = new Date()) {
   return { pending: pending.length + stage2.length, awaitingExecution: awaitingExec.length, reminded, escalated };
 }
 
+/**
+ * Hồ sơ hành nghề (v1.9.0): gom các vấn đề (thiếu GPHN, GPHN không hoạt động / hết hạn, thiếu tiết CME, chứng chỉ hết hạn) **chưa báo trong
+ * tháng này** thành MỘT tin tổng hợp gửi nhóm minh bạch (chia nhiều tin nếu dài) — mỗi vấn đề nhắc tối đa 1 lần / tháng, không mỗi người một tin.
+ * "Chưa đối chiếu medinet 12 tháng" chỉ hiện trên dashboard, không gửi Zalo. Không kèm file, không CCCD.
+ * Đã báo: AppSetting `credentialAlertSent` = {"<id>:<loại>": "YYYY-MM"} (vấn đề đã hết thì tự rơi khỏi danh sách).
+ */
+const CRED_ZALO_SKIP = new Set(["license-unverified"]);
+const CRED_LINES_PER_MSG = 15;
+
+export async function credentialCheck(now = new Date()) {
+  const month = vnDate(now).slice(0, 7);
+  const alerts = await credentialAlerts(now);
+  let sent: Record<string, string> = {};
+  try {
+    sent = JSON.parse((await prisma.appSetting.findUnique({ where: { key: "credentialAlertSent" } }))?.value || "{}");
+  } catch {
+    sent = {};
+  }
+  const next: Record<string, string> = {};
+  const lines: string[] = [];
+  for (const a of alerts) {
+    for (const i of a.issues) {
+      if (CRED_ZALO_SKIP.has(i.kind)) continue;
+      const k = `${a.id}:${i.kind}`;
+      if (sent[k] === month) {
+        next[k] = month;
+        continue;
+      }
+      lines.push(`${i.severity === "danger" ? "⛔" : "⚠️"} ${a.code} — ${a.name} (${a.department}): ${i.text}`);
+      next[k] = month;
+    }
+  }
+  for (let p = 0; p * CRED_LINES_PER_MSG < lines.length; p++) {
+    const part = lines.slice(p * CRED_LINES_PER_MSG, (p + 1) * CRED_LINES_PER_MSG);
+    const pages = Math.ceil(lines.length / CRED_LINES_PER_MSG);
+    await announceSystem(`cảnh báo hồ sơ hành nghề${pages > 1 ? ` (${p + 1}/${pages})` : ""}: ${lines.length} vấn đề mới`, {
+      // Khóa theo nội dung: chạy lại cùng ngày với vấn đề mới khác vẫn gửi, cùng nội dung thì không gửi trùng.
+      key: `cred-digest:${vnDate(now)}:${p}:${createHash("sha1").update(part.join("|")).digest("hex").slice(0, 16)}`,
+      detail: part.join("\n"),
+    });
+  }
+  const value = JSON.stringify(next);
+  await prisma.appSetting.upsert({ where: { key: "credentialAlertSent" }, create: { key: "credentialAlertSent", value }, update: { value } });
+  return { employees: alerts.length, newIssues: lines.length };
+}
+
 export async function runJob(name: JobName, now = new Date()) {
   switch (name) {
     case "request-overdue":
@@ -384,5 +432,7 @@ export async function runJob(name: JobName, now = new Date()) {
       return snapshotCleanup(now);
     case "db-backup":
       return dbBackup(now);
+    case "credential-check":
+      return credentialCheck(now);
   }
 }

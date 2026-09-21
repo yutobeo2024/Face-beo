@@ -8,7 +8,7 @@ import { useToast } from "@/components/toast";
 import { useCan } from "../admin-nav";
 import { APPROVAL_MODES, APPROVAL_MODE_LABEL } from "@/lib/roles";
 
-type Settings = { matchThreshold: number; matchMargin: number; livenessThreshold: number; livenessServerThreshold: number; absentAfterMinutes: number; snapshotRetentionDays: number; otRoundMinutes: number };
+type Settings = { matchThreshold: number; matchMargin: number; livenessThreshold: number; livenessServerThreshold: number; absentAfterMinutes: number; snapshotRetentionDays: number; otRoundMinutes: number; cmeTwoYearHours: number; cmeCycleHours: number; cmeCycleYears: number; credentialWarnDays: number };
 type Shift = {
   id: number;
   name: string;
@@ -34,6 +34,10 @@ const FIELDS: { key: keyof Settings; label: string; hint: string; step: number }
   { key: "absentAfterMinutes", label: "Tính vắng sau (phút)", hint: "Quá số phút này sau giờ vào ca mà chưa chấm => vắng.", step: 1 },
   { key: "otRoundMinutes", label: "Làm tròn OT (phút)", hint: "Phút OT làm tròn xuống theo bội số này.", step: 1 },
   { key: "snapshotRetentionDays", label: "Lưu snapshot (ngày)", hint: "Job 02:00 tự xóa ảnh quá hạn.", step: 1 },
+  { key: "cmeTwoYearHours", label: "CME tối thiểu 2 năm (tiết)", hint: "TT 32/2023: ≥ 48 tiết trong 2 năm liên tiếp.", step: 1 },
+  { key: "cmeCycleHours", label: "CME tối thiểu mỗi chu kỳ (tiết)", hint: "≥ 120 tiết / chu kỳ để gia hạn GPHN; chu kỳ trước không cộng sang.", step: 1 },
+  { key: "cmeCycleYears", label: "Độ dài chu kỳ CME (năm)", hint: "Tính từ ngày cấp / gia hạn GPHN (mặc định 5).", step: 1 },
+  { key: "credentialWarnDays", label: "Báo trước hết hạn (ngày)", hint: "Cảnh báo GPHN / chứng chỉ sắp hết hạn; chu kỳ CME thiếu tiết khi còn ≤ 2 × số ngày này.", step: 1 },
 ];
 
 export default function SettingsPage() {
@@ -653,9 +657,10 @@ function CatalogCard({
       <CardHeader title="Chức danh & chuyên khoa" />
       <p className="px-4 pt-3 text-xs text-slate-500 sm:px-5">
         Mô tả nhân viên (vd. Bác sĩ · Tai Mũi Họng, KTV · Siêu âm) để lọc danh sách và thêm cột trong Excel. Không ảnh hưởng phân quyền hay duyệt đơn — việc đó theo phòng ban.
+        Tích <b>GPHN</b> cho chức danh bắt buộc Giấy phép hành nghề (thiếu GPHN sẽ bị cảnh báo).
       </p>
       <div className="grid gap-4 p-4 sm:grid-cols-2 sm:px-5">
-        <CatalogList title="Chức danh" url="/api/job-titles" placeholder="VD: Kỹ thuật viên" busy={busy} run={run} confirm={confirm} />
+        <CatalogList title="Chức danh" url="/api/job-titles" placeholder="VD: Kỹ thuật viên" busy={busy} run={run} confirm={confirm} licenseFlag />
         <CatalogList title="Chuyên khoa / chuyên môn" url="/api/specialties" placeholder="VD: Tai Mũi Họng" busy={busy} run={run} confirm={confirm} />
       </div>
     </Card>
@@ -669,15 +674,17 @@ function CatalogList({
   busy,
   run,
   confirm,
+  licenseFlag,
 }: {
   title: string;
   url: string;
   placeholder: string;
+  licenseFlag?: boolean;
   busy: boolean;
   run: (fn: () => Promise<unknown>, ok: string, after?: () => void) => Promise<void>;
   confirm: (box: { title: string; body: string; ok: string; fn: () => Promise<unknown>; after: () => void }) => void;
 }) {
-  const list = useApi<{ items: { id: number; name: string; employeeCount: number }[] }>(url);
+  const list = useApi<{ items: { id: number; name: string; employeeCount: number; requiresLicense?: boolean }[] }>(url);
   const [name, setName] = useState("");
   const [editing, setEditing] = useState<{ id: number; name: string } | null>(null);
   return (
@@ -702,6 +709,18 @@ function CatalogList({
             ) : (
               <>
                 <span className="min-w-0 flex-1 truncate text-slate-800">{it.name}</span>
+                {licenseFlag && (
+                  <label className="inline-flex shrink-0 items-center gap-1 text-xs text-slate-600" title="Chức danh bắt buộc Giấy phép hành nghề — thiếu GPHN sẽ bị cảnh báo">
+                    <input
+                      type="checkbox"
+                      className="size-3.5 accent-brand-700"
+                      checked={!!it.requiresLicense}
+                      disabled={busy}
+                      onChange={(e) => void run(() => api(`${url}/${it.id}`, { method: "PATCH", body: { requiresLicense: e.target.checked } }), "Đã lưu", list.reload)}
+                    />
+                    GPHN
+                  </label>
+                )}
                 <span className="shrink-0 text-xs text-slate-400">{it.employeeCount} NV</span>
                 <IconButton icon="edit" label={`Đổi tên ${it.name}`} onClick={() => setEditing({ id: it.id, name: it.name })} />
                 <IconButton

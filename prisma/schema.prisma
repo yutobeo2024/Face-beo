@@ -19,10 +19,11 @@ model Department {
 
 // Danh mục chức danh / chuyên khoa (v1.7.0): thuộc tính của nhân viên, không ảnh hưởng phân quyền.
 model JobTitle {
-  id        Int        @id @default(autoincrement())
-  name      String     @unique
-  sortOrder Int        @default(0)
-  employees Employee[]
+  id              Int        @id @default(autoincrement())
+  name            String     @unique
+  sortOrder       Int        @default(0)
+  requiresLicense Boolean    @default(false) // v1.9.0: chức danh bắt buộc có Giấy phép hành nghề (cảnh báo khi thiếu)
+  employees       Employee[]
 }
 
 model Specialty {
@@ -73,6 +74,8 @@ model Employee {
   requests           LeaveRequest[]    @relation("Requester")
   decidedRequests    LeaveRequest[]    @relation("Approver")
   managerDecidedRequests LeaveRequest[] @relation("ManagerApprover")
+  license                PracticeLicense?
+  credentials            Credential[]
   notifications      NotificationLog[]
 }
 
@@ -354,4 +357,46 @@ model ZaloGroup {
   departmentIds String   @default("[]") // JSON id phòng; rỗng = mọi phòng (chỉ áp cho tin nhân viên)
   discoveredAt  DateTime @default(now())
   updatedAt     DateTime @updatedAt
+}
+
+// v1.9.0 — Giấy phép hành nghề (GPHN, thay CCHN cũ): 1 bản / nhân viên. Chỉ Nhân sự / Quản trị sửa; chính chủ xem.
+model PracticeLicense {
+  id            Int       @id @default(autoincrement())
+  employeeId    Int       @unique
+  employee      Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  number        String // vd. 0015578/BYT-CCHN
+  issuedAt      String // "YYYY-MM-DD"
+  issuer        String // Bộ Y tế / Sở Y tế …
+  subject       String // đối tượng cấp: Bác sĩ, Y sĩ, Điều dưỡng, Hộ sinh, Kỹ thuật y, Dược sĩ, Khác
+  scope         String // phạm vi chuyên môn
+  status        String    @default("ACTIVE") // ACTIVE | SUSPENDED | REVOKED | UNKNOWN
+  expiresAt     String? // GPHN mới có thời hạn 5 năm; CCHN cũ không thời hạn → trống
+  renewedAt     String? // ngày gia hạn gần nhất
+  cmeCycleStart String // mốc chu kỳ CME 5 năm (mặc định = ngày gia hạn / ngày cấp)
+  workplaceNote String? // nơi đăng ký hành nghề / ghi chú (vd. đang đứng tên nơi khác)
+  verifiedAt    DateTime? // lần đối chiếu medinet gần nhất
+  verifiedById  Int?
+  updatedAt     DateTime  @updatedAt
+}
+
+// v1.9.0 — Văn bằng, chứng chỉ, CME … (nhiều / nhân viên), file scan tùy chọn lưu ở data/credentials/<employeeId>/.
+model Credential {
+  id          Int      @id @default(autoincrement())
+  employeeId  Int
+  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  type        String // DEGREE | SPECIALTY | CME | CDNN | RADIATION | LANG_IT | TEACHING | OTHER
+  name        String
+  issuer      String?
+  number      String?
+  issuedAt    String? // "YYYY-MM-DD" — CME tính theo ngày này
+  expiresAt   String?
+  cmeHours    Float? // số tiết CME (bắt buộc với loại CME)
+  fileKey     String? // tên file trên đĩa (server đặt)
+  fileName    String? // tên file gốc để hiển thị
+  fileMime    String?
+  fileSize    Int?
+  createdById Int?
+  createdAt   DateTime @default(now())
+
+  @@index([employeeId, type])
 }

@@ -7,7 +7,7 @@ import { Avatar, Badge, Card, CardHeader, EmptyState, ErrorBox, IconButton, Page
 import { DeptSelect } from "@/components/dept-select";
 import { DayStatusBadge } from "@/components/status";
 import { Icon } from "@/components/icons";
-import { useCan } from "./admin-nav";
+import { useAdminUser, useCan } from "./admin-nav";
 
 type Person = { id: number; code: string; name: string; department: string; shift: string | null };
 type Dashboard = {
@@ -95,6 +95,8 @@ function Dashboard() {
           </span>
         </Link>
       ))}
+
+      <CredentialAlerts />
 
       {error && <ErrorBox message={error} onRetry={reload} />}
 
@@ -210,5 +212,46 @@ function PeopleList({ data, tab }: { data: Dashboard; tab: "late" | "absent" | "
         </li>
       ))}
     </ul>
+  );
+}
+
+/** Cảnh báo hồ sơ hành nghề (GPHN, CME, chứng chỉ hết hạn) — chỉ Nhân sự / Quản trị. */
+function CredentialAlerts() {
+  const me = useAdminUser();
+  const hr = me.role === "ADMIN" || me.role === "HR";
+  const { data } = useApi<{ items: { id: number; code: string; name: string; department: string; issues: { kind: string; severity: string; text: string }[] }[] }>(hr ? "/api/credentials/alerts" : null);
+  const [open, setOpen] = useState(false);
+  if (!data?.items.length) return null;
+  const danger = data.items.filter((a) => a.issues.some((i) => i.severity === "danger")).length;
+  return (
+    <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+      <button className="flex w-full items-start gap-3 text-left" onClick={() => setOpen((o) => !o)}>
+        <Icon name="briefcase" className="mt-0.5 size-5 shrink-0" />
+        <span className="flex-1">
+          <b>Cảnh báo hành nghề: {data.items.length} người</b>
+          {danger > 0 && <span className="text-rose-700"> ({danger} nghiêm trọng)</span>} — thiếu / hết hạn GPHN, thiếu tiết CME, chứng chỉ sắp hết hạn.
+        </span>
+        <Icon name={open ? "chevronLeft" : "chevronRight"} className={open ? "size-4 -rotate-90" : "size-4 rotate-90"} />
+      </button>
+      {open && (
+        <ul className="mt-3 space-y-2 border-t border-amber-200 pt-3">
+          {data.items.map((a) => (
+            <li key={a.id}>
+              <Link href={`/admin/employees/${a.id}/credentials`} className="font-semibold hover:underline">
+                {a.code} — {a.name}
+              </Link>{" "}
+              <span className="text-amber-800">· {a.department}</span>
+              <ul className="ml-4 text-amber-800">
+                {a.issues.map((i) => (
+                  <li key={i.kind} className={i.severity === "danger" ? "text-rose-700" : ""}>
+                    • {i.text}
+                  </li>
+                ))}
+              </ul>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }

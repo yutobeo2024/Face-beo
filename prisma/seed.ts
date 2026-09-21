@@ -13,7 +13,7 @@ import { DEFAULT_APP_SETTINGS } from "../src/lib/settings";
 import { randomDigits } from "../src/lib/crypto";
 import { ensureDefaultPermissions } from "../src/lib/permissions";
 import { BASELINE_DATE, snapshotAssignment } from "../src/lib/schedule-assignments";
-import { BASE_HOLIDAYS, BASE_JOB_TITLES, BASE_PATTERNS, BASE_SHIFTS, BASE_SPECIALTIES, patternShiftIds, seedBase } from "../src/lib/bootstrap";
+import { BASE_HOLIDAYS, BASE_JOB_TITLES, BASE_PATTERNS, BASE_SHIFTS, BASE_SPECIALTIES, LICENSED_JOB_TITLES, patternShiftIds, seedBase } from "../src/lib/bootstrap";
 
 const prisma = new PrismaClient();
 const args = process.argv.slice(2);
@@ -36,6 +36,8 @@ async function wipe() {
     prisma.scheduleAssignment.deleteMany(),
     prisma.departmentShiftWeight.deleteMany(),
     prisma.faceTemplate.deleteMany(),
+    prisma.credential.deleteMany(),
+    prisma.practiceLicense.deleteMany(),
     prisma.zaloLinkCode.deleteMany(),
     prisma.kioskDevice.deleteMany(),
     prisma.department.updateMany({ data: { managerId: null } }),
@@ -90,7 +92,7 @@ async function main() {
   );
 
   // Danh mục chức danh / chuyên khoa (v1.7.0): dữ liệu demo không gán cho nhân viên mẫu (giữ nguyên các test cũ).
-  await prisma.jobTitle.createMany({ data: BASE_JOB_TITLES.map((name, i) => ({ name, sortOrder: i })) });
+  await prisma.jobTitle.createMany({ data: BASE_JOB_TITLES.map((name, i) => ({ name, sortOrder: i, requiresLicense: LICENSED_JOB_TITLES.has(name) })) });
   await prisma.specialty.createMany({ data: BASE_SPECIALTIES.map((name, i) => ({ name, sortOrder: i })) });
 
   const deptNames = ["Hành chính", "Kinh doanh", "Kỹ thuật", "Kho vận", "Chăm sóc khách hàng"];

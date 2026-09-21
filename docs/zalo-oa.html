@@ -105,7 +105,7 @@ footer{color:var(--muted);font-size:.85rem;text-align:center;padding:10px}
 <div class="layout">
 <nav class="toc" id="toc">
   <div class="brand">💬 Zalo OA trong Face Beo</div>
-  <div class="sub">Tài liệu tích hợp · bản v1.7.0</div>
+  <div class="sub">Tài liệu tích hợp · bản v1.9.0</div>
   <button class="menu-mobile" onclick="document.getElementById('toc').classList.toggle('open')">☰ Mục lục</button>
   <ol>
     <li class="grp">Cho mọi người</li>
@@ -316,7 +316,7 @@ flowchart LR
   <h3>3.1 Tin gửi vào nhóm</h3>
   <div class="tw"><table>
     <tr><th>Loại</th><th>Khi nào</th><th>Nội dung mẫu</th></tr>
-    <tr><td><code>GROUP_EVENT</code></td><td>HR/Quản trị: duyệt/từ chối đơn, chấm tay bổ sung công, thêm/sửa/xóa nhân viên (kể cả đặt lại mật khẩu, cho nghỉ việc), enroll/xóa khuôn mặt, hệ số công (chung của ca và theo phòng), mẫu tuần, gán/gỡ quản lý phòng, xóa phòng, liên kết Thông tin. <b>Bất kể vai trò</b> (cờ <code>always</code>): đăng ký/sửa ca tuần (kể cả Quản lý), chốt/mở khóa công, phân quyền, kết nối nhóm, gửi tin thử. Hệ thống: báo cáo thứ Hai, đơn quá 48 giờ.</td><td>🔔 <i>Vai trò Tên</i> đã … <br/>Chi tiết (nếu có) · Lý do/ghi chú của người thao tác <br/>🕒 HH:mm dd/MM/yyyy</td></tr>
+    <tr><td><code>GROUP_EVENT</code></td><td>HR/Quản trị: duyệt/từ chối đơn, chấm tay bổ sung công, thêm/sửa/xóa nhân viên (kể cả đặt lại mật khẩu, cho nghỉ việc), enroll/xóa khuôn mặt, hệ số công (chung của ca và theo phòng), mẫu tuần, gán/gỡ quản lý phòng, xóa phòng, liên kết Thông tin. <b>Bất kể vai trò</b> (cờ <code>always</code>): đăng ký/sửa ca tuần (kể cả Quản lý), chốt/mở khóa công, phân quyền, kết nối nhóm, gửi tin thử. Hệ thống: báo cáo thứ Hai, đơn quá 48 giờ, <b>cảnh báo hồ sơ hành nghề</b> (v1.9.0). Nhân sự lưu GPHN tình trạng Đình chỉ / Thu hồi / Chưa rõ → báo ngay.</td><td>🔔 <i>Vai trò Tên</i> đã … <br/>Chi tiết (nếu có) · Lý do/ghi chú của người thao tác <br/>🕒 HH:mm dd/MM/yyyy</td></tr>
     <tr><td><code>GROUP_STAFF</code> (v1.6.0)</td><td>Nhóm tích <b>Chấm công</b> / <b>Đơn từ</b> (mục 2.5): chưa chấm vào, quên chấm ra, vắng không phép; gửi đơn, duyệt/từ chối, chấm tay bổ sung công</td><td>⏰/🚪/❌/📝/✅/🛠️ <i>Tên (Mã) — Phòng</i><br/>Nội dung trạng thái (không lý do)<br/>🕒 HH:mm dd/MM/yyyy</td></tr>
   </table></div>
   <p><code>GROUP_EVENT</code> chỉ vào nhóm tích <b>Minh bạch</b>. <b>Không</b> gửi vào nhóm minh bạch: lần quét chấm công của từng người; thao tác ngang quyền nhân viên (tự làm đơn, tự liên kết Zalo, tự đổi mật khẩu); thao tác thường ngày của Quản lý (duyệt đơn, xem báo cáo); sửa giờ ca, thêm/đổi tên phòng, ngày lễ (chỉ ghi nhật ký). Ngoại lệ được đăng bất kể vai trò: đăng ký/sửa ca tuần, chốt/mở khóa công, phân quyền, kết nối nhóm, tin thử.</p>
@@ -357,6 +357,7 @@ flowchart LR
     <tr><td><code>zalo-token-refresh</code></td><td>6 giờ/lần</td><td>Không gửi tin — chủ động làm mới token (bỏ qua khi mô phỏng)</td></tr>
     <tr><td><code>snapshot-cleanup</code></td><td>02:00</td><td>Không — dọn mã liên kết Zalo hết hạn, ảnh quá hạn</td></tr>
     <tr><td><code>db-backup</code></td><td>03:00</td><td>Không</td></tr>
+    <tr><td><code>credential-check</code> (v1.9.0)</td><td>07:30</td><td><b>Nhóm minh bạch</b>: MỘT tin tổng hợp các vấn đề hồ sơ hành nghề <b>chưa báo trong tháng</b> (thiếu / hết hạn / sắp hết hạn GPHN, GPHN không hoạt động, thiếu tiết CME, chứng chỉ hết hạn), tối đa 15 dòng / tin. Mỗi vấn đề nhắc tối đa 1 lần / tháng (AppSetting <code>credentialAlertSent</code>); "chưa đối chiếu medinet" chỉ hiện trên dashboard. Không kèm file, không CCCD. Ví dụ: 🔔 Hệ thống Face Beo cảnh báo hồ sơ hành nghề: 2 vấn đề mới · ⛔ NV021 — Nguyễn Văn A (Khoa Nội): GPHN đã hết hạn ngày 01/09/2026 · ⚠️ NV034 — Trần Thị B (Điều dưỡng): CME 2 năm gần nhất: 30/48 tiết</td></tr>
   </table></div>
   <p>Chạy tay một job (cần <code>CRON_SECRET</code>):</p>
   <div class="formula">curl -X POST -H "x-cron-secret: $CRON_SECRET" https://&lt;máy-chủ&gt;/api/cron/absence-check</div>
@@ -497,7 +498,7 @@ cloudflared tunnel --url http://localhost:3000
   <p>Tài liệu nội bộ liên quan: <code>README.md</code> mục "Cấu hình Zalo OA", <code>docs/PRD-v2-Face-Beo.md</code> §7, <code>docs/PRD-v2.1-HR.md</code> §7, <code>docs/OPEN-DECISIONS.md</code> D4, cẩm nang sử dụng mục 15.</p>
 </section>
 
-<footer>Face Beo · Tài liệu Zalo OA · cập nhật 21/09/2026 (phiên bản ứng dụng v1.7.0)</footer>
+<footer>Face Beo · Tài liệu Zalo OA · cập nhật 21/09/2026 (phiên bản ứng dụng v1.9.0)</footer>
 </main>
 </div>
 

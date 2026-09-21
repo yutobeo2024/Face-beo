@@ -8,6 +8,7 @@ import { DayStatusBadge } from "@/components/status";
 import { Icon } from "@/components/icons";
 import { useToast } from "@/components/toast";
 import { useMe } from "./me-nav";
+import { CredentialsPanel } from "@/components/credentials-panel";
 
 type Day = {
   date: string;
@@ -229,6 +230,7 @@ export default function MeHome() {
       </Card>
 
       {data && <PersonalInfo me={data.me} />}
+      {data && <MyCredentials employeeId={me.id} />}
 
       {data?.me.faceEnrolled && (
         <div className="mt-4 text-center">
@@ -255,6 +257,19 @@ export default function MeHome() {
         <p className="text-sm text-slate-600">Toàn bộ mẫu khuôn mặt của bạn sẽ bị xóa ngay. Bạn sẽ không chấm công tại kiosk được nữa và chuyển sang chấm công thủ công do quản lý xác nhận.</p>
       </Modal>
     </>
+  );
+}
+
+/** Hồ sơ hành nghề của mình (chỉ đọc) — chỉ hiện khi có GPHN / chứng chỉ hoặc chức danh bắt buộc GPHN. */
+function MyCredentials({ employeeId }: { employeeId: number }) {
+  const { data } = useApi<{ license: unknown; credentials: unknown[]; requiresLicense: boolean }>(`/api/employees/${employeeId}/license`);
+  if (!data || (!data.license && !data.credentials.length && !data.requiresLicense)) return null;
+  return (
+    <div className="mt-4">
+      <h2 className="mb-2 text-[15px] font-semibold text-slate-800">Hồ sơ hành nghề</h2>
+      <CredentialsPanel employeeId={employeeId} readOnly />
+      <p className="mt-2 text-xs text-slate-500">Nhân sự cập nhật GPHN, văn bằng, chứng chỉ và CME. Gửi bản scan chứng chỉ mới cho Nhân sự để được cộng tiết CME.</p>
+    </div>
   );
 }
 
