@@ -12,8 +12,19 @@ Yêu cầu Node.js ≥ 20.
 npm install                 # postinstall: prisma generate + chép mô hình Human vào public/models
 cp .env.example .env        # rồi đổi SESSION_SECRET, BIOMETRIC_KEY, CRON_SECRET
 npx prisma migrate deploy   # tạo data/facebeo.db
-npm run db:seed             # dữ liệu mẫu (xóa và tạo lại dữ liệu nghiệp vụ)
 npm run dev                 # http://localhost:3000
+```
+
+Chọn một trong hai cách nạp dữ liệu ban đầu:
+
+```bash
+# Vận hành thật (v1.5.4): cấu hình nền + tài khoản Quản trị đầu tiên, không có dữ liệu mẫu
+npm run db:seed:base        # 4 ca, 3 mẫu tuần, ngày lễ, ma trận quyền; không xóa gì, chạy lại được
+npm run admin:create -- --code AD01 --name "Họ Tên" --phone 09xxxxxxxx   # in mật khẩu tạm một lần
+npm run admin:create -- --reset AD01                                    # Quản trị quên mật khẩu / bị khóa
+
+# Phát triển, thử nghiệm: dữ liệu mẫu NV001…NV016 (XÓA SẠCH DB; tự dừng nếu DB đã có dữ liệu; ép: npm run db:seed:force)
+npm run db:seed
 ```
 
 Tạo bí mật ngẫu nhiên:
@@ -28,7 +39,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
 Mật khẩu của các tài khoản **seed (dữ liệu mẫu)** là `123456`, và hệ thống **bắt buộc đổi mật khẩu ở lần đăng nhập đầu**. Có thể đăng nhập bằng mã nhân viên hoặc số điện thoại.
 Tài khoản tạo trên giao diện **không** có mật khẩu mặc định: nếu không nhập, hệ thống sinh mật khẩu tạm ngẫu nhiên và chỉ hiện một lần cho người tạo.
-Không dùng seed để khởi tạo dữ liệu vận hành thật (hoặc đổi ngay mật khẩu NV001).
+Không dùng seed demo để khởi tạo dữ liệu vận hành thật — dùng `db:seed:base` + `admin:create` (xem Cài đặt nhanh).
 
 | Mã | Họ tên | Vai trò | Phòng | SĐT |
 | --- | --- | --- | --- | --- |
@@ -287,6 +298,7 @@ Chạy `npm audit` trước mỗi lần phát hành. Mục tiêu là **0 lỗ h�
     reverse_proxy localhost:3000
   }
   ```
+- Lần đầu trên DB trống: `npm run db:seed:base` rồi `npm run admin:create -- --code … --name … --phone …` (không dùng `db:seed` demo).
 - Chạy `npx prisma migrate deploy` mỗi lần cập nhật. SQLite được bật `journal_mode=WAL` và `busy_timeout=5000` khi khởi động.
 - Cookie session dùng cờ `secure` trong production. Nếu thử nghiệm trong LAN qua HTTP, đặt `INSECURE_COOKIES=true` (không dùng khi chạy thật).
 - Mô hình Human được phục vụ từ `public/models` (do `npm install` chép vào). Nếu chép lại mô hình sau khi build, phải khởi động lại `next start`.

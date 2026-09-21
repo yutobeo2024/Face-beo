@@ -1,5 +1,9 @@
 /**
  * Seed dữ liệu mẫu (PRD mục 3). Chạy lại nhiều lần được: xóa sạch dữ liệu nghiệp vụ rồi tạo lại.
+ *  - `--base` (npm run db:seed:base): chỉ tạo cấu hình nền còn thiếu (ca, mẫu tuần, ngày lễ, quyền, cấu hình), không xóa gì,
+ *    không tạo nhân viên — dùng cho vận hành thật, sau đó tạo Quản trị bằng `npm run admin:create`.
+ *  - Mặc định (demo): XÓA SẠCH rồi tạo dữ liệu mẫu; từ chối nếu DB đã có nhân viên hoặc ca, trừ khi có `--force`
+ *    (npm run db:seed:force) hoặc SEED_FORCE=1.
  */
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
@@ -9,8 +13,10 @@ import { DEFAULT_APP_SETTINGS } from "../src/lib/settings";
 import { randomDigits } from "../src/lib/crypto";
 import { ensureDefaultPermissions } from "../src/lib/permissions";
 import { BASELINE_DATE, snapshotAssignment } from "../src/lib/schedule-assignments";
+import { BASE_HOLIDAYS, BASE_PATTERNS, BASE_SHIFTS, patternShiftIds, seedBase } from "../src/lib/bootstrap";
 
 const prisma = new PrismaClient();
+const args = process.argv.slice(2);
 
 // PRNG cố định để dữ liệu seed ổn định giữa các lần chạy trong cùng ngày.
 function rng(seed: number) {
@@ -45,25 +51,41 @@ async function wipe() {
   ]);
 }
 
+async function base() {
+  // Server có thể đang chạy: chờ khóa ghi thay vì lỗi SQLITE_BUSY ngay.
+  await prisma.$queryRawUnsafe("PRAGMA busy_timeout=5000;");
+  await prisma.$queryRawUnsafe("PRAGMA journal_mode=WAL;");
+  const r = await seedBase(prisma);
+  const line = (label: string, c: { created: number; existing: number }) => `  ${label}: tạo mới ${c.created}, đã có ${c.existing}`;
+  console.log("\n✅ Đã tạo cấu hình nền (không xóa dữ liệu, không tạo nhân viên):");
+  console.log([line("Ca làm việc", r.shifts), line("Mẫu tuần", r.patterns), line("Ngày lễ", r.holidays), line("Cấu hình", r.settings)].join("\n"));
+  console.log(`  Ma trận quyền: ${r.permissionsInitialized ? "đã nạp mặc định" : "đã có, giữ nguyên"}`);
+  console.log('\nBước tiếp theo: npm run admin:create -- --code AD01 --name "Họ Tên" --phone 09xxxxxxxx\n');
+}
+
 async function main() {
   await prisma.$queryRawUnsafe("PRAGMA journal_mode=WAL;");
+  const [employees, shifts] = await Promise.all([prisma.employee.count(), prisma.shift.count()]);
+  if (employees + shifts > 0 && !args.includes("--force") && process.env.SEED_FORCE !== "1") {
+    console.error(
+      `\n⛔ DB đang có ${employees} nhân viên, ${shifts} ca. Seed demo sẽ XÓA SẠCH toàn bộ dữ liệu rồi tạo dữ liệu mẫu nên đã dừng.\n` +
+        "   Chỉ cần cấu hình nền (ca, mẫu tuần, ngày lễ): npm run db:seed:base\n" +
+        "   Chắc chắn muốn xóa sạch để tạo dữ liệu mẫu: npm run db:seed:force\n",
+    );
+    process.exitCode = 1;
+    return;
+  }
   await wipe();
   const rand = rng(20260919);
 
-  const [hc, sang, dem, satAm] = await Promise.all([
-    prisma.shift.create({ data: { name: "Hành chính", startTime: "08:00", endTime: "17:00", breakMinutes: 60, breakStart: "12:00", graceLateMinutes: 5 } }),
-    prisma.shift.create({ data: { name: "Sáng sớm", startTime: "07:00", endTime: "17:00", breakMinutes: 60, breakStart: "12:00", graceLateMinutes: 5 } }),
-    prisma.shift.create({ data: { name: "Ca đêm", startTime: "22:00", endTime: "06:00", breakMinutes: 60, graceLateMinutes: 5 } }),
-    prisma.shift.create({ data: { name: "Sáng thứ Bảy", startTime: "08:00", endTime: "12:00", breakMinutes: 0, graceLateMinutes: 5 } }),
-  ]);
+  // Ca demo giữ hệ số công mặc định 1 (dữ liệu test ổn định); ca nền thật dùng hệ số trong BASE_SHIFTS.
+  const [hc, sang, dem, satAm] = await Promise.all(BASE_SHIFTS.map((s) => prisma.shift.create({ data: { ...s, workDayValue: 1 } })));
+  const shiftId = new Map([hc, sang, dem, satAm].map((s) => [s.name, s.id]));
 
   // Mẫu tuần làm việc cho nhóm ca cố định (~70%).
-  const week = (d: number | null, sat: number | null) => ({ monShiftId: d, tueShiftId: d, wedShiftId: d, thuShiftId: d, friShiftId: d, satShiftId: sat, sunShiftId: null });
-  const [patHalfSat, patFullSat, patEarly] = await Promise.all([
-    prisma.workPattern.create({ data: { name: "HC T2–T6 + T7 sáng", ...week(hc.id, satAm.id) } }),
-    prisma.workPattern.create({ data: { name: "HC T2–T7", ...week(hc.id, hc.id) } }),
-    prisma.workPattern.create({ data: { name: "Sáng sớm T2–T7", ...week(sang.id, sang.id) } }),
-  ]);
+  const [patHalfSat, patFullSat, patEarly] = await Promise.all(
+    BASE_PATTERNS.map((p) => prisma.workPattern.create({ data: { name: p.name, ...patternShiftIds(shiftId.get(p.weekday)!, p.saturday ? shiftId.get(p.saturday)! : null) } })),
+  );
 
   const deptNames = ["Hành chính", "Kinh doanh", "Kỹ thuật", "Kho vận", "Chăm sóc khách hàng"];
   const depts: { id: number; name: string }[] = [];
@@ -136,12 +158,7 @@ async function main() {
   // Lịch sử phân công gốc (áp dụng cho mọi ngày) theo cấu hình hiện tại của từng nhân viên.
   for (const e of await prisma.employee.findMany({ select: { id: true } })) await snapshotAssignment(e.id, BASELINE_DATE);
 
-  await prisma.holiday.createMany({
-    data: [
-      { date: "2026-09-02", name: "Quốc khánh" },
-      { date: "2027-01-01", name: "Tết Dương lịch" },
-    ],
-  });
+  await prisma.holiday.createMany({ data: BASE_HOLIDAYS });
 
   await ensureDefaultPermissions();
 
@@ -249,7 +266,7 @@ async function main() {
   console.log(`Đã tạo ${logCount} log chấm công MANUAL cho ${days.length} ngày gần nhất.\n`);
 }
 
-main()
+(args.includes("--base") ? base() : main())
   .catch((e) => {
     console.error(e);
     process.exit(1);

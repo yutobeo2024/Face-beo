@@ -252,3 +252,22 @@ công được tính trực tiếp từ planner. Quản lý được cấp `org.
   mẫu khuôn mặt, hồ sơ; audit `EMPLOYEE_DELETE`, báo nhóm Zalo. Không tự xóa mình; HR không xóa được HR/ADMIN.
 - **Thu hồi phiên khi cho nghỉ việc**: `sessionVersion` tăng cùng lúc đặt `leftAt` — cookie cũ không "sống lại" nếu sau này kích hoạt
   lại tài khoản (tài khoản không active vốn đã bị `loadUser` chặn).
+
+## 17. Khởi tạo vận hành thật: cấu hình nền và Quản trị đầu tiên (v1.5.4, 21/09/2026)
+
+- **Vấn đề.** Trước đây chỉ có `db:seed` (xóa sạch DB rồi tạo 16 nhân viên mẫu, mật khẩu chung 123456, log/đơn mẫu). Muốn có tài
+  khoản Quản trị thật phải sửa NV001 rồi cho nghỉ việc các nhân viên mẫu (không xóa được vì đã có log) — dữ liệu mẫu lẫn vào DB thật.
+- **`npm run db:seed:base`** (`prisma db seed -- --base`, logic `seedBase` trong `src/lib/bootstrap.ts`): tạo phần còn thiếu của cấu
+  hình nền — ca Hành chính 08:00–17:00, Sáng sớm 07:00–17:00, Ca đêm 22:00–06:00, Sáng thứ Bảy 08:00–12:00 (**0.5 công**); mẫu tuần
+  "HC T2–T6 + T7 sáng", "HC T2–T7", "Sáng sớm T2–T7"; ngày lễ; ma trận quyền mặc định; cấu hình ngưỡng. So theo tên/khóa, không sửa bản
+  ghi đã có, không xóa gì, không tạo phòng ban hay nhân viên → chạy lại bao nhiêu lần cũng được.
+- **`npm run admin:create -- --code AD01 --name "…" --phone 09…`** (`scripts/create-admin.ts`): tạo tài khoản ADMIN, loại lịch cố định,
+  ca mặc định "Hành chính" (`--shift` để đổi), phòng "Ban quản trị" (`--dept`, chưa có thì tạo). Kiểm tra mã/SĐT như form tạo nhân
+  viên; mật khẩu tự đặt (`--password`) phải ≥ 8 ký tự có chữ và số, không đặt thì sinh mật khẩu tạm và **chỉ in một lần** ra màn hình;
+  luôn bắt đổi ở lần đăng nhập đầu. Ghi lịch sử phân công gốc và nhật ký `EMPLOYEE_CREATE` (người thực hiện trống, `via: cli`, không
+  chứa mật khẩu). **Từ chối khi đã có Quản trị đang hoạt động** — lệnh chỉ dùng để khởi tạo, không thay trang Nhân viên.
+- **`--reset <mã>`**: Quản trị quên mật khẩu hoặc bị khóa đăng nhập → mật khẩu tạm mới, xóa đếm sai/khóa, tăng `sessionVersion`
+  (mọi phiên cũ hết hiệu lực), nhật ký `PASSWORD_RESET`. Chỉ cho ADMIN **đang hoạt động**; Quản trị đã nghỉ việc không được kích hoạt
+  lại qua lệnh này — khi không còn Quản trị nào hoạt động thì tạo tài khoản mới. Người chạy lệnh phải có quyền truy cập máy chủ và DB.
+- **Chặn seed demo trên DB thật**: `npm run db:seed` từ chối khi DB đã có nhân viên hoặc ca, ép bằng `npm run db:seed:force` hoặc `SEED_FORCE=1`
+  (test tích hợp dùng `--force` cho `data/test.db`). Dữ liệu demo giữ nguyên (ca demo hệ số 1).

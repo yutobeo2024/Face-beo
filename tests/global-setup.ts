@@ -10,5 +10,5 @@ export default function setup() {
     PRISMA_HIDE_UPDATE_MESSAGE: "1",
   };
   execSync("npx prisma migrate deploy", { env, stdio: "pipe" });
-  execSync("npx tsx prisma/seed.ts", { env, stdio: "pipe" });
+  execSync("npx tsx prisma/seed.ts --force", { env, stdio: "pipe" });
 }

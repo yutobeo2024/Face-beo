@@ -103,12 +103,12 @@ export function invalidatePermissionCache() {
 const SENTINEL = { role: "_meta", capability: "initialized" };
 
 /** Nạp ma trận mặc định nếu chưa từng khởi tạo (idempotent). */
-export async function ensureDefaultPermissions() {
-  const inited = await prisma.rolePermission.findUnique({ where: { role_capability: SENTINEL } });
+export async function ensureDefaultPermissions(db: typeof prisma = prisma) {
+  const inited = await db.rolePermission.findUnique({ where: { role_capability: SENTINEL } });
   if (inited) return false;
-  await prisma.$transaction([
-    prisma.rolePermission.deleteMany({}),
-    prisma.rolePermission.createMany({
+  await db.$transaction([
+    db.rolePermission.deleteMany({}),
+    db.rolePermission.createMany({
       data: [SENTINEL, ...EDITABLE_ROLES.flatMap((role) => DEFAULT_MATRIX[role].map((capability) => ({ role, capability })))],
     }),
   ]);

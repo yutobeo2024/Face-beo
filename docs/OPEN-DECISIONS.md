@@ -34,6 +34,13 @@ Ghi lại những điểm đã phát hiện trong quá trình làm và test, c�
 - **OT ngày không có ca:** tính theo đơn tăng ca đã duyệt.
 - **Minh bạch:** thao tác duyệt/sửa của HR và ADMIN được gửi vào nhóm Zalo OA. Không gửi lần quét chấm công, cũng như thao tác ngang quyền nhân viên.
 
+## Đã chốt v1.5.4 (21/09/2026)
+
+- **Đưa vào vận hành thật không qua dữ liệu mẫu.** `npm run db:seed:base` chỉ tạo cấu hình nền (ca, mẫu tuần, ngày lễ, quyền, cấu
+  hình; ca "Sáng thứ Bảy" 4 giờ = 0.5 công), không xóa, không tạo nhân viên/phòng ban. `npm run admin:create` tạo Quản trị đầu tiên
+  (chỉ khi chưa có Quản trị đang hoạt động), `--reset <mã>` cấp lại mật khẩu tạm cho Quản trị đang hoạt động. Seed demo tự dừng khi DB
+  đã có nhân viên hoặc ca (ép bằng `npm run db:seed:force`). Xem PRD v2.1 mục 17.
+
 ## Đã chốt v1.5.3 (20/09/2026)
 
 - **Không xóa cứng nhân viên đã có lịch sử.** Nút "Xóa tài khoản" chỉ dành cho tài khoản tạo nhầm (server từ chối khi có bất kỳ

@@ -7,7 +7,7 @@
   MiniFASNetV2 phía server), đơn từ, tính công/chốt công tháng, xuất Excel, thông báo Zalo OA (nhóm minh bạch + tin riêng).
 - Stack: Next.js 15 App Router, Prisma 6 (SQLite WAL), zod 4, luxon, exceljs, node-cron, jose JWT (HS256, 7 ngày, `sessionVersion`),
   vitest 4 (test tích hợp gọi thẳng route handler, DB `data/test.db`).
-- Phiên bản hiện tại: **v1.5.3** (tag GitHub `v1.5.3`, repo `yutobeo2024/Face-beo`). Phiên bản ghi trong prose (README, PRD,
+- Phiên bản hiện tại: **v1.5.4** (tag GitHub `v1.5.4`, repo `yutobeo2024/Face-beo`). Phiên bản ghi trong prose (README, PRD,
   OPEN-DECISIONS), không có CHANGELOG; `package.json` version không dùng để đánh số.
 
 ## Lệnh
@@ -15,6 +15,9 @@
 npm install                      # postinstall: prisma generate + copy models
 npm run models:face && npm run models:liveness   # tải .onnx nếu chưa có trong models/
 npm run db:deploy                # áp migration (KHÔNG dùng migrate reset trên DB thật)
+npm run db:seed:base             # DB trống: chỉ ca/mẫu tuần/ngày lễ/quyền, không NV, chạy lại được
+npm run admin:create -- --code AD01 --name "…" --phone 09…   # Quản trị đầu tiên; --reset <mã> cấp lại mật khẩu
+npm run db:seed                  # dữ liệu mẫu demo: XÓA SẠCH; tự dừng nếu DB có NV/ca (ép: db:seed:force)
 npm run build && LIVENESS_SERVER=true npx next start -p 3000
 npm test | npm run lint | npm run typecheck
 ```
@@ -43,13 +46,9 @@ Server production đang được chạy bằng `next start` (không phải dev).
 - Zalo: tin nhóm chỉ cho thao tác của HR/ADMIN (trừ `always: true`); `sendZaloMessage` không bao giờ ném lỗi; mô phỏng khi thiếu cấu hình.
 - zod 4: schema PATCH không được có `.default()` (`.partial()` vẫn áp default → xóa dữ liệu). Cột JSON trong SQLite lưu chuỗi.
 
-## Việc còn mở (20/09/2026)
+## Việc còn mở (21/09/2026)
 - Nhập nhân viên hàng loạt từ Excel (chưa làm; thiết kế: cột Mã NV, Họ tên, SĐT, Phòng ban, Vai trò, Loại lịch, Mẫu tuần, Ca mặc định,
   xem trước lỗi từng dòng, file kết quả có mật khẩu tạm).
-- Chạy thử một phòng. Dữ liệu hiện có (máy cũ và seed) chỉ là mockup để phát triển/test; máy mới bắt đầu sạch theo `docs/HANDOFF.md`
-  mục 1b. Trước khi vận hành thật: hiện **chưa có** script tạo Quản trị đầu tiên không qua seed (việc mở bên dưới), nên tạm thời
-  `db:seed` → đổi tên/SĐT/mật khẩu tài khoản NV001 thành Quản trị thật → cho nghỉ việc (không xóa được vì seed đã tạo log) hoặc xóa
-  các nhân viên mẫu còn lại; kiểm tra lại hệ số ca (vd. ca nửa ngày nên 0.5).
-- Cần làm: script/lệnh "tạo Quản trị đầu tiên" cho DB trống (vd. `npm run admin:create`) để đưa vào sử dụng thật không kéo theo dữ
-  liệu mẫu; tùy chọn seed chỉ tạo ca/mẫu tuần/ngày lễ mà không tạo nhân viên.
+- Chạy thử một phòng. Dữ liệu hiện có (máy cũ và seed demo) chỉ là mockup; máy mới/vận hành thật bắt đầu sạch theo `docs/HANDOFF.md`
+  mục 1b: `db:deploy` → `db:seed:base` → `admin:create` (v1.5.4, logic ở `src/lib/bootstrap.ts`). Rà lại hệ số ca, ngày lễ trong năm.
 - D4 tin Zalo cá nhân (ZNS hay tin tư vấn); Cloudflare Tunnel cho webhook; sản xuất: Windows service, HTTPS trong LAN, backup ra ngoài máy.
