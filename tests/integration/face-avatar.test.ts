@@ -127,6 +127,18 @@ describe("ảnh đại diện từ mẫu nhìn thẳng", () => {
     expect((await prisma.employee.findUniqueOrThrow({ where: { id: spare.id } })).faceAvatarKey).toBeNull();
   });
 
+  it("file ảnh mất mà DB còn khóa (vd. khôi phục DB thiếu data/avatars) → GET 404 và tự dọn khóa; danh sách về null", async () => {
+    await prisma.employee.update({ where: { id: target.id }, data: { active: true } });
+    expect((await enroll(target)).status).toBe(200);
+    rmSync(dir(target), { recursive: true, force: true }); // file biến mất ngoài ý muốn
+    expect((await prisma.employee.findUniqueOrThrow({ where: { id: target.id } })).faceAvatarKey).not.toBeNull();
+    expect((await getAvatar(H, target)).status).toBe(404);
+    expect((await prisma.employee.findUniqueOrThrow({ where: { id: target.id } })).faceAvatarKey).toBeNull();
+    expect((await listUrl(H, target))!.avatarUrl).toBeNull();
+    await prisma.faceTemplate.deleteMany({ where: { employeeId: target.id } }); // không để trùng khuôn mặt với test sau
+    invalidateFaceCache();
+  });
+
   it("lưu ảnh lỗi không làm hỏng enroll — vẫn lưu 5 mẫu, trả avatar=false, không có ảnh", async () => {
     await prisma.employee.update({ where: { id: spare.id }, data: { active: true } });
     // Chiếm chỗ thư mục ảnh bằng một FILE → ghi ảnh thất bại.

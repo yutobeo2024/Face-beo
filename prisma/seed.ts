@@ -27,10 +27,14 @@ function rng(seed: number) {
 }
 
 async function wipe() {
-  // Ảnh đại diện (v1.10.0) của nhân viên cũ: xóa cùng dữ liệu.
+  // Ảnh đại diện (v1.10.0) của nhân viên cũ: xóa cùng dữ liệu — nhưng CHỈ thư mục ảnh đi cùng DB đang seed:
+  // có DATA_DIR thì dùng nó; không có thì chỉ khi đang seed DB mặc định data/facebeo.db. Seed DB khác (vd. test.db) mà thiếu DATA_DIR
+  // thì KHÔNG xóa gì (v1.10.3 — trước đó bộ test xóa nhầm ảnh thật ở data/avatars).
   const { rm } = await import("node:fs/promises");
   const { join } = await import("node:path");
-  await rm(join(process.env.DATA_DIR || join(process.cwd(), "data"), "avatars"), { recursive: true, force: true });
+  const url = process.env.DATABASE_URL ?? "";
+  const dir = process.env.DATA_DIR || (/(^|[/\\:])facebeo\.db$/.test(url.replace(/^file:/, "")) ? join(process.cwd(), "data") : null);
+  if (dir) await rm(join(dir, "avatars"), { recursive: true, force: true });
   await prisma.$transaction([
     prisma.notificationLog.deleteMany(),
     prisma.attendanceLog.deleteMany(),

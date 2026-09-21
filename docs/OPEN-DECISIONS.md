@@ -32,7 +32,8 @@ Ghi lại những điểm đã phát hiện trong quá trình làm và test, c�
   VPS hỏng là mất cả dữ liệu lẫn bản sao lưu. File scan (`credentials/`) và ảnh đại diện (`avatars/`) không có trong bản sao lưu DB.
 - **Phương án:** cron trên VPS 03:30 nén bản DB mới nhất + `credentials/` + `avatars/` → `rclone` lên **Cloudflare R2** (đã dùng Cloudflare) hoặc
   **Google Drive**; giữ 30 ngày; thử khôi phục định kỳ.
-- **Trạng thái:** chờ chọn nơi lưu.
+- **Trạng thái:** **tạm hoãn theo chủ dự án (21/09/2026), làm sau.** Tới lúc đó dữ liệu chỉ có bản sao lưu hằng đêm nằm trên chính VPS
+  (`/opt/facebeo/data/backups/`, 14 bản) — VPS hỏng là mất cả hai. Khi làm: chọn R2 hoặc Drive → cài rclone + cron 03:30 → thử khôi phục.
 
 ### D7. Đổi các bí mật đã lộ khi triển khai
 

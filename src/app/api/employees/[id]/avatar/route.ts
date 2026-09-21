@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 import { forbidden, handle, idParam, notFound } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
-import { canSeeFaceAvatar, canViewSnapshots, readFaceAvatar } from "@/lib/face-avatar";
+import { canSeeFaceAvatar, canViewSnapshots, clearFaceAvatar, readFaceAvatar } from "@/lib/face-avatar";
 
 /** Ảnh khuôn mặt đại diện (v1.10.0): chính chủ; Nhân sự / Quản trị; Quản lý chỉ nhân viên phòng mình (quyền xem snapshot). */
 export const GET = handle<{ id: string }>(async (req, ctx) => {
@@ -11,9 +11,13 @@ export const GET = handle<{ id: string }>(async (req, ctx) => {
   const etag = `"${e?.faceAvatarKey ?? "none"}"`;
   if (!e) throw notFound();
   if (!canSeeFaceAvatar(u, e, u.id === e.id ? false : await canViewSnapshots(u))) throw forbidden();
-  if (req.headers.get("if-none-match") === etag && e.faceAvatarKey) return new Response(null, { status: 304, headers: { ETag: etag, "Cache-Control": "private, no-cache" } });
   const buf = await readFaceAvatar(e.id, e.faceAvatarKey);
-  if (!buf) throw notFound("Chưa có ảnh đại diện");
+  if (!buf) {
+    // DB còn trỏ tới ảnh nhưng file đã mất (xóa tay, khôi phục DB không kèm data/avatars…): dọn khóa để giao diện về chữ viết tắt.
+    if (e.faceAvatarKey) await clearFaceAvatar(e.id);
+    throw notFound("Chưa có ảnh đại diện");
+  }
+  if (req.headers.get("if-none-match") === etag) return new Response(null, { status: 304, headers: { ETag: etag, "Cache-Control": "private, no-cache" } });
   return new Response(new Uint8Array(buf), {
     headers: {
       "Content-Type": "image/jpeg",
