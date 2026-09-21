@@ -7,7 +7,7 @@
   MiniFASNetV2 phía server), đơn từ, tính công/chốt công tháng, xuất Excel, thông báo Zalo OA (nhiều nhóm theo loại tin: minh bạch / chấm công / đơn từ + tin riêng).
 - Stack: Next.js 15 App Router, Prisma 6 (SQLite WAL), zod 4, luxon, exceljs, node-cron, jose JWT (HS256, 7 ngày, `sessionVersion`),
   vitest 4 (test tích hợp gọi thẳng route handler, DB `data/test.db`).
-- Phiên bản hiện tại: **v1.10.0** (tag GitHub `v1.10.0`, repo `yutobeo2024/Face-beo`). Phiên bản ghi trong prose (README, PRD,
+- Phiên bản hiện tại: **v1.10.2** (tag GitHub `v1.10.2`, repo `yutobeo2024/Face-beo`). Phiên bản ghi trong prose (README, PRD,
   OPEN-DECISIONS), không có CHANGELOG; `package.json` version không dùng để đánh số.
 
 ## Lệnh
@@ -30,7 +30,8 @@ chạy cron / khóa Zalo thật song song với VPS (refresh token Zalo dùng m�
 - Chạy liền mạch, **không dừng hỏi xác nhận từng bước**; chỉ hỏi khi lựa chọn làm khác hẳn kết quả hoặc thao tác phá hủy/ra ngoài.
 - Mỗi tính năng: lên plan ngắn → làm → **song song 1 agent review + 1 agent QC** (agent không tạo worktree, không đụng
   `node_modules`) → lint + typecheck + toàn bộ vitest xanh → build → cập nhật tài liệu → commit (tiếng Việt, có
-  `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>`) → push → tag `v1.x.y` khi phát hành → khởi động lại server.
+  `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>`) → push → tag `v1.x.y` khi phát hành → cập nhật VPS: `ssh root@103.142.27.210 "sh /opt/facebeo/src/deploy/update.sh v1.x.y"`
+  (chờ `/login` 200; kiểm tra `https://face.ydsg.website`).
 - Giải thích bằng tiếng Việt, có ví dụ số cụ thể; quy tắc công/lương phải **cấu hình được** (theo ca, theo phòng), không hard-code.
 - Không commit `.env`, `data/`, `models/*.onnx`, `public/models/`; giữ nguyên `BIOMETRIC_KEY`; không bypass an toàn Prisma;
   không gửi tin Zalo thật hay đăng nhập tài khoản thật khi tự test; không in bí mật ra log/tài liệu.
@@ -64,5 +65,6 @@ chạy cron / khóa Zalo thật song song với VPS (refresh token Zalo dùng m�
 ## Việc còn mở (21/09/2026)
 - Chạy thử một phòng. Dữ liệu hiện có (máy cũ và seed demo) chỉ là mockup; máy mới/vận hành thật bắt đầu sạch theo `docs/HANDOFF.md`
   mục 1b: `db:deploy` → `db:seed:base` → `admin:create` (v1.5.4, logic ở `src/lib/bootstrap.ts`). Rà lại hệ số ca, ngày lễ trong năm.
+- D6 sao lưu ra ngoài VPS (rclone → R2/Drive); D7 đổi token tunnel + OA Secret Key webhook (đã lộ trong ảnh chụp 21/09/2026).
 - D5 tự tra cứu GPHN trên medinet (đợt 2 hồ sơ hành nghề — cần thử kỹ thuật, trang tải bằng JS, có thể bị chặn).
 - D4 tin Zalo cá nhân (ZNS hay tin tư vấn); Cloudflare Tunnel cho webhook; sản xuất: Windows service, HTTPS trong LAN, backup ra ngoài máy.

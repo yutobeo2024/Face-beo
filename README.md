@@ -2,6 +2,9 @@
 
 Hệ thống quản trị nhân sự, xếp ca, chấm công khuôn mặt trên tablet kiosk và thông báo Zalo OA cho khoảng 100 nhân viên. Đặc tả đầy đủ: [`docs/PRD-v2-Face-Beo.md`](docs/PRD-v2-Face-Beo.md).
 
+**Máy chủ thật:** https://face.ydsg.website — VPS `103.142.27.210`, Docker + Cloudflare Tunnel (từ 21/09/2026, v1.10.1+). Cài đặt, chuyển dữ liệu,
+cập nhật, sao lưu: [`docs/DEPLOY-VPS.md`](docs/DEPLOY-VPS.md). Máy phát triển **không** chạy khóa Zalo thật / cron song song với VPS.
+
 **Stack:** Next.js 15 (App Router) + TypeScript · TailwindCSS v4 · SQLite (WAL) + Prisma · `@vladmandic/human` · `jose` + `bcryptjs` · `zod` · `luxon` · `node-cron` · `xlsx` · `vitest`.
 
 ## Cài đặt nhanh
@@ -249,14 +252,18 @@ Webhook `POST /api/zalo/webhook` nhận sự kiện `user_send_text` để nhân
 Chữ ký `X-ZEvent-Signature = mac=sha256(appId + body + timestamp + OAsecretKey)` với secret lấy ở phần Webhook của ứng dụng → `ZALO_WEBHOOK_SECRET`.
 Sự kiện `create_group` (OA vừa tạo nhóm GMF) được lưu lại để **Cấu hình → Zalo OA** hiện nhóm đó kèm nút *Kết nối* — không cần tìm ID nhóm bằng tay. Các sự kiện khác (`oa_send_text`, `user_received_message`…) được trả 200 và bỏ qua.
 
-Zalo chỉ gọi webhook tới **HTTPS công khai**. Máy chủ trong LAN có thể dùng Cloudflare Tunnel (miễn phí, không mở port):
+Zalo chỉ gọi webhook tới **HTTPS công khai** trên **tên miền đã xác thực**. Máy chủ thật dùng `https://face.ydsg.website/api/zalo/webhook`
+(tunnel có tên, xem `docs/DEPLOY-VPS.md` mục 6 — xác thực domain bằng **tệp HTML** `public/zalo_verifier….html`, rồi khai báo webhook, rồi
+chép **OA Secret Key** vào `ZALO_WEBHOOK_SECRET`). Thử nghiệm máy trong LAN có thể dùng tunnel tạm (miễn phí, không mở port):
 ```bash
 winget install Cloudflare.cloudflared
 cloudflared tunnel --url http://localhost:3000     # in ra https://<ngẫu-nhiên>.trycloudflare.com (đổi mỗi lần chạy — dùng để test)
 ```
 Có tên miền riêng thì tạo tunnel có tên (`cloudflared tunnel create` + `route dns`) để địa chỉ cố định. Đặt `APP_BASE_URL` bằng địa chỉ đó
-và khai báo `https://<host>/api/zalo/webhook` ở developers.zalo.me → Webhook. Webhook có rate limit 120 yêu cầu/phút/IP và **từ chối** khi chưa
-đặt `ZALO_WEBHOOK_SECRET` ở môi trường production.
+và khai báo `https://<host>/api/zalo/webhook` ở developers.zalo.me → Webhook. Webhook có rate limit 120 yêu cầu/phút/IP. Ở production,
+**chưa có** `ZALO_WEBHOOK_SECRET` thì trả **200 nhưng bỏ qua mọi sự kiện** (v1.10.2 — Zalo chỉ cấp OA Secret Key sau khi đã lưu được URL,
+mà lưu URL cần 200); **có** khóa thì chữ ký sai → 401. `GET /api/zalo/webhook` trả 200 (kiểm tra sống). Cảnh báo "IP [US]" khi khai báo là
+do đi qua Cloudflare; chiều app → Zalo vẫn đi từ IP Việt Nam của VPS.
 
 Nếu refresh token thất bại, dashboard ADMIN và Cấu hình → Zalo OA hiện cảnh báo đỏ.
 

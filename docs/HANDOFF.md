@@ -1,7 +1,17 @@
 # Bàn giao / chuyển máy làm việc
 
-Cập nhật 21/09/2026, phiên bản v1.5.4. Ngữ cảnh cho Claude Code nằm ở `CLAUDE.md` (gốc repo) — máy mới mở Claude Code trong thư mục
+Cập nhật 21/09/2026, phiên bản v1.10.2. Ngữ cảnh cho Claude Code nằm ở `CLAUDE.md` (gốc repo) — máy mới mở Claude Code trong thư mục
 dự án là đọc được ngay. Lịch sử hội thoại và memory của Claude Code **không** nằm trong repo.
+
+## 0. Máy chủ thật đã ở VPS (từ 21/09/2026)
+
+- Ứng dụng chạy tại **https://face.ydsg.website** — VPS `root@103.142.27.210`, compose project `facebeo` (app + cloudflared), dữ liệu ở
+  `/opt/facebeo/data`, bí mật ở `/opt/facebeo/.env`, cập nhật: `sh /opt/facebeo/src/deploy/update.sh [tag]`. Chi tiết: `docs/DEPLOY-VPS.md`.
+- **Đổi máy làm việc (máy phát triển) không còn phải chép dữ liệu thật** — mục 1–3 dưới đây chỉ còn dùng khi dựng máy phát triển hoặc khi
+  phải chuyển máy chủ thật sang nơi khác (quy trình chuyển thật: `docs/DEPLOY-VPS.md` mục 3).
+- Máy phát triển **không** dùng khóa Zalo thật và **không** chạy cron (`DISABLE_CRON=true`): refresh token Zalo chỉ dùng được một lần, hai nơi
+  cùng chạy sẽ làm hỏng token và gửi tin trùng. Cần dữ liệu thật để tái hiện lỗi: tải bản `data/backups/facebeo-YYYYMMDD.db` từ VPS về,
+  mở bằng `.env` phát triển (không khóa Zalo) — nhớ `BIOMETRIC_KEY` phải trùng VPS mới đọc được mẫu khuôn mặt.
 
 ## 1. GitHub có gì, thiếu gì
 
@@ -15,6 +25,8 @@ Bị `.gitignore` bỏ qua — **cố ý**, phải chép tay từ máy cũ (USB 
 | `data/facebeo.db` (+ `facebeo.db-wal`, `facebeo.db-shm` nếu còn) | DB thật: nhân viên, khuôn mặt, log chấm công, đơn, lịch, token Zalo, phân quyền | Máy mới trống: làm theo mục 1b (cấu hình nền + tạo Quản trị) rồi nhập lại người |
 | `data/backups/` | bản `VACUUM INTO` hằng đêm 03:00 (giữ 14 bản) | Có thể dùng thay `facebeo.db` |
 | `data/snapshots/` | ảnh lần quét (tự xóa sau 90 ngày) | Mất ảnh đối chiếu cũ, không ảnh hưởng công |
+| `data/credentials/` (v1.9.0) | file scan văn bằng / chứng chỉ / CME | Mất file đính kèm (dữ liệu nhập tay vẫn còn trong DB) |
+| `data/avatars/` (v1.10.0) | ảnh đại diện nhìn thẳng | Thẻ nhân viên hiện chữ viết tắt tới khi enroll lại |
 | `models/*.onnx` (≈180 MB) | mô hình nhận diện + liveness | Tải lại: `npm run models:face` và `npm run models:liveness` |
 | `public/models/`, `node_modules/`, `.next/` | sinh ra khi cài/build | `npm install`, `npm run build` |
 
@@ -73,8 +85,8 @@ npm test                                      # 821 test, dùng data/test.db ri�
 
 Kiểm tra: đăng nhập, Cấu hình → Zalo OA hiện "đang gửi thật" (nếu chép đúng `.env` + DB), Nhân viên hiện đủ người, Chấm công có log cũ.
 
-Kiosk/tablet: đang trỏ tới IP máy chủ cũ (`192.168.1.6:3000`). IP đổi thì cập nhật `APP_BASE_URL` trong `.env`, mở lại `/kiosk` trên
-tablet bằng địa chỉ mới; thiết bị đã ghép vẫn hợp lệ (cookie kiosk) nếu cùng origin, khác origin thì ghép lại ở Thiết bị kiosk.
+Kiosk/tablet: từ 21/09/2026 trỏ tới **https://face.ydsg.website/kiosk** (không còn IP LAN `192.168.1.6:3000`). Đổi địa chỉ máy chủ thì cập nhật
+`APP_BASE_URL` trong `.env` và **ghép lại** tablet ở Thiết bị kiosk (cookie kiosk gắn với từng địa chỉ).
 
 ## 4. Tiếp tục với Claude Code
 
@@ -87,3 +99,6 @@ tablet bằng địa chỉ mới; thiết bị đã ghép vẫn hợp lệ (cook
 v1.4.3 sửa RBAC → v1.4.4 khắc phục rà soát bảo mật → v1.4.5 đổi mật khẩu → v1.5.0 mục Thông tin (liên kết) → v1.5.1 sửa/xóa cấu hình
 tổ chức → v1.5.2 Excel giờ vào/ra → v1.5.3 xóa tài khoản tạo nhầm + thu hồi phiên → tài liệu Zalo OA.
 21/09/2026: v1.5.4 `db:seed:base` + `admin:create` (khởi tạo vận hành thật không qua dữ liệu mẫu).
+21/09/2026 (tiếp): v1.6.0 nhiều nhóm Zalo → v1.7.0 duyệt đơn theo phòng + chức danh/chuyên khoa → v1.8.0 thông tin cá nhân + nhập Excel →
+v1.9.0 hồ sơ hành nghề (GPHN, CME) → v1.10.0 ảnh đại diện → v1.10.1 đóng gói Docker, triển khai VPS qua Cloudflare Tunnel, chuyển dữ liệu →
+v1.10.2 webhook Zalo trên face.ydsg.website (xác thực domain bằng tệp HTML, OA Secret Key).

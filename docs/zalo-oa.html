@@ -105,7 +105,7 @@ footer{color:var(--muted);font-size:.85rem;text-align:center;padding:10px}
 <div class="layout">
 <nav class="toc" id="toc">
   <div class="brand">💬 Zalo OA trong Face Beo</div>
-  <div class="sub">Tài liệu tích hợp · bản v1.9.0</div>
+  <div class="sub">Tài liệu tích hợp · bản v1.10.2</div>
   <button class="menu-mobile" onclick="document.getElementById('toc').classList.toggle('open')">☰ Mục lục</button>
   <ol>
     <li class="grp">Cho mọi người</li>
@@ -381,13 +381,21 @@ flowchart LR
     <li>Điền <code>.env</code> (bảng 5.4) rồi <b>khởi động lại</b> máy chủ. Hai token trong <code>.env</code> chỉ dùng để khởi tạo bảng <code>ZaloToken</code>; sau đó hệ thống tự làm mới, <b>không</b> chép lại giá trị cũ vào <code>.env</code>.</li>
     <li>Vào <b>Cấu hình → Zalo OA</b>: thấy "Đang gửi thật · OA &lt;tên&gt;". Chọn nhóm trong danh sách hoặc dán <b>link chat nhóm</b> (hệ thống tự lấy phần <code>gid</code>), bấm <b>Thêm nhóm</b>, tích <b>loại tin</b> (và phòng nếu cần), <b>Lưu</b>, rồi bấm <b>Gửi tin thử</b> của nhóm đó để chắc chắn tin đến.</li>
   </ol>
-  <h3>5.3 Webhook qua Cloudflare Tunnel (máy chủ trong LAN)</h3>
-  <p>Zalo chỉ gọi webhook tới HTTPS công khai. Cloudflare Tunnel miễn phí, không cần mở cổng trên router:</p>
+  <h3>5.3 Webhook trên máy chủ thật (face.ydsg.website)</h3>
+  <p>Máy chủ thật chạy trên VPS qua Cloudflare Tunnel có tên (<code>docs/DEPLOY-VPS.md</code>). Làm đúng thứ tự trên developers.zalo.me → ứng dụng <b>YDSG NHÂN SỰ</b>:</p>
+  <ol class="steps">
+    <li><b>Xác thực domain</b> <code>face.ydsg.website</code> → chọn <b>Tải tệp HTML</b> → tải file <code>zalo_verifier&lt;mã&gt;.html</code> → đặt vào <code>public/</code> của repo, commit, chạy <code>deploy/update.sh</code> trên VPS → bấm <b>Xác thực</b>. (Cách DNS TXT không dùng được vì <code>face</code> đã là CNAME của tunnel; cách thẻ meta không qua được vì trang chủ chuyển hướng sang <code>/login</code>.) <b>Đã xác thực 21/09/2026.</b></li>
+    <li><b>Webhook</b> → Thay đổi → <code>https://face.ydsg.website/api/zalo/webhook</code> → Kiểm tra → tích "Tôi đã hiểu" → Cập nhật. Dòng cảnh báo <i>104.21.x.x [US]</i> là IP Cloudflare, không phải lỗi: chiều ứng dụng → Zalo (gửi tin, làm mới token) vẫn đi từ IP Việt Nam của VPS.</li>
+    <li>Sau khi lưu URL, Zalo mới hiện <b>OA Secret Key</b> → dán vào <code>ZALO_WEBHOOK_SECRET</code> trong <code>/opt/facebeo/.env</code> bằng lệnh (không chụp màn hình) → tạo lại container app.</li>
+    <li>Đăng ký sự kiện <i>user_send_text</i> và <i>create_group</i>.</li>
+  </ol>
+  <div class="callout"><b>Vì sao webhook trả 200 khi chưa có khóa?</b><p>Zalo chỉ cấp OA Secret Key <b>sau</b> khi đã lưu được Webhook URL, mà muốn lưu URL thì URL phải trả 200. Từ v1.10.2: chưa có <code>ZALO_WEBHOOK_SECRET</code> → trả 200 nhưng <b>bỏ qua mọi sự kiện</b> (không tin sự kiện không kiểm được chữ ký); có khóa → chữ ký sai trả 401. <code>GET</code> trả 200 để kiểm tra sống.</p></div>
+  <p>Thử nghiệm trên máy trong LAN (không phải máy chủ thật) có thể dùng tunnel tạm, miễn phí, không mở cổng:</p>
   <div class="formula">winget install Cloudflare.cloudflared
 cloudflared tunnel --url http://localhost:3000
 # in ra https://&lt;ngẫu-nhiên&gt;.trycloudflare.com — đổi mỗi lần chạy, chỉ để thử
 # Có tên miền riêng: cloudflared tunnel create face-beo  →  cloudflared tunnel route dns face-beo zalo.tencongty.vn</div>
-  <p>Sau đó: đặt <code>APP_BASE_URL</code> bằng địa chỉ HTTPS đó; trên developers.zalo.me → <b>Webhook</b> khai báo <code>https://&lt;host&gt;/api/zalo/webhook</code>, chọn sự kiện <i>user_send_text</i> và <i>create_group</i>; sao chép <b>OA Secret Key</b> của phần Webhook vào <code>ZALO_WEBHOOK_SECRET</code>. Ở môi trường production, thiếu biến này webhook trả 503 (từ chối nhận).</p>
+  <p>Sau đó: đặt <code>APP_BASE_URL</code> bằng địa chỉ HTTPS đó; trên developers.zalo.me → <b>Webhook</b> khai báo <code>https://&lt;host&gt;/api/zalo/webhook</code>, chọn sự kiện <i>user_send_text</i> và <i>create_group</i>; sao chép <b>OA Secret Key</b> của phần Webhook vào <code>ZALO_WEBHOOK_SECRET</code>. Ở môi trường production, thiếu biến này webhook trả 200 nhưng bỏ qua sự kiện (v1.10.2; trước đó trả 503).</p>
   <h3>5.4 Biến môi trường (chỉ tên — không ghi giá trị vào tài liệu)</h3>
   <div class="tw"><table>
     <tr><th>Biến</th><th>Bắt buộc?</th><th>Dùng để</th></tr>
@@ -397,7 +405,7 @@ cloudflared tunnel --url http://localhost:3000
     <tr><td><code>ZALO_OA_REFRESH_TOKEN</code></td><td>Lần đầu</td><td>Khởi tạo bảng <code>ZaloToken</code> khi bảng trống; sau đó hệ thống tự lưu cặp mới, giá trị trong <code>.env</code> không dùng nữa</td></tr>
     <tr><td><code>ZALO_WEBHOOK_SECRET</code></td><td>Khi dùng webhook</td><td>Kiểm chữ ký <code>X-ZEvent-Signature</code>; không ảnh hưởng chế độ mô phỏng</td></tr>
     <tr><td><code>ZALO_OA_NAME</code></td><td>Không</td><td>Tên OA hiển thị cho nhân viên ở trang liên kết (mặc định "Face Beo")</td></tr>
-    <tr><td><code>APP_BASE_URL</code></td><td>Nên có</td><td>Địa chỉ gốc cho link trong tin nhắn (mặc định http://localhost:3000)</td></tr>
+    <tr><td><code>APP_BASE_URL</code></td><td>Nên có</td><td>Địa chỉ gốc cho link trong tin nhắn — máy chủ thật: <code>https://face.ydsg.website</code> (mặc định http://localhost:3000)</td></tr>
     <tr><td><code>CRON_SECRET</code>, <code>DISABLE_CRON</code></td><td>Không</td><td>Gọi job từ lịch ngoài / tắt cron nội bộ</td></tr>
   </table></div>
   <div class="callout warn"><b>Quy tắc "mô phỏng"</b><p>Mô phỏng khi thiếu <code>ZALO_OA_APP_ID</code> hoặc <code>ZALO_OA_SECRET</code>, <b>hoặc</b> vừa không có <code>ZALO_OA_REFRESH_TOKEN</code> trong <code>.env</code> vừa trống bảng <code>ZaloToken</code>. Không có biến "bật/tắt mô phỏng" riêng.</p></div>
@@ -498,7 +506,7 @@ cloudflared tunnel --url http://localhost:3000
   <p>Tài liệu nội bộ liên quan: <code>README.md</code> mục "Cấu hình Zalo OA", <code>docs/PRD-v2-Face-Beo.md</code> §7, <code>docs/PRD-v2.1-HR.md</code> §7, <code>docs/OPEN-DECISIONS.md</code> D4, cẩm nang sử dụng mục 15.</p>
 </section>
 
-<footer>Face Beo · Tài liệu Zalo OA · cập nhật 21/09/2026 (phiên bản ứng dụng v1.9.0)</footer>
+<footer>Face Beo · Tài liệu Zalo OA · cập nhật 21/09/2026 (phiên bản ứng dụng v1.10.2 · https://face.ydsg.website)</footer>
 </main>
 </div>
 

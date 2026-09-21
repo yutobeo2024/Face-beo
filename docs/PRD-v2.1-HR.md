@@ -390,3 +390,21 @@ công được tính trực tiếp từ planner. Quản lý được cấp `org.
 - **Xóa**: cùng lúc với mẫu khuôn mặt — xóa khuôn mặt, rút đồng ý, cho nghỉ việc, job `snapshot-cleanup` (người đã nghỉ), xóa tài khoản tạo nhầm.
 - **Đồng ý**: nội dung đồng ý trên trang enroll nêu rõ việc lưu ảnh đại diện; màn hình đồng ý hiện mỗi lần enroll nên enroll lại = đồng ý
   lại theo nội dung mới. **Sao lưu ngoài máy phải gồm `data/avatars/`** (job `db-backup` chỉ sao lưu DB).
+
+## 23. Triển khai máy chủ thật trên VPS qua Cloudflare Tunnel (v1.10.1–v1.10.2, 21/09/2026)
+
+- **Địa chỉ**: https://face.ydsg.website (Cloudflare Tunnel `facebeo`, route → `http://app:3000`). VPS `103.142.27.210` (Ubuntu 24.04, 6 vCPU, 5,8 GB
+  RAM) dùng chung với dự án khác → Face Beo là compose project riêng (`app` + `cloudflared`), **không mở cổng host**; app ~600 MB RAM
+  (giới hạn 1,5 GB), mô hình R50 + liveness L2 như trước.
+- **Đóng gói**: `Dockerfile` (node:22-bookworm-slim, glibc cho onnxruntime-node/sharp), `deploy/docker-compose.yml`, `deploy/entrypoint.sh`
+  (`prisma migrate deploy` rồi `next start`), `deploy/update.sh` (cập nhật theo main/tag, chờ `/login` 200). Dữ liệu `/opt/facebeo/data`, mô hình
+  `/opt/facebeo/models`, bí mật `/opt/facebeo/.env` (600) — đổi `.env` phải tạo lại container.
+- **IP người dùng thật**: `CLIENT_IP_HEADER=cf-connecting-ip` (chỉ an toàn vì app không nhận kết nối trực tiếp) — giới hạn tần suất theo IP người
+  dùng, không theo IP Cloudflare.
+- **Chuyển dữ liệu** từ máy local: gộp WAL → chép DB (kiểm checksum), `credentials/`, `snapshots/`, `.env` (giữ `BIOMETRIC_KEY`, `SESSION_SECRET`,
+  khóa Zalo); máy local tắt Zalo thật + `DISABLE_CRON=true` (refresh token Zalo dùng một lần).
+- **Zalo**: xác thực domain `face.ydsg.website` bằng tệp HTML (`public/zalo_verifier….html`; DNS TXT không dùng được vì tên đã là CNAME của
+  tunnel); webhook `https://face.ydsg.website/api/zalo/webhook` — **v1.10.2**: production chưa có `ZALO_WEBHOOK_SECRET` → trả 200, bỏ qua sự kiện
+  (để lưu được URL rồi mới nhận OA Secret Key); có khóa → chữ ký sai 401; thêm `GET` trả 200.
+- **Kiosk**: ghép lại ở `https://face.ydsg.website/kiosk/pair` (cookie kiosk gắn theo địa chỉ).
+- **Còn mở**: sao lưu ra ngoài VPS (D6), đổi bí mật đã lộ (D7).

@@ -26,6 +26,27 @@ Ghi lại những điểm đã phát hiện trong quá trình làm và test, c�
   quy tắc (số GPHN, họ tên, tình trạng, nơi đăng ký) — không cần AI; nếu bị chặn thì giữ cách làm tay.
 - **Trạng thái:** chưa làm.
 
+### D6. Sao lưu ra ngoài VPS
+
+- **Ghi nhận:** 21/09/2026, khi chuyển máy chủ thật lên VPS. Job `db-backup` (03:00) chỉ ghi vào `/opt/facebeo/data/backups/` — **cùng máy**;
+  VPS hỏng là mất cả dữ liệu lẫn bản sao lưu. File scan (`credentials/`) và ảnh đại diện (`avatars/`) không có trong bản sao lưu DB.
+- **Phương án:** cron trên VPS 03:30 nén bản DB mới nhất + `credentials/` + `avatars/` → `rclone` lên **Cloudflare R2** (đã dùng Cloudflare) hoặc
+  **Google Drive**; giữ 30 ngày; thử khôi phục định kỳ.
+- **Trạng thái:** chờ chọn nơi lưu.
+
+### D7. Đổi các bí mật đã lộ khi triển khai
+
+- Token Cloudflare Tunnel và `ZALO_WEBHOOK_SECRET` từng hiện trong ảnh chụp màn hình lúc cài đặt (21/09/2026). Cần **Refresh token** tunnel và
+  tạo lại OA Secret Key webhook (nếu Zalo cho), dán lại vào `/opt/facebeo/.env`, `up -d --force-recreate`.
+- **Trạng thái:** chờ chủ dự án thao tác.
+
+## Đã chốt v1.10.1–v1.10.2 (21/09/2026)
+
+- **Máy chủ thật = VPS `103.142.27.210` qua Cloudflare Tunnel**, địa chỉ **https://face.ydsg.website**; Docker compose riêng (`facebeo`), không mở
+  cổng host, không đụng các dự án khác trên VPS. Chuyển nguyên dữ liệu máy cũ (giữ `BIOMETRIC_KEY`, token Zalo). Máy local chỉ để phát triển.
+- **Webhook Zalo**: xác thực domain bằng tệp HTML; chưa có khóa ký thì trả 200 và bỏ qua sự kiện; có khóa thì chữ ký sai → 401.
+  Xem PRD v2.1 mục 23, `docs/DEPLOY-VPS.md`.
+
 ## Đã chốt v1.10.0 (21/09/2026)
 
 - **Ảnh đại diện = ảnh nhìn thẳng lúc enroll** (cắt khuôn mặt 256×256, không lưu 4 góc còn lại). Xem: chính chủ, Nhân sự, Quản trị, quản lý
