@@ -63,6 +63,9 @@ docker logs --tail 20 facebeo-cloudflared-1 # phải có "Registered tunnel conn
 
 Mở `https://<sub>.<tên miền>/login` → đăng nhập bằng tài khoản thật.
 
+> Đổi biến trong `/opt/facebeo/.env` xong phải **tạo lại container** (`fb up -d --force-recreate app`, tunnel: `… cloudflared`) — `restart` không nạp lại env.
+> Dán bí mật bằng lệnh, **không chụp màn hình** có bí mật.
+
 ## 5. Tắt hẳn server local — BẮT BUỘC
 
 Refresh token Zalo **chỉ dùng được một lần**: hai nơi cùng chạy cron sẽ làm hỏng token (phải lấy lại bằng API Explorer) và gửi tin nhóm trùng.
@@ -70,7 +73,14 @@ Muốn giữ máy local để phát triển: xóa mọi dòng `ZALO_*` trong `.e
 
 ## 6. Sau khi chuyển
 
-- developers.zalo.me → ứng dụng → **Webhook**: URL `https://<sub>.<tên miền>/api/zalo/webhook`.
+- Zalo (developers.zalo.me → ứng dụng), làm theo thứ tự:
+  1. **Xác thực domain** `<sub>.<tên miền>` bằng cách **Tải tệp HTML**: đặt file `zalo_verifier<mã>.html` Zalo đưa vào `public/`, commit,
+     `update.sh`, rồi bấm Xác thực. (DNS TXT không dùng được: tên `<sub>` đã là CNAME của tunnel; thẻ meta không qua được vì `/` chuyển hướng.)
+  2. **Webhook** → URL `https://<sub>.<tên miền>/api/zalo/webhook` → Kiểm tra → tích "Tôi đã hiểu" → Cập nhật. Cảnh báo "IP [US]" là do
+     Cloudflare; chiều app → Zalo vẫn đi từ IP Việt Nam của VPS. Chưa có `ZALO_WEBHOOK_SECRET` thì webhook trả 200 nhưng bỏ qua mọi sự kiện.
+  3. Chép **OA Secret Key** hiện ra sau khi lưu → `ZALO_WEBHOOK_SECRET` trong `/opt/facebeo/.env` →
+     `fb up -d --force-recreate app` (env chỉ nạp khi tạo lại container). Từ đây chữ ký sai → 401.
+  4. Đăng ký sự kiện `user_send_text`, `create_group`.
 - Cấu hình → Zalo OA: phải "Đang gửi thật" → **Gửi tin thử** từng nhóm.
 - **Tablet kiosk**: mở `https://<sub>.<tên miền>/kiosk/pair`, ghép lại (Thiết bị kiosk → Thêm thiết bị → mã 6 số); thu hồi thiết bị cũ.
 - Thử enroll + quét trên tablet: camera mở được (HTTPS), nhận đúng người.
