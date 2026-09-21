@@ -43,6 +43,9 @@ model Employee {
   dateOfBirth        String? // "YYYY-MM-DD"
   gender             String? // NAM | NU | KHAC
   address            String?
+  // v1.10.0: ảnh đại diện = 1 ảnh nhìn thẳng đã cắt khuôn mặt lúc enroll (data/avatars/<id>/<key>); xóa cùng mẫu khuôn mặt.
+  faceAvatarKey      String?
+  faceAvatarAt       DateTime?
   passwordHash       String
   mustChangePassword Boolean           @default(true)
   role               String            @default("EMPLOYEE") // ADMIN | HR | MANAGER | EMPLOYEE

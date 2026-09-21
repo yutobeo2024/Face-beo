@@ -162,7 +162,7 @@ người có nét giống (anh em) và từ chối nhiều lượt quét đúng.
 **Thay đổi:**
 - Kiosk và trang enroll chỉ: phát hiện mặt (BlazeFace), facemesh, liveness L1; gửi **snapshot + 5 điểm mốc** (mắt trái, mắt phải, mũi, khóe miệng trái/phải) theo pixel của snapshot. Không còn embedding trên máy.
 - Server (`src/lib/face-embed.ts`): căn chỉnh mặt theo mẫu ArcFace 112×112 (phép tương tự từ 5 điểm), chuẩn hóa (x−127.5)/127.5, chạy InsightFace
-  `w600k_r50` (mặc định) hoặc `w600k_mbf` bằng onnxruntime → vector 512 chiều chuẩn hóa L2. Ảnh enroll không được lưu.
+  `w600k_r50` (mặc định) hoặc `w600k_mbf` bằng onnxruntime → vector 512 chiều chuẩn hóa L2. Ảnh enroll không lưu, trừ 1 ảnh nhỏ nhìn thẳng (cắt khuôn mặt, 256×256) làm ảnh đại diện (v1.10.0) — xem mục 22.
 - Phiên bản template: `insightface-w600k_r50-v1` / `insightface-w600k_mbf-v1`. Template phiên bản khác bị bỏ qua → danh sách nhân viên hiện "Enroll lại".
 - Ngưỡng mặc định: khớp 0.45, chênh lệch top-1/top-2 0.08 (đo được: cùng người ≥ 0.51, anh em ≤ 0.35).
 - Enroll: 5 mẫu phải giống nhau (cosine ≥ 0.4, chống lẫn người khác vào khung); giống nhân viên khác ≥ ngưỡng thì cảnh báo, ≥ 0.65 thì
@@ -377,3 +377,16 @@ công được tính trực tiếp từ planner. Quản lý được cấp `org.
   (ghi `verifiedAt`, `verifiedById`); thấy đăng ký hành nghề nơi khác thì ghi vào "Nơi đăng ký hành nghề" và đổi tình trạng nếu cần.
 - **API**: `GET/PUT/DELETE /api/employees/[id]/license`, `POST …/license/verify`, `POST /api/employees/[id]/credentials`,
   `PATCH/DELETE …/credentials/[cid]`, `GET/POST …/credentials/[cid]/file`, `GET /api/credentials/alerts`. Nhật ký `CREDENTIAL_UPDATE`.
+
+## 22. Ảnh khuôn mặt đại diện trên thẻ nhân viên (v1.10.0, 21/09/2026)
+
+- **Mục tiêu**: Nhân sự nhận người nhanh trên trang Nhân viên — người đã enroll có ảnh khuôn mặt thật thay cho chữ viết tắt.
+- **Nguồn ảnh**: mẫu **Nhìn thẳng** (FRONT) lúc enroll. Máy chủ cắt khung vuông quanh 5 điểm mốc (≈ 2,2 × khoảng cách mắt–miệng), thu về
+  256×256 JPEG, bỏ EXIF, lưu `data/avatars/<id>/<uuid>.jpg` (ngoài `public`); cột `Employee.faceAvatarKey`, `faceAvatarAt`. 4 ảnh góc còn lại
+  vẫn **không lưu**. Enroll lại thay ảnh cũ. Lỗi tạo ảnh không làm hỏng enroll (thẻ hiện chữ viết tắt như cũ).
+- **Người đã enroll trước v1.10.0**: không có ảnh cho tới khi enroll lại (không lấy ảnh kiosk, không có nút chụp riêng).
+- **Ai xem** (`GET /api/employees/[id]/avatar`, `avatarUrl` trong danh sách / chi tiết / `/me`): chính chủ; người có quyền `snapshots.view`
+  trong phạm vi phòng — Nhân sự, Quản trị toàn công ty, Quản lý chỉ nhân viên phòng mình. Người khác thấy chữ viết tắt.
+- **Xóa**: cùng lúc với mẫu khuôn mặt — xóa khuôn mặt, rút đồng ý, cho nghỉ việc, job `snapshot-cleanup` (người đã nghỉ), xóa tài khoản tạo nhầm.
+- **Đồng ý**: nội dung đồng ý trên trang enroll nêu rõ việc lưu ảnh đại diện; màn hình đồng ý hiện mỗi lần enroll nên enroll lại = đồng ý
+  lại theo nội dung mới. **Sao lưu ngoài máy phải gồm `data/avatars/`** (job `db-backup` chỉ sao lưu DB).

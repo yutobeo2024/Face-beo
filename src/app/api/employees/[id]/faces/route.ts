@@ -12,6 +12,7 @@ import { announce, onceKey } from "@/lib/announce";
 import { embedFromSnapshot, FaceInputError } from "@/lib/face-embed";
 import { rateLimit } from "@/lib/rate-limit";
 import { decodeJpegDataUrl } from "@/lib/storage";
+import { clearFaceAvatar, saveFaceAvatar } from "@/lib/face-avatar";
 
 const MIN_ENROLL_FACE_PX = 200;
 /** 5 mẫu của cùng một người phải giống nhau ít nhất mức này (chống lẫn người khác vào khung lúc enroll). */
@@ -19,7 +20,7 @@ const MIN_SELF_CONSISTENCY = 0.4;
 /** Giống nhân viên khác từ mức này trở lên => gần như chắc chắn cùng một người: chỉ Quản trị mới được ghi đè. */
 const DUP_HARD_BLOCK = 0.65;
 
-/** Enroll 5 mẫu. Không lưu ảnh, chỉ lưu embedding mã hóa AES-256-GCM. */
+/** Enroll 5 mẫu: lưu embedding mã hóa AES-256-GCM + 1 ảnh đại diện nhỏ cắt từ mẫu nhìn thẳng (v1.10.0); 4 ảnh góc còn lại không lưu. */
 export const POST = handle<{ id: string }>(async (req, ctx) => {
   const u = await requirePerm(req, "faces.enroll");
   if (!rateLimit(`enroll:${u.id}`, 30).ok) throw new HttpError(429, "Quá nhiều lượt enroll, vui lòng chờ một phút");
@@ -34,10 +35,12 @@ export const POST = handle<{ id: string }>(async (req, ctx) => {
   if (poses.size !== 5) throw badRequest("Cần đủ 5 góc: thẳng, trái, phải, ngẩng, cúi");
   const small = body.samples.find((s) => s.faceSize < MIN_ENROLL_FACE_PX);
   if (small) throw badRequest(`Mẫu ${small.pose} có mặt nhỏ hơn ${MIN_ENROLL_FACE_PX}px`);
-  // Tính embedding trên server từ snapshot + điểm mốc (không lưu ảnh).
+  // Tính embedding trên server từ snapshot + điểm mốc.
   const descriptors: Float32Array[] = [];
+  let frontJpeg: Buffer | null = null;
   for (const s of body.samples) {
     const jpeg = decodeJpegDataUrl(s.snapshot); // HttpError 400 nếu quá 1 MB / không phải JPEG
+    if (s.pose === "FRONT") frontJpeg = jpeg;
     try {
       descriptors.push((await embedFromSnapshot(jpeg, s.landmarks)).embedding);
     } catch (e) {
@@ -94,12 +97,24 @@ export const POST = handle<{ id: string }>(async (req, ctx) => {
     ),
   ]);
   invalidateFaceCache();
-  await audit({ actorId: u.id, action: "FACE_ENROLL", entity: "Employee", entityId: id, detail: { samples: 5, modelVersion: FACE_MODEL_VERSION } });
+  // Ảnh đại diện từ mẫu nhìn thẳng — lỗi cắt ảnh không làm hỏng enroll (thẻ nhân viên hiện chữ viết tắt như trước).
+  let avatar = false;
+  const front = body.samples.find((s) => s.pose === "FRONT");
+  if (frontJpeg && front) {
+    try {
+      await saveFaceAvatar(id, frontJpeg, front.landmarks);
+      avatar = true;
+    } catch (err) {
+      console.error("[enroll] không tạo được ảnh đại diện:", (err as Error).message);
+      await clearFaceAvatar(id).catch(() => {}); // ảnh cũ không còn khớp 5 mẫu mới
+    }
+  }
+  await audit({ actorId: u.id, action: "FACE_ENROLL", entity: "Employee", entityId: id, detail: { samples: 5, modelVersion: FACE_MODEL_VERSION, avatar } });
   await announce(u, `đã enroll khuôn mặt cho ${e.code} — ${e.name}`, {
     key: onceKey("face-enroll", id),
     detail: worst ? "⚠️ Có cảnh báo trùng khuôn mặt với nhân viên khác (đã xác nhận vẫn lưu)" : "5 mẫu",
   });
-  return json({ ok: true, count: 5, duplicateWarning: worst ? true : false });
+  return json({ ok: true, count: 5, duplicateWarning: worst ? true : false, avatar });
 });
 
 /** Xóa mẫu khuôn mặt (nhân viên yêu cầu xóa). */
@@ -110,6 +125,7 @@ export const DELETE = handle<{ id: string }>(async (req, ctx) => {
   if (!e) throw notFound();
   await assertCanTouchBiometrics(u, e);
   const del = await prisma.faceTemplate.deleteMany({ where: { employeeId: id } });
+  await clearFaceAvatar(id);
   invalidateFaceCache();
   await audit({ actorId: u.id, action: "FACE_DELETE", entity: "Employee", entityId: id, detail: { count: del.count } });
   if (del.count) await announce(u, `đã xóa dữ liệu khuôn mặt của ${e.code} — ${e.name}`, { key: onceKey("face-delete", id) });

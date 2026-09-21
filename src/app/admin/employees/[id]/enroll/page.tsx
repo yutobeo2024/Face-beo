@@ -18,13 +18,13 @@ const POSES: { pose: Pose; label: string; hint: string }[] = [
   { pose: "DOWN", label: "Hơi cúi", hint: "Cúi mặt xuống một chút" },
 ];
 type Sample = { pose: Pose; snapshot: string; landmarks: [number, number][]; faceSize: number; thumb: string; yaw: number; pitch: number };
-type Emp = { employee: { id: number; code: string; name: string; biometricConsentAt: string | null; faceCount: number; department: { name: string } } };
+type Emp = { employee: { id: number; code: string; name: string; biometricConsentAt: string | null; faceCount: number; avatarUrl?: string | null; department: { name: string } } };
 
 const CONSENT_TEXT = [
   "Mục đích: dữ liệu khuôn mặt chỉ dùng để chấm công tại kiosk của công ty.",
-  "Loại dữ liệu: vector đặc trưng khuôn mặt (embedding) được mã hóa AES-256-GCM. Hệ thống KHÔNG lưu ảnh enroll.",
+  "Loại dữ liệu: vector đặc trưng khuôn mặt (embedding) được mã hóa AES-256-GCM, và 1 ảnh nhỏ nhìn thẳng (đã cắt khuôn mặt) làm ảnh đại diện trên hồ sơ — chỉ Nhân sự, Quản trị, quản lý phòng của bạn và bạn xem được. 4 ảnh góc còn lại không lưu.",
   "Ảnh chụp lúc chấm công (snapshot) được lưu tối đa 90 ngày để đối soát, chỉ quản trị, bộ phận nhân sự và quản lý trực tiếp xem được.",
-  "Thời hạn lưu: trong thời gian làm việc; xóa trong vòng 30 ngày khi nghỉ việc.",
+  "Thời hạn lưu: trong thời gian làm việc; vector và ảnh đại diện bị xóa khi nghỉ việc (chậm nhất 30 ngày).",
   "Quyền của bạn: có thể rút lại đồng ý bất cứ lúc nào — dữ liệu khuôn mặt bị xóa ngay và bạn chuyển sang chấm công thủ công.",
 ];
 
@@ -278,7 +278,7 @@ export default function EnrollPage({ params }: { params: Promise<{ id: string }>
                   Chụp lại từ đầu
                 </Button>
               )}
-              <p className="text-xs text-slate-500">Ảnh chụp chỉ dùng để máy chủ tính vector đặc trưng rồi bỏ đi — không lưu ảnh enroll.</p>
+              <p className="text-xs text-slate-500">Máy chủ tính vector đặc trưng từ 5 ảnh; chỉ giữ 1 ảnh nhìn thẳng (cắt nhỏ) làm ảnh đại diện, 4 ảnh góc còn lại bỏ đi.</p>
             </div>
           </Card>
         </div>
@@ -291,8 +291,13 @@ export default function EnrollPage({ params }: { params: Promise<{ id: string }>
           </div>
           <h2 className="text-lg font-bold">Enroll thành công</h2>
           <p className="mt-1 text-sm text-slate-500">{emp.name} đã có thể chấm công tại kiosk.</p>
+          {emp.avatarUrl && (
+            // eslint-disable-next-line @next/next/no-img-element -- ảnh qua API có kiểm quyền
+            <img src={emp.avatarUrl} alt={emp.name} className="mx-auto mt-4 size-28 rounded-full object-cover ring-4 ring-emerald-100" />
+          )}
           <div className="mt-4 flex justify-center gap-2">
             <Badge tone="ontime">{emp.faceCount} mẫu</Badge>
+            {emp.avatarUrl && <Badge tone="brand">Ảnh đại diện đã cập nhật</Badge>}
           </div>
           <Link href="/admin/employees" className="mt-5 inline-flex h-11 items-center rounded-xl bg-brand-700 px-5 font-semibold text-white hover:bg-brand-800">
             Về danh sách

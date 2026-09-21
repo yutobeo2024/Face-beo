@@ -27,6 +27,10 @@ function rng(seed: number) {
 }
 
 async function wipe() {
+  // Ảnh đại diện (v1.10.0) của nhân viên cũ: xóa cùng dữ liệu.
+  const { rm } = await import("node:fs/promises");
+  const { join } = await import("node:path");
+  await rm(join(process.env.DATA_DIR || join(process.cwd(), "data"), "avatars"), { recursive: true, force: true });
   await prisma.$transaction([
     prisma.notificationLog.deleteMany(),
     prisma.attendanceLog.deleteMany(),

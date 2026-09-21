@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
 import { deleteCredentialDir } from "@/lib/credential-files";
+import { avatarUrlFor, canViewSnapshots, clearFaceAvatar } from "@/lib/face-avatar";
 import { randomTempPassword } from "@/lib/temp-password";
 import { todayVN } from "@/lib/attendance";
 import { applyScheduleChangeFromToday, ensureBaseline } from "@/lib/schedule-assignments";
@@ -39,17 +40,21 @@ export const GET = handle<{ id: string }>(async (req, ctx) => {
       zaloLinkedAt: true,
       biometricConsentAt: true,
       faceTemplates: { select: { modelVersion: true, createdAt: true } },
+      faceAvatarKey: true,
+      faceAvatarAt: true,
     },
   });
   if (!e) throw notFound();
   if (!canViewEmployee(u, e)) throw forbidden();
-  const { faceTemplates, ...all } = e;
+  const { faceTemplates, faceAvatarKey, faceAvatarAt, ...all } = e;
   const rest = maskPersonal(all, u);
+  const avatarUrl = avatarUrlFor(u, { id: e.id, departmentId: e.departmentId, faceAvatarKey, faceAvatarAt }, await canViewSnapshots(u));
   return json({
     employee: {
       ...rest,
       faceCount: faceTemplates.filter((t) => t.modelVersion === FACE_MODEL_VERSION).length,
       faceEnrolledAt: faceTemplates[0]?.createdAt ?? null,
+      avatarUrl,
     },
   });
 });
@@ -117,6 +122,7 @@ export const PATCH = handle<{ id: string }>(async (req, ctx) => {
   // Nghỉ việc: xóa dữ liệu khuôn mặt (PRD mục 9). Gỡ khỏi vị trí quản lý phòng đã làm trong giao dịch ở trên.
   if (fields.active === false) {
     const del = await prisma.faceTemplate.deleteMany({ where: { employeeId: id } });
+    await clearFaceAvatar(id);
     if (del.count) {
       invalidateFaceCache();
       await audit({ actorId: u.id, action: "FACE_DELETE", entity: "Employee", entityId: id, detail: { reason: "inactive", count: del.count } });
@@ -207,6 +213,7 @@ export const DELETE = handle<{ id: string }>(async (req, ctx) => {
   }
   invalidateFaceCache();
   await deleteCredentialDir(id).catch(() => {}); // file scan văn bằng / chứng chỉ (dòng DB xóa theo cascade)
+  await clearFaceAvatar(id, { dbAlreadyGone: true }).catch(() => {});
   await audit({ actorId: u.id, action: "EMPLOYEE_DELETE", entity: "Employee", entityId: id, detail: { code: e.code, name: e.name, role: e.role, departmentId: e.departmentId } });
   await announce(u, `đã xóa tài khoản tạo nhầm ${e.code} — ${e.name}`, { key: `emp-delete:${id}`, detail: "Tài khoản chưa có chấm công / đơn từ / lịch" });
   return json({ ok: true });

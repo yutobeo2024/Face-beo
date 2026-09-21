@@ -164,7 +164,7 @@ Vào **Nhân viên → Enroll khuôn mặt**, trên máy có webcam hoặc trên
 
 1. Nhân viên đọc văn bản đồng ý và tự tick. Hệ thống ghi `biometricConsentAt`.
 2. Chụp tự động 5 góc: thẳng, trái, phải, ngẩng, cúi. Mỗi mẫu phải qua cổng chất lượng: đúng 1 mặt, mặt rộng ≥ 200 px, đủ sáng, không nhòe.
-3. Chỉ embedding được gửi lên server và được mã hóa AES-256-GCM. Hệ thống không lưu ảnh enroll. Nếu mặt trùng với nhân viên khác, hệ thống cảnh báo và ghi AuditLog.
+3. Chỉ embedding được gửi lên server và được mã hóa AES-256-GCM. Hệ thống không lưu ảnh enroll, trừ 1 ảnh nhỏ nhìn thẳng (cắt khuôn mặt, 256×256) làm ảnh đại diện (v1.10.0). Nếu mặt trùng với nhân viên khác, hệ thống cảnh báo và ghi AuditLog.
 
 Nhân viên có thể tự rút đồng ý ở `/me`. Khi đó mẫu khuôn mặt bị xóa ngay và nhân viên chuyển sang chấm công thủ công.
 
@@ -318,12 +318,12 @@ Chạy `npm audit` trước mỗi lần phát hành. Mục tiêu là **0 lỗ h�
 - Chạy `npx prisma migrate deploy` mỗi lần cập nhật. SQLite được bật `journal_mode=WAL` và `busy_timeout=5000` khi khởi động.
 - Cookie session dùng cờ `secure` trong production. Nếu thử nghiệm trong LAN qua HTTP, đặt `INSECURE_COOKIES=true` (không dùng khi chạy thật).
 - Mô hình Human được phục vụ từ `public/models` (do `npm install` chép vào). Nếu chép lại mô hình sau khi build, phải khởi động lại `next start`.
-- Nên đồng bộ `data/backups/` **và `data/credentials/`** (file scan văn bằng / chứng chỉ, v1.9.0 — job `db-backup` chỉ sao lưu DB) ra một nơi lưu trữ ngoài máy chủ.
+- Nên đồng bộ `data/backups/`, **`data/credentials/`** (file scan văn bằng / chứng chỉ, v1.9.0) và **`data/avatars/`** (ảnh đại diện, v1.10.0) ra một nơi lưu trữ ngoài máy chủ — job `db-backup` chỉ sao lưu DB.
 - Khi vượt khoảng 500 nhân viên hoặc cần nhiều máy chủ: đổi `provider` sang `postgresql`.
 
 ## Bảo mật và dữ liệu cá nhân
 
-- Chỉ lưu embedding khuôn mặt, mã hóa AES-256-GCM bằng `BIOMETRIC_KEY` (khóa để ngoài DB). Không lưu ảnh enroll.
+- Chỉ lưu embedding khuôn mặt, mã hóa AES-256-GCM bằng `BIOMETRIC_KEY` (khóa để ngoài DB). Không lưu ảnh enroll, trừ 1 ảnh đại diện nhìn thẳng 256×256 ở `data/avatars/` (v1.10.0) — chỉ chính chủ và người có quyền xem snapshot trong phạm vi phòng xem được; xóa cùng mẫu khuôn mặt (xóa khuôn mặt, rút đồng ý, nghỉ việc).
 - Snapshot nằm ở `data/snapshots/YYYY/MM/DD/`, ngoài thư mục `public`, chỉ xem được qua `/api/snapshots/*` (ADMIN hoặc quản lý trực tiếp). Tự xóa sau `snapshotRetentionDays` (mặc định 90 ngày).
 - Giới hạn tần suất: đăng nhập 10 lượt/phút/IP; quét kiosk 60 lượt/phút/thiết bị.
 - Mọi input đều được validate bằng zod. Log không chứa embedding, token hay mật khẩu.

@@ -7,7 +7,7 @@
   MiniFASNetV2 phía server), đơn từ, tính công/chốt công tháng, xuất Excel, thông báo Zalo OA (nhiều nhóm theo loại tin: minh bạch / chấm công / đơn từ + tin riêng).
 - Stack: Next.js 15 App Router, Prisma 6 (SQLite WAL), zod 4, luxon, exceljs, node-cron, jose JWT (HS256, 7 ngày, `sessionVersion`),
   vitest 4 (test tích hợp gọi thẳng route handler, DB `data/test.db`).
-- Phiên bản hiện tại: **v1.9.0** (tag GitHub `v1.9.0`, repo `yutobeo2024/Face-beo`). Phiên bản ghi trong prose (README, PRD,
+- Phiên bản hiện tại: **v1.10.0** (tag GitHub `v1.10.0`, repo `yutobeo2024/Face-beo`). Phiên bản ghi trong prose (README, PRD,
   OPEN-DECISIONS), không có CHANGELOG; `package.json` version không dùng để đánh số.
 
 ## Lệnh
@@ -54,6 +54,8 @@ Server production đang được chạy bằng `next start` (không phải dev).
 - Hồ sơ hành nghề (v1.9.0, `src/lib/credentials.ts` hàm thuần CME/`licenseIssues`, quyền ở `src/lib/credential-access.ts`): xem = HR/ADMIN + chính
   chủ; sửa = HR/ADMIN, không tự sửa của mình (trừ ADMIN). File scan ở `data/credentials/<id>/` (ngoài public, kiểm chữ ký, ≤ 10 MB) — sao lưu
   ngoài máy phải gồm thư mục này. Job `credential-check` gom vấn đề mới thành một tin nhóm minh bạch, mỗi vấn đề ≤ 1 lần/tháng.
+- Ảnh đại diện (v1.10.0, `src/lib/face-avatar.ts`): 1 ảnh nhìn thẳng cắt từ mẫu FRONT lúc enroll, `data/avatars/<id>/`; xem = chính chủ hoặc
+  `snapshots.view` trong phạm vi phòng. Là dữ liệu khuôn mặt: chỗ nào xóa `faceTemplate` thì phải gọi `clearFaceAvatar`.
 - zod 4: schema PATCH không được có `.default()` (`.partial()` vẫn áp default → xóa dữ liệu). Cột JSON trong SQLite lưu chuỗi.
 
 ## Việc còn mở (21/09/2026)

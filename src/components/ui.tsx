@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useId } from "react";
+import { useEffect, useId, useState } from "react";
 import { Icon, type IconName } from "./icons";
 
 export function cx(...c: (string | false | null | undefined)[]) {
@@ -255,7 +255,15 @@ export function Modal({ open, onClose, title, children, footer, wide }: { open: 
   );
 }
 
-export function Avatar({ name, className }: { name: string; className?: string }) {
+/** Chữ viết tắt trên nền màu theo tên; có `src` (ảnh khuôn mặt đại diện, v1.10.0) thì hiện ảnh, tải lỗi thì quay về chữ viết tắt. */
+export function Avatar({ name, className, src }: { name: string; className?: string; src?: string | null }) {
+  const [broken, setBroken] = useState<string | null>(null);
+  if (src && broken !== src) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element -- ảnh sau API có kiểm quyền, không qua next/image
+      <img src={src} alt={name} loading="lazy" onError={() => setBroken(src)} className={cx("inline-block size-9 shrink-0 rounded-full bg-slate-100 object-cover", className)} />
+    );
+  }
   const parts = name.trim().split(/\s+/);
   const initials = ((parts.at(-2)?.[0] ?? "") + (parts.at(-1)?.[0] ?? "")).toUpperCase();
   const hue = [...name].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);

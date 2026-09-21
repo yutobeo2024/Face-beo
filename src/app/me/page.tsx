@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api, qs, useApi } from "@/lib/client/api";
 import { addDaysStr, fmtDateTime, fmtDay, fmtDayShort, fmtMinutes, mondayOf, todayStr, weekdayOf, WEEKDAY_LONG, WEEKDAY_SHORT } from "@/lib/client/format";
-import { Badge, Button, Card, CardHeader, cx, ErrorBox, IconButton, Modal, Skeleton } from "@/components/ui";
+import { Avatar, Badge, Button, Card, CardHeader, cx, ErrorBox, IconButton, Modal, Skeleton } from "@/components/ui";
 import { DayStatusBadge } from "@/components/status";
 import { Icon } from "@/components/icons";
 import { useToast } from "@/components/toast";
@@ -43,6 +43,7 @@ type Overview = {
     address: string | null;
     jobTitle: { name: string } | null;
     specialty: { name: string } | null;
+    avatarUrl: string | null;
   };
   today: Day;
   week: string;
@@ -254,7 +255,7 @@ export default function MeHome() {
           </>
         }
       >
-        <p className="text-sm text-slate-600">Toàn bộ mẫu khuôn mặt của bạn sẽ bị xóa ngay. Bạn sẽ không chấm công tại kiosk được nữa và chuyển sang chấm công thủ công do quản lý xác nhận.</p>
+        <p className="text-sm text-slate-600">Toàn bộ mẫu khuôn mặt và ảnh đại diện của bạn sẽ bị xóa ngay. Bạn sẽ không chấm công tại kiosk được nữa và chuyển sang chấm công thủ công do quản lý xác nhận.</p>
       </Modal>
     </>
   );
@@ -289,6 +290,12 @@ function PersonalInfo({ me }: { me: Overview["me"] }) {
   return (
     <Card className="mt-4">
       <CardHeader title="Thông tin cá nhân" />
+      {me.avatarUrl && (
+        <div className="flex items-center gap-3 px-4 pt-3">
+          <Avatar name={me.name} src={me.avatarUrl} className="size-16" />
+          <p className="text-xs text-slate-500">Ảnh đại diện lấy từ ảnh nhìn thẳng lúc enroll khuôn mặt. Rút lại đồng ý thì ảnh bị xóa cùng dữ liệu khuôn mặt.</p>
+        </div>
+      )}
       <dl className="grid gap-x-4 gap-y-1 px-4 py-3 text-sm sm:grid-cols-[10rem_1fr]">
         {rows.map(([k, v]) => (
           <div key={k} className="contents">

@@ -107,7 +107,7 @@ footer{color:var(--muted);font-size:.85rem;text-align:center;padding:10px}
 <div class="layout">
 <nav class="toc" id="toc">
   <div class="brand">📘 Cẩm nang Face Beo</div>
-  <div class="sub">Hướng dẫn sử dụng · bản v1.9</div>
+  <div class="sub">Hướng dẫn sử dụng · bản v1.10</div>
   <button class="menu-mobile" onclick="document.getElementById('toc').classList.toggle('open')">☰ Mục lục</button>
   <ol>
     <li class="grp">Bắt đầu</li>
@@ -448,8 +448,11 @@ flowchart TD
     <li>Mở hồ sơ nhân viên → <b>Enroll khuôn mặt</b>. Xác nhận nhân viên <b>đồng ý</b> cho dùng dữ liệu khuôn mặt.</li>
     <li>Chụp đủ <b>5 góc</b>: Nhìn thẳng · Hơi trái · Hơi phải · Hơi ngẩng · Hơi cúi. Nên chụp tại chính chỗ đặt kiosk, cùng ánh sáng.</li>
     <li>Hệ thống kiểm tra 5 mẫu là cùng một người. Nếu khuôn mặt <b>giống một nhân viên khác</b>, hệ thống cảnh báo; giống rất cao (≥ 0.65) thì chỉ Quản trị mới được ghi đè.</li>
-    <li>Lưu. Ảnh enroll <b>không được lưu</b>, chỉ lưu mã đặc trưng đã mã hóa.</li>
+    <li>Lưu. Hệ thống lưu mã đặc trưng đã mã hóa và <b>1 ảnh nhỏ nhìn thẳng</b> (cắt khuôn mặt) làm <b>ảnh đại diện</b> trên thẻ nhân viên; 4 ảnh góc còn lại không lưu.</li>
   </ol>
+  <div class="callout"><b>Ảnh đại diện trên thẻ nhân viên</b> (v1.10.0)
+    <p>Người đã enroll có ảnh khuôn mặt thật thay cho chữ viết tắt — bấm ảnh để xem lớn. <b>Ai thấy ảnh</b>: Nhân sự, Quản trị, quản lý phòng của người đó và chính họ (ở Trang cá nhân); người khác vẫn thấy chữ viết tắt. Ảnh bị xóa khi xóa khuôn mặt, rút đồng ý hoặc cho nghỉ việc. Người enroll <b>trước bản này</b> chưa có ảnh — bấm <b>Enroll lại</b> để có ảnh. Khi sao lưu ra ngoài máy, chép cả thư mục <code>data/avatars/</code>.</p>
+  </div>
   <div class="callout ok"><b>Mẹo để nhận diện chính xác</b>
     <p>• Bỏ khẩu trang, mũ; kính thường được nhưng nên enroll đúng như khi đi làm. • Người có nét giống nhau (anh chị em) vẫn phân biệt được, nhưng enroll kỹ cả 5 góc. • Danh sách nhân viên hiện <b>"Enroll lại"</b> khi mẫu cũ không còn dùng được sau khi nâng cấp mô hình.</p>
   </div>
@@ -957,7 +960,7 @@ stateDiagram-v2
   <details><summary>Đăng xuất trên điện thoại thì máy tính cũng bị thoát?</summary><p>Đúng, có chủ đích: đăng xuất ở bất kỳ đâu sẽ thoát tài khoản trên mọi thiết bị (kể cả phiên lỡ để lại ở máy dùng chung). Đăng nhập lại là được. Đổi mật khẩu cũng vậy.</p></details>
 </section>
 
-<footer>Face Beo · Cẩm nang sử dụng · cập nhật 21/09/2026 (phiên bản ứng dụng v1.9.0)</footer>
+<footer>Face Beo · Cẩm nang sử dụng · cập nhật 21/09/2026 (phiên bản ứng dụng v1.10.0)</footer>
 </main>
 </div>
 

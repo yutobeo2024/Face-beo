@@ -7,6 +7,7 @@ import { summarizeRange } from "@/lib/attendance-service";
 import { startOfWeek, todayVN, weekDates } from "@/lib/attendance";
 import { toDayRow } from "@/lib/day-rows";
 import { FACE_MODEL_VERSION } from "@/lib/roles";
+import { avatarUrlFor } from "@/lib/face-avatar";
 
 /** Lịch tuần + trạng thái công hôm nay của chính nhân viên. */
 export const GET = handle(async (req) => {
@@ -35,13 +36,20 @@ export const GET = handle(async (req) => {
         address: true,
         jobTitle: { select: { name: true } },
         specialty: { select: { name: true } },
+        faceAvatarAt: true,
+        faceAvatarKey: true,
       },
     }),
     prisma.leaveRequest.count({ where: { employeeId: u.id, status: { in: ["PENDING", "MANAGER_APPROVED"] } } }),
     prisma.faceTemplate.count({ where: { employeeId: u.id, modelVersion: FACE_MODEL_VERSION } }),
   ]);
   return json({
-    me: { ...emp, role: u.role, faceEnrolled: faces > 0 },
+    me: (({ faceAvatarKey, faceAvatarAt, ...rest }) => ({
+      ...rest,
+      role: u.role,
+      faceEnrolled: faces > 0,
+      avatarUrl: avatarUrlFor(u, { id: u.id, departmentId: u.departmentId, faceAvatarKey, faceAvatarAt }, false),
+    }))(emp),
     today: toDayRow(summaries.get(`${u.id}|${today}`)!),
     week: monday,
     days: dates.map((d) => ({ ...toDayRow(summaries.get(`${u.id}|${d}`)!), holidayName: planner.holidayNames.get(d) ?? null })),

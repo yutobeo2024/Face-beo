@@ -9,6 +9,7 @@ import { assertCanCreate } from "@/lib/employee-guards";
 import { announce } from "@/lib/announce";
 import { ROLE_LABEL, type Role } from "@/lib/roles";
 import { PERSONAL_KEYS, canSeePersonal, createEmployee, maskPersonal } from "@/lib/employees";
+import { avatarUrlFor, canViewSnapshots } from "@/lib/face-avatar";
 
 const listQuery = z.object({
   departmentId: optId,
@@ -21,7 +22,7 @@ const listQuery = z.object({
 export const GET = handle(async (req) => {
   const u = await requirePerm(req, ["employees.view", "employees.manage"]);
   const q = parseQuery(req, listQuery);
-  const manage = await can(u, "employees.manage");
+  const [manage, snaps] = await Promise.all([can(u, "employees.manage"), canViewSnapshots(u)]);
   const rows = await prisma.employee.findMany({
     where: {
       ...employeeScopeWhere(u, q.departmentId),
@@ -59,17 +60,21 @@ export const GET = handle(async (req) => {
       biometricConsentAt: true,
       lockedUntil: true,
       faceTemplates: { select: { modelVersion: true } },
+      faceAvatarKey: true,
+      faceAvatarAt: true,
       _count: { select: { schedules: true } },
     },
   });
   return json({
-    employees: rows.map(({ faceTemplates, zaloUserId, _count, ...raw }) => {
+    employees: rows.map(({ faceTemplates, zaloUserId, _count, faceAvatarKey, faceAvatarAt, ...raw }) => {
       // Thông tin cá nhân (SĐT, CCCD, ngày sinh, giới tính, địa chỉ): chỉ người có quyền quản lý nhân viên và chính chủ thấy.
       const e = maskPersonal(raw, u);
       const current = faceTemplates.filter((t) => t.modelVersion === FACE_MODEL_VERSION).length;
       return {
         ...e,
         zaloLinked: !!zaloUserId,
+        // Ảnh khuôn mặt đại diện (v1.10.0): chỉ chính chủ và người xem được snapshot trong phạm vi phòng.
+        avatarUrl: avatarUrlFor(u, { id: raw.id, departmentId: raw.departmentId, faceAvatarKey, faceAvatarAt }, snaps),
         faceCount: current,
         faceStatus: current > 0 ? "ENROLLED" : faceTemplates.length > 0 ? "REENROLL" : "NONE",
         hasSchedules: _count.schedules > 0,

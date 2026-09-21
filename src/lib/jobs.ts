@@ -21,6 +21,7 @@ import { lockedMonths } from "./payroll-lock-state";
 import { can } from "./permissions";
 import { startOfWeek } from "./attendance";
 import { credentialAlerts } from "./credential-access";
+import { clearFaceAvatar } from "./face-avatar";
 
 export const JOBS = ["absence-check", "missing-checkout", "zalo-token-refresh", "snapshot-cleanup", "db-backup", "roster-reminder", "roster-report", "request-overdue", "credential-check"] as const;
 export type JobName = (typeof JOBS)[number];
@@ -222,6 +223,7 @@ export async function snapshotCleanup(now = new Date()) {
   // Nhân viên nghỉ việc: xóa template khuôn mặt (PRD mục 9, trong vòng 30 ngày).
   const faces = await prisma.faceTemplate.deleteMany({ where: { employee: { active: false } } });
   if (faces.count) invalidateFaceCache();
+  for (const e of await prisma.employee.findMany({ where: { active: false, faceAvatarKey: { not: null } }, select: { id: true } })) await clearFaceAvatar(e.id);
   return { removedDirs, clearedLogs: cleared.count, expiredPairCodes: pair.count, expiredLinkCodes: links.count, deletedTemplates: faces.count };
 }
 

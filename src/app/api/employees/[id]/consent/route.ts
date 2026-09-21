@@ -5,6 +5,7 @@ import { audit } from "@/lib/audit";
 import { invalidateFaceCache } from "@/lib/face-matcher";
 import { can, requirePerm } from "@/lib/permissions";
 import { assertCanTouchBiometrics } from "@/lib/employee-guards";
+import { clearFaceAvatar } from "@/lib/face-avatar";
 
 /** Ghi nhận đồng ý xử lý dữ liệu sinh trắc học (ADMIN thao tác khi nhân viên tick đồng ý tại chỗ). */
 export const POST = handle<{ id: string }>(async (req, ctx) => {
@@ -32,6 +33,7 @@ export const DELETE = handle<{ id: string }>(async (req, ctx) => {
   }
   const del = await prisma.faceTemplate.deleteMany({ where: { employeeId: id } });
   await prisma.employee.update({ where: { id }, data: { biometricConsentAt: null } });
+  await clearFaceAvatar(id); // ảnh đại diện là dữ liệu khuôn mặt: xóa cùng lúc
   invalidateFaceCache();
   await audit({ actorId: u.id, action: "CONSENT_WITHDRAWN", entity: "Employee", entityId: id, detail: { deletedTemplates: del.count } });
   return json({ ok: true, deletedTemplates: del.count });

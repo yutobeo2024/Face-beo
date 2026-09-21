@@ -13,6 +13,7 @@ type Emp = {
   id: number;
   code: string;
   name: string;
+  avatarUrl?: string | null;
   phone?: string | null;
   nationalId?: string | null;
   dateOfBirth?: string | null;
@@ -90,6 +91,7 @@ export default function EmployeesPage() {
   const [tempPw, setTempPw] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<Emp | null>(null);
   const [importing, setImporting] = useState(false);
+  const [photo, setPhoto] = useState<Emp | null>(null);
   // Thông tin cá nhân (SĐT, CCCD, ngày sinh, giới tính, địa chỉ): chỉ Nhân sự / Quản trị, hoặc chính mình.
   const showPersonal = (id?: number) => me.role === "ADMIN" || me.role === "HR" || id === me.id;
   const { data, error, loading, reload } = useApi<{ employees: Emp[] }>(`/api/employees${qs({ q, departmentId: dept, jobTitleId: jobTitle, specialtyId: specialty, includeInactive: inactive ? 1 : "" })}`);
@@ -253,7 +255,13 @@ export default function EmployeesPage() {
           {list.map((e) => (
             <Card key={e.id} className={`flex flex-col p-4 ${e.active ? "" : "opacity-60"}`}>
               <div className="flex items-start gap-3">
-                <Avatar name={e.name} className="size-11" />
+                {e.avatarUrl ? (
+                  <button type="button" title="Xem ảnh lớn" onClick={() => setPhoto(e)} className="shrink-0 rounded-full focus-visible:ring-2 focus-visible:ring-brand-500">
+                    <Avatar name={e.name} src={e.avatarUrl} className="size-14 ring-2 ring-emerald-200" />
+                  </button>
+                ) : (
+                  <Avatar name={e.name} className="size-14" />
+                )}
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-semibold text-slate-800">{e.name}</p>
                   <p className="truncate text-xs text-slate-500">
@@ -328,6 +336,16 @@ export default function EmployeesPage() {
           ))}
         </div>
       )}
+
+      <Modal open={!!photo} onClose={() => setPhoto(null)} title={photo ? `${photo.code} — ${photo.name}` : "Ảnh đại diện"}>
+        {photo?.avatarUrl && (
+          <div className="text-center">
+            {/* eslint-disable-next-line @next/next/no-img-element -- ảnh qua API có kiểm quyền */}
+            <img src={photo.avatarUrl} alt={photo.name} className="mx-auto size-64 rounded-2xl object-cover" />
+            <p className="mt-2 text-xs text-slate-500">Ảnh nhìn thẳng lúc enroll. Chỉ Nhân sự, Quản trị, quản lý phòng và chính chủ xem được.</p>
+          </div>
+        )}
+      </Modal>
 
       <Modal
         open={!!form}

@@ -108,7 +108,8 @@ model Employee {
   managedDepartments Department[]      @relation("DeptManager")
   defaultShiftId     Int
   defaultShift       Shift             @relation(fields: [defaultShiftId], references: [id])
-  avatarUrl          String?
+  faceAvatarKey      String?   // v1.10.0: ảnh đại diện nhìn thẳng (data/avatars/), xem PRD v2.1 mục 22
+  faceAvatarAt       DateTime?
   active             Boolean           @default(true)
   biometricConsentAt DateTime?
   failedLogins       Int               @default(0)
@@ -387,7 +388,7 @@ Kiosk chỉ phát hiện mặt, chấm liveness và trích embedding; việc so 
 2. Nhân viên đọc và tick đồng ý xử lý dữ liệu sinh trắc học. Hệ thống ghi `biometricConsentAt`; chưa đồng ý thì không enroll được.
 3. Chụp 5 mẫu: nhìn thẳng, hơi trái, hơi phải, hơi ngẩng, hơi cúi. Việc đổi góc chỉ áp dụng lúc enroll, không áp dụng lúc chấm công.
 4. Mỗi mẫu phải qua cổng chất lượng: đúng 1 khuôn mặt, mặt rộng từ 200 px, đủ sáng, không nhòe.
-5. Server mã hóa từng embedding bằng AES-256-GCM rồi lưu `FaceTemplate` kèm `modelVersion`. Không lưu ảnh enroll.
+5. Server mã hóa từng embedding bằng AES-256-GCM rồi lưu `FaceTemplate` kèm `modelVersion`. Không lưu ảnh enroll, trừ 1 ảnh nhỏ nhìn thẳng (cắt khuôn mặt, 256×256) làm ảnh đại diện (v1.10.0) (PRD v2.1 mục 22).
 6. Kiểm tra trùng: nếu embedding mới khớp với nhân viên khác trên ngưỡng thì cảnh báo ADMIN.
 
 Nhân viên chưa enroll hiện nhãn "Chưa có khuôn mặt" trong danh sách. Nhân viên có quyền yêu cầu xóa mẫu; khi đó chuyển sang chấm công thủ công do quản lý xác nhận.
@@ -528,7 +529,7 @@ Dữ liệu khuôn mặt là dữ liệu cá nhân nhạy cảm, nên hệ thố
 
 ### Dữ liệu sinh trắc học
 
-- Chỉ lưu embedding, không lưu ảnh enroll. Embedding mã hóa AES-256-GCM bằng `BIOMETRIC_KEY` để ngoài DB.
+- Chỉ lưu embedding và 1 ảnh nhỏ nhìn thẳng (cắt khuôn mặt, 256×256) làm ảnh đại diện (v1.10.0); 4 ảnh góc còn lại không lưu. Ảnh đại diện chỉ chính chủ, Nhân sự, Quản trị, quản lý phòng xem được, xóa cùng dữ liệu khuôn mặt. Embedding mã hóa AES-256-GCM bằng `BIOMETRIC_KEY` để ngoài DB.
 - Văn bản đồng ý nêu rõ mục đích (chấm công), loại dữ liệu, thời hạn lưu, quyền rút lại. Thời điểm đồng ý ghi vào `biometricConsentAt`.
 - Nhân viên nghỉ việc (`active = false`): xóa `FaceTemplate` trong 30 ngày. Nhân viên rút đồng ý: xóa ngay, chuyển sang chấm công thủ công.
 - Snapshot giữ 90 ngày theo `snapshotRetentionDays`, sau đó job tự xóa. Chỉ ADMIN và quản lý trực tiếp xem được.

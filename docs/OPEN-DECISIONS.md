@@ -26,6 +26,12 @@ Ghi lại những điểm đã phát hiện trong quá trình làm và test, c�
   quy tắc (số GPHN, họ tên, tình trạng, nơi đăng ký) — không cần AI; nếu bị chặn thì giữ cách làm tay.
 - **Trạng thái:** chưa làm.
 
+## Đã chốt v1.10.0 (21/09/2026)
+
+- **Ảnh đại diện = ảnh nhìn thẳng lúc enroll** (cắt khuôn mặt 256×256, không lưu 4 góc còn lại). Xem: chính chủ, Nhân sự, Quản trị, quản lý
+  phòng mình (theo quyền xem snapshot). Người enroll trước đây phải enroll lại mới có ảnh. Đổi cam kết "không lưu ảnh enroll" — nội dung
+  đồng ý đã cập nhật. Xem PRD v2.1 mục 22.
+
 ## Đã chốt v1.9.0 (21/09/2026)
 
 - **Hồ sơ hành nghề** (GPHN, văn bằng / chứng chỉ / CME kèm file scan) do Nhân sự nhập; có số GPHN thì bắt buộc đủ trường. Chu kỳ CME 5 năm tính
