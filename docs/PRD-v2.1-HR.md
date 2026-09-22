@@ -408,3 +408,24 @@ công được tính trực tiếp từ planner. Quản lý được cấp `org.
   (để lưu được URL rồi mới nhận OA Secret Key); có khóa → chữ ký sai 401; thêm `GET` trả 200.
 - **Kiosk**: ghép lại ở `https://face.ydsg.website/kiosk/pair` (cookie kiosk gắn theo địa chỉ).
 - **Còn mở**: sao lưu ra ngoài VPS (D6), đổi bí mật đã lộ (D7).
+
+## 24. Tự tra cứu GPHN trên medinet — đợt 2 hồ sơ hành nghề (v1.11.0, 22/09/2026)
+
+- **Nguồn**: tracuu.medinet.org.vn (Sở Y tế TP.HCM), trang công khai, không API chính thức. Dùng đúng 2 yêu cầu trang web tự gọi: tìm theo số
+  GPHN (khớp chính xác) → chọn thẻ có **đúng số** → mở chi tiết (họ tên, số, ngày cấp, nơi cấp, đối tượng, phạm vi, tình trạng, **bảng nơi công
+  tác**: GPHĐ cơ sở, tên, vị trí, khoa, ngày làm / nghỉ, giờ làm, địa chỉ). Đọc HTML bằng hàm thuần `src/lib/medinet.ts`, kiểm thử bằng mẫu ẩn danh.
+- **Lịch sự với trang của Sở**: mọi lượt tra trong cả máy chủ cách nhau ≥ 4 giây, hạn chờ 20 giây; job `medinet-check` 06:30 chỉ tra người đang làm
+  có GPHN chưa tra quá `medinetCheckDays` (30) ngày, tối đa 30 người/ngày; 3 lỗi liên tiếp thì dừng, mai thử lại.
+- **So sánh** (bỏ dấu, không phân biệt hoa/thường, bỏ dấu câu cuối): họ tên (nghiêm trọng), ngày cấp, nơi cấp, đối tượng, phạm vi (nhắc), tình trạng
+  (medinet không còn hoạt động = nghiêm trọng). **Nơi công tác**: còn hiệu lực = chưa có ngày nghỉ (hoặc ngày nghỉ ghi trước ngày làm — lỗi dữ liệu
+  medinet); so với **số GPHĐ của phòng khám** (`clinicFacilityLicenses`, Cấu hình; so cả phần số khi medinet ghi thiếu) → "đang đăng ký cả ở nơi
+  khác" (nhắc — làm ngoài giờ có thể hợp lệ) và "chưa ghi nơi công tác tại phòng khám". Chưa cấu hình GPHĐ thì không xét.
+- **Kết quả** lưu `PracticeLicense.medinetResult` (JSON) + `medinetCheckedAt`; khớp hoàn toàn → tự ghi `verifiedAt` (`verifiedById` = người bấm, trống
+  khi do job). **Không tự sửa** dữ liệu Nhân sự. Tra lỗi (mạng, HTTP lỗi, trang đổi giao diện) → giữ kết quả cũ, ghi lỗi, **không** sinh cảnh báo.
+- **Cảnh báo** (`medinetIssues` trong `licenseIssues`): `medinet-status-*`, `medinet-name` (nghiêm trọng), `medinet-diff`, `medinet-notfound`,
+  `medinet-elsewhere`, `medinet-not-at-clinic` → dashboard, huy hiệu thẻ nhân viên, tin tổng hợp 07:30 nhóm minh bạch (mỗi vấn đề ≤ 1 lần / tháng).
+- **Giao diện**: form GPHN nút "Tra" điền sẵn; thẻ GPHN nút "Tra cứu tự động" + khung "Kết quả medinet" (chỗ khác tô đỏ, nơi công tác); nút "Mở
+  medinet" để tra tay. Cấu hình → "Tra cứu GPHN trên medinet": bật/tắt, số ngày, số GPHĐ phòng khám (Quản trị).
+- **API**: `POST /api/employees/[id]/license/medinet`, `POST /api/medinet/lookup` (Nhân sự / Quản trị, 20 lượt/phút/người),
+  `GET/PUT /api/settings/medinet` (`settings.system`).
+- **Hạn chế**: chỉ dữ liệu TP.HCM (GPHN tỉnh khác có thể "không tìm thấy" → tra tay); Sở đổi giao diện thì phải sửa bộ đọc (đã có test mẫu).

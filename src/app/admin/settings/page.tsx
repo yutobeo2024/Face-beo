@@ -111,7 +111,8 @@ export default function SettingsPage() {
             className="grid gap-3 p-4 sm:grid-cols-2 sm:p-5"
             onSubmit={(e) => {
               e.preventDefault();
-              void run(() => api("/api/settings", { method: "PUT", body: form }), "Đã lưu cấu hình", s.reload);
+              // Chỉ gửi các ô của thẻ này — không ghi đè cấu hình do thẻ khác lưu (vd. tra cứu medinet) bằng giá trị cũ trong form.
+              void run(() => api("/api/settings", { method: "PUT", body: Object.fromEntries(FIELDS.map((f) => [f.key, form[f.key]])) }), "Đã lưu cấu hình", s.reload);
             }}
           >
             {FIELDS.map((f) => (
@@ -128,6 +129,7 @@ export default function SettingsPage() {
         </Card>
         )}
         {sys && <ZaloCard busy={busy} run={run} />}
+        {sys && <MedinetCard busy={busy} run={run} />}
 
         {org && (
           <>
@@ -639,6 +641,46 @@ export default function SettingsPage() {
         )}
       </Modal>
     </>
+  );
+}
+
+/** Cấu hình → Tra cứu medinet (v1.11.0): tự đối chiếu GPHN với trang của Sở Y tế TP.HCM, số GPHĐ của phòng khám. */
+function MedinetCard({ busy, run }: { busy: boolean; run: (fn: () => Promise<unknown>, ok: string, after?: () => void) => Promise<void> }) {
+  const d = useApi<{ medinetAutoCheck: number; medinetCheckDays: number; clinicFacilityLicenses: string }>("/api/settings/medinet");
+  const [f, setF] = useState<{ medinetAutoCheck: number; medinetCheckDays: number; clinicFacilityLicenses: string } | null>(null);
+  const v = f ?? d.data;
+  if (!v) return null;
+  return (
+    <Card>
+      <CardHeader title="Tra cứu GPHN trên medinet" />
+      <form
+        className="grid gap-3 p-4 sm:p-5"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void run(() => api("/api/settings/medinet", { method: "PUT", body: v }), "Đã lưu", () => (setF(null), d.reload()));
+        }}
+      >
+        <label className="flex items-start gap-2 text-sm text-slate-700">
+          <input type="checkbox" className="mt-0.5 size-4 accent-brand-700" checked={v.medinetAutoCheck === 1} onChange={(e) => setF({ ...v, medinetAutoCheck: e.target.checked ? 1 : 0 })} />
+          <span>
+            <b>Tự tra cứu hằng ngày</b> lúc 06:30: mỗi GPHN được đối chiếu lại sau số ngày bên dưới; chỗ khác nhau / tình trạng không còn hoạt động / đăng ký nơi khác
+            vào tin tổng hợp hồ sơ hành nghề 07:30 của nhóm Zalo minh bạch.
+          </span>
+        </label>
+        <Field label="Tra lại mỗi người sau (ngày)" hint="Mặc định 30. Tra thưa, mỗi lượt cách nhau ≥ 4 giây, để không làm phiền trang của Sở Y tế.">
+          {(id) => <input id={id} type="number" min={7} max={365} className="input tabular-nums" value={v.medinetCheckDays} onChange={(e) => setF({ ...v, medinetCheckDays: Number(e.target.value) })} />}
+        </Field>
+        <Field label="Số GPHĐ của phòng khám" hint="Giấy phép hoạt động của cơ sở mình, vd. 06410/HCM-GPHĐ (nhiều số: cách nhau dấu phẩy). Dùng để nhận biết nhân viên đang đăng ký hành nghề ở nơi khác; để trống thì không xét.">
+          {(id) => <input id={id} className="input" placeholder="vd. 06410/HCM-GPHĐ" value={v.clinicFacilityLicenses} onChange={(e) => setF({ ...v, clinicFacilityLicenses: e.target.value })} />}
+        </Field>
+        <p className="text-xs text-slate-500">Nguồn: tracuu.medinet.org.vn (Sở Y tế TP.HCM) — trang công khai, không có API chính thức. GPHN do tỉnh khác cấp có thể không có trên trang này.</p>
+        <div>
+          <Button type="submit" loading={busy}>
+            Lưu
+          </Button>
+        </div>
+      </form>
+    </Card>
   );
 }
 

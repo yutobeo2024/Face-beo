@@ -285,6 +285,7 @@ curl -X POST -H "x-cron-secret: $CRON_SECRET" https://<máy-chủ>/api/cron/abse
 | `zalo-token-refresh` | 6 giờ | Refresh token chủ động |
 | `snapshot-cleanup` | 02:00 | Xóa snapshot quá hạn, mã ghép/mã liên kết hết hạn, template của người đã nghỉ việc |
 | `db-backup` | 03:00 | `VACUUM INTO data/backups/`, giữ 14 bản |
+| `medinet-check` | 06:30 | Tự tra GPHN trên tracuu.medinet.org.vn (Sở Y tế TP.HCM) cho người chưa tra quá 30 ngày (tối đa 30 người/ngày, cách nhau ≥ 4 giây); kết quả vào `credential-check` |
 | `credential-check` | 07:30 | Hồ sơ hành nghề: thiếu / hết hạn GPHN, thiếu tiết CME, chứng chỉ sắp hết hạn → nhóm Zalo minh bạch, mỗi vấn đề tối đa 1 lần / tháng |
 
 Mọi job đều idempotent: chạy lại không sinh tin trùng, nhờ ràng buộc unique `NotificationLog.dedupeKey`.

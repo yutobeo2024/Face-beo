@@ -131,7 +131,7 @@ export type LicenseIssue = { kind: string; severity: "danger" | "warn"; text: st
  */
 export function licenseIssues(args: {
   requiresLicense: boolean;
-  license: { status: string; issuedAt: string; expiresAt: string | null; cmeCycleStart: string; verifiedAt: Date | null } | null;
+  license: { status: string; issuedAt: string; expiresAt: string | null; cmeCycleStart: string; verifiedAt: Date | null; medinetResult?: string | null } | null;
   credentials: { id: number; type: string; name: string; issuedAt: string | null; expiresAt: string | null; cmeHours: number | null }[];
   settings: CmeSettings;
   today: string;
@@ -165,6 +165,7 @@ export function licenseIssues(args: {
         text: `CME chu kỳ ${fmt(cme.cycle.from)}–${fmt(cme.cycle.to)}: ${cme.cycle.hours}/${s.cmeCycleHours} tiết, còn ${cme.cycle.daysLeft} ngày`,
       });
     }
+    out.push(...medinetIssues(license.medinetResult));
     if (!license.verifiedAt || d(today).diff(DateTime.fromJSDate(license.verifiedAt), "months").months > 12) {
       out.push({ kind: "license-unverified", severity: "warn", text: "Chưa đối chiếu GPHN trên medinet trong 12 tháng" });
     }
@@ -173,6 +174,46 @@ export function licenseIssues(args: {
     if (!c.expiresAt || c.type === "CME") continue;
     if (c.expiresAt < today) out.push({ kind: `cred-expired-${c.id}`, severity: "warn", text: `${c.name} đã hết hạn ngày ${fmt(c.expiresAt)}` });
     else if (c.expiresAt <= warnUntil) out.push({ kind: `cred-expiring-${c.id}`, severity: "warn", text: `${c.name} hết hạn ngày ${fmt(c.expiresAt)}` });
+  }
+  return out;
+}
+
+const FIELD_LABEL: Record<string, string> = { name: "họ tên", issuedAt: "ngày cấp", issuer: "nơi cấp", subject: "đối tượng", scope: "phạm vi chuyên môn", status: "tình trạng" };
+type StoredMedinet = {
+  found?: boolean;
+  ambiguous?: boolean;
+  record?: { name: string; statusText: string | null; status: string };
+  diffs?: { field: string; local: string | null; remote: string | null; severity: "danger" | "warn" }[];
+  elsewhere?: { facility: string; facilityLicense: string | null; schedule: string | null }[];
+  atClinic?: boolean | null;
+};
+
+/** Vấn đề rút ra từ lần tra medinet gần nhất (v1.11.0). Lần tra lỗi (mạng / đổi giao diện) giữ kết quả cũ, không tạo cảnh báo sai. */
+export function medinetIssues(raw: string | null | undefined): LicenseIssue[] {
+  if (!raw) return [];
+  let r: StoredMedinet;
+  try {
+    r = JSON.parse(raw);
+  } catch {
+    return [];
+  }
+  if (r.found === false && r.ambiguous) return [{ kind: "medinet-ambiguous", severity: "warn", text: "medinet có nhiều hồ sơ cùng số GPHN, không phân định được — tra tay" }];
+  if (r.found === false) return [{ kind: "medinet-notfound", severity: "warn", text: "Không tìm thấy số GPHN trên medinet (TP.HCM) — kiểm tra lại số hoặc tra tay" }];
+  if (!r.found || !r.record) return [];
+  const out: LicenseIssue[] = [];
+  const diffs = r.diffs ?? [];
+  const status = diffs.find((x) => x.field === "status");
+  if (status && r.record.status !== "ACTIVE") out.push({ kind: `medinet-status-${r.record.status}`, severity: "danger", text: `medinet ghi GPHN tình trạng: ${r.record.statusText ?? r.record.status}` });
+  const name = diffs.find((x) => x.field === "name");
+  if (name) out.push({ kind: "medinet-name", severity: "danger", text: `Tên trên medinet "${name.remote}" khác hồ sơ "${name.local}"` });
+  const other = diffs.filter((x) => x.field !== "name" && !(x.field === "status" && r.record!.status !== "ACTIVE"));
+  // kind gắn danh sách mục khác → khác thêm mục mới trong tháng vẫn được báo (dedupe theo kind).
+  if (other.length) out.push({ kind: `medinet-diff-${other.map((x) => x.field).sort().join("+")}`, severity: "warn", text: `Hồ sơ khác medinet: ${other.map((x) => FIELD_LABEL[x.field] ?? x.field).join(", ")}` });
+  if (r.atClinic === false) out.push({ kind: "medinet-not-at-clinic", severity: "warn", text: "medinet chưa ghi nơi công tác tại phòng khám" });
+  if (r.elsewhere?.length) {
+    // Tin nhóm Zalo chỉ nêu SỐ nơi — tên cơ sở khác và giờ làm xem trong hồ sơ (chỉ Nhân sự / Quản trị / chính chủ).
+    const key = r.elsewhere.map((w) => (w.facilityLicense ?? w.facility).split("/")[0]).sort().join("+");
+    out.push({ kind: `medinet-elsewhere-${key}`, severity: "warn", text: `medinet ghi đang đăng ký hành nghề thêm ${r.elsewhere.length} nơi khác — xem Hồ sơ hành nghề` });
   }
   return out;
 }

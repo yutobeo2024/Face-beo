@@ -379,6 +379,9 @@ model PracticeLicense {
   workplaceNote String? // nơi đăng ký hành nghề / ghi chú (vd. đang đứng tên nơi khác)
   verifiedAt    DateTime? // lần đối chiếu medinet gần nhất
   verifiedById  Int?
+  // v1.11.0: lần tự tra cứu medinet gần nhất + kết quả (JSON: tìm thấy?, dữ liệu medinet, chỗ khác nhau, nơi công tác)
+  medinetCheckedAt DateTime?
+  medinetResult    String?
   updatedAt     DateTime  @updatedAt
 }
 

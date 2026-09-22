@@ -14,6 +14,9 @@ export const settingsSchema = z.object({
   cmeCycleHours: z.coerce.number().min(0).max(5000),
   cmeCycleYears: z.coerce.number().int().min(1).max(10),
   credentialWarnDays: z.coerce.number().int().min(7).max(730),
+  // v1.11.0: tự tra cứu GPHN trên medinet (1 = bật) và số ngày giữa 2 lần tra mỗi người
+  medinetAutoCheck: z.coerce.number().int().min(0).max(1),
+  medinetCheckDays: z.coerce.number().int().min(7).max(365),
 });
 export type AppSettings = z.infer<typeof settingsSchema>;
 
@@ -29,6 +32,8 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   cmeCycleHours: 120,
   cmeCycleYears: 5,
   credentialWarnDays: 90,
+  medinetAutoCheck: 1,
+  medinetCheckDays: 30,
 };
 
 export async function getSettings(): Promise<AppSettings> {
@@ -41,7 +46,8 @@ export async function getSettings(): Promise<AppSettings> {
 
 /** Cấu hình dạng chuỗi (không thuộc bộ ngưỡng số). */
 // credentialAlertSent: {"<id nhân viên>:<loại vấn đề>": "YYYY-MM"} — vấn đề hồ sơ hành nghề đã báo nhóm trong tháng (job credential-check).
-export const STRING_SETTINGS = ["zaloGroupId", "credentialAlertSent"] as const;
+// clinicFacilityLicenses: số GPHĐ của phòng khám, cách nhau bởi dấu phẩy (vd. "06410/HCM-GPHĐ") — nhận biết nơi công tác "của mình" trên medinet.
+export const STRING_SETTINGS = ["zaloGroupId", "credentialAlertSent", "clinicFacilityLicenses"] as const;
 export type StringSettingKey = (typeof STRING_SETTINGS)[number];
 
 export async function getStringSetting(key: StringSettingKey): Promise<string> {

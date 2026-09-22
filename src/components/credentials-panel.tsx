@@ -36,7 +36,88 @@ type License = {
   cmeCycleStart: string;
   workplaceNote: string | null;
   verifiedAt: string | null;
+  medinetCheckedAt?: string | null;
+  medinetResult?: string | null;
 };
+type MnWorkplace = { facilityLicense: string | null; facility: string; position: string | null; department: string | null; startDate: string | null; endDate: string | null; schedule: string | null };
+type MnRecord = { name: string; number: string; issuedAt: string | null; issuer: string | null; subject: string | null; scope: string | null; statusText: string | null; status: string; workplaces: MnWorkplace[] };
+type MnResult = { ok: boolean; found?: boolean; ambiguous?: boolean; record?: MnRecord; diffs?: { field: string; local: string | null; remote: string | null; severity: string }[]; elsewhere?: MnWorkplace[]; atClinic?: boolean | null; error?: string; errorAt?: string };
+const MN_FIELD: Record<string, string> = { name: "Họ tên", issuedAt: "Ngày cấp", issuer: "Nơi cấp", subject: "Đối tượng", scope: "Phạm vi chuyên môn", status: "Tình trạng" };
+const parseMn = (raw: string | null | undefined): MnResult | null => {
+  try {
+    return raw ? (JSON.parse(raw) as MnResult) : null;
+  } catch {
+    return null;
+  }
+};
+
+/** Kết quả lần tra medinet gần nhất: tình trạng, chỗ khác hồ sơ (tô đỏ), nơi công tác. */
+function MedinetBox({ at, r }: { at: string | null | undefined; r: MnResult }) {
+  const fmtD = (x: string | null | undefined) => (x ? fmtDay(x) : "—");
+  return (
+    <div className="mx-4 mb-4 rounded-xl border border-slate-200 bg-slate-50/70 p-3 text-sm sm:mx-5">
+      <p className="mb-2 flex flex-wrap items-center gap-2 font-semibold text-slate-800">
+        <Icon name="search" className="size-4" /> Kết quả medinet {at && <span className="font-normal text-slate-500">· tra lúc {fmtDateTime(at)}</span>}
+        {r.ok === false && <Badge tone="late">Lần tra gần nhất lỗi — đang hiện kết quả cũ</Badge>}
+      </p>
+      {r.error && <p className="mb-2 text-xs text-amber-800">{r.error}</p>}
+      {r.found === false && r.ambiguous && <p className="text-amber-800">medinet có nhiều hồ sơ cùng số GPHN này, không phân định được người nào — bấm “Mở medinet” để tra tay.</p>}
+      {r.found === false && !r.ambiguous && <p className="text-amber-800">Không tìm thấy số GPHN này trên medinet (Sở Y tế TP.HCM). Kiểm tra lại số, hoặc GPHN do tỉnh khác cấp — tra tay.</p>}
+      {r.found && r.record && (
+        <>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-medium">{r.record.name}</span>
+            <Badge tone={r.record.status === "ACTIVE" ? "ontime" : r.record.status === "UNKNOWN" ? "neutral" : "absent"}>{r.record.statusText ?? "?"}</Badge>
+            {r.diffs?.length ? <Badge tone="absent">{r.diffs.length} điểm khác hồ sơ</Badge> : <Badge tone="ontime">Khớp hồ sơ</Badge>}
+          </div>
+          {!!r.diffs?.length && (
+            <table className="mt-2 w-full text-xs">
+              <thead className="text-left text-slate-500">
+                <tr>
+                  <th className="py-1 pr-2 font-medium">Mục</th>
+                  <th className="py-1 pr-2 font-medium">Hồ sơ</th>
+                  <th className="py-1 font-medium">medinet</th>
+                </tr>
+              </thead>
+              <tbody>
+                {r.diffs.map((x) => (
+                  <tr key={x.field} className={x.severity === "danger" ? "text-rose-700" : "text-amber-800"}>
+                    <td className="py-0.5 pr-2">{MN_FIELD[x.field] ?? x.field}</td>
+                    <td className="py-0.5 pr-2">{x.field === "status" ? (STATUS[x.local ?? ""] ?? x.local) : x.field === "issuedAt" ? fmtD(x.local) : x.local}</td>
+                    <td className="py-0.5 font-semibold">{x.field === "issuedAt" ? fmtD(x.remote) : x.remote}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          {r.atClinic === false && <p className="mt-2 text-amber-800">medinet chưa ghi nơi công tác tại phòng khám (theo số GPHĐ trong Cấu hình).</p>}
+          {!!r.record.workplaces.length && (
+            <details className="mt-2" open={!!r.elsewhere?.length}>
+              <summary className="cursor-pointer text-slate-600">
+                Nơi công tác trên medinet ({r.record.workplaces.length}){r.elsewhere?.length ? <span className="font-semibold text-amber-800"> · {r.elsewhere.length} nơi khác đang đăng ký</span> : null}
+              </summary>
+              <ul className="mt-1 space-y-1 text-xs">
+                {r.record.workplaces.map((w, i) => {
+                  const other = r.elsewhere?.some((e) => e.facility === w.facility && e.facilityLicense === w.facilityLicense);
+                  return (
+                    <li key={i} className={other ? "text-amber-900" : "text-slate-600"}>
+                      {other && "⚠ "}
+                      <b>{w.facility}</b>
+                      {w.facilityLicense && ` (${w.facilityLicense})`}
+                      {w.department && ` · Khoa ${w.department}`} · từ {fmtD(w.startDate)}
+                      {w.endDate && ` đến ${fmtD(w.endDate)}`}
+                      {w.schedule && <span className="block text-slate-500">{w.schedule}</span>}
+                    </li>
+                  );
+                })}
+              </ul>
+            </details>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
 type Cred = { id: number; type: string; name: string; issuer: string | null; number: string | null; issuedAt: string | null; expiresAt: string | null; cmeHours: number | null; hasFile: boolean; fileName: string | null; fileSize: number | null };
 type Profile = {
   employee: { id: number; code: string; name: string; jobTitle: string | null };
@@ -92,6 +173,7 @@ export function CredentialsPanel({ employeeId, readOnly }: { employeeId: number;
   const [busy, setBusy] = useState(false);
   const [filter, setFilter] = useState("");
   const [confirmDel, setConfirmDel] = useState(false);
+  const [prefilling, setPrefilling] = useState(false);
 
   if (error) return <ErrorBox message={error} onRetry={reload} />;
   if (loading && !data) return <Loading />;
@@ -128,6 +210,29 @@ export function CredentialsPanel({ employeeId, readOnly }: { employeeId: number;
       return false;
     } finally {
       setBusy(false);
+    }
+  }
+
+  /** Tra số GPHN trên medinet và điền sẵn các ô trống / khác (Nhân sự kiểm lại trước khi Lưu). */
+  async function prefill() {
+    if (!lic) return;
+    setPrefilling(true);
+    try {
+      const r = await api<{ found: boolean; record: MnRecord | null }>("/api/medinet/lookup", { body: { number: lic.number } });
+      if (!r.found || !r.record) {
+        toast.info("Không tìm thấy số GPHN này trên medinet — nhập tay");
+        return;
+      }
+      const rec = r.record;
+      const st = rec.status === "ACTIVE" || rec.status === "SUSPENDED" || rec.status === "REVOKED" ? rec.status : lic.status;
+      setLic((p) =>
+        p ? { ...p, number: rec.number || p.number, issuedAt: rec.issuedAt ?? p.issuedAt, issuer: rec.issuer ?? p.issuer, subject: rec.subject ? rec.subject.charAt(0) + rec.subject.slice(1).toLowerCase() : p.subject, scope: rec.scope ?? p.scope, status: st } : p,
+      );
+      toast.success(`Đã điền từ medinet: ${rec.name} — kiểm tra lại rồi Lưu`);
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setPrefilling(false);
     }
   }
 
@@ -182,8 +287,13 @@ export function CredentialsPanel({ employeeId, readOnly }: { employeeId: number;
           actions={
             <div className="flex flex-wrap gap-2">
               <a href={data.medinetUrl} target="_blank" rel="noreferrer noopener" className="inline-flex h-9 items-center gap-1.5 rounded-xl px-3 text-sm font-semibold text-brand-800 ring-1 ring-brand-200 hover:bg-brand-50">
-                <Icon name="externalLink" className="size-4" /> Tra cứu medinet
+                <Icon name="externalLink" className="size-4" /> Mở medinet
               </a>
+              {edit && L && (
+                <Button size="sm" variant="secondary" icon="search" loading={busy} onClick={() => run(() => api(`/api/employees/${employeeId}/license/medinet`, { method: "POST" }), "Đã tra cứu medinet")}>
+                  Tra cứu tự động
+                </Button>
+              )}
               {edit && L && (
                 <Button size="sm" variant="secondary" icon="check" loading={busy} onClick={() => run(() => api(`/api/employees/${employeeId}/license/verify`, { method: "POST" }), "Đã ghi nhận đối chiếu hôm nay")}>
                   Đã đối chiếu hôm nay
@@ -222,6 +332,7 @@ export function CredentialsPanel({ employeeId, readOnly }: { employeeId: number;
         ) : (
           <p className="px-4 py-4 text-sm text-slate-500 sm:px-5">{data.requiresLicense ? "Chức danh này bắt buộc GPHN nhưng chưa nhập." : "Chưa có GPHN."}</p>
         )}
+        {L && parseMn(L.medinetResult) && <MedinetBox at={L.medinetCheckedAt} r={parseMn(L.medinetResult)!} />}
       </Card>
 
       {L && (
@@ -340,7 +451,16 @@ export function CredentialsPanel({ employeeId, readOnly }: { employeeId: number;
       >
         {lic && (
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Số GPHN *" hint="vd. 0015578/BYT-CCHN">{(id) => <input id={id} className="input" value={lic.number} onChange={set("number")} />}</Field>
+            <Field label="Số GPHN *" hint="vd. 0015578/BYT-CCHN — bấm Tra để điền sẵn từ medinet">
+              {(id) => (
+                <div className="flex gap-2">
+                  <input id={id} className="input" value={lic.number} onChange={set("number")} />
+                  <Button type="button" variant="secondary" icon="search" loading={prefilling} disabled={lic.number.trim().length < 3} onClick={prefill}>
+                    Tra
+                  </Button>
+                </div>
+              )}
+            </Field>
             <Field label="Tình trạng *">
               {(id) => (
                 <Select id={id} value={lic.status} onChange={set("status")}>

@@ -107,7 +107,7 @@ footer{color:var(--muted);font-size:.85rem;text-align:center;padding:10px}
 <div class="layout">
 <nav class="toc" id="toc">
   <div class="brand">📘 Cẩm nang Face Beo</div>
-  <div class="sub">Hướng dẫn sử dụng · bản v1.10</div>
+  <div class="sub">Hướng dẫn sử dụng · bản v1.11</div>
   <button class="menu-mobile" onclick="document.getElementById('toc').classList.toggle('open')">☰ Mục lục</button>
   <ol>
     <li class="grp">Bắt đầu</li>
@@ -485,7 +485,8 @@ flowchart TD
   <ol class="steps">
     <li><b>Chọn chức danh bắt buộc GPHN</b> (một lần): Cấu hình → Chức danh &amp; chuyên khoa → tích ô <b>GPHN</b> cạnh chức danh (mặc định đã tích Bác sĩ, Điều dưỡng, Kỹ thuật viên). Người có chức danh này mà chưa nhập GPHN sẽ bị cảnh báo.</li>
     <li><b>Nhập GPHN</b>: bấm <b>Nhập GPHN</b>. Đã có số GPHN thì <b>bắt buộc đủ</b>: ngày cấp, nơi cấp, đối tượng cấp, phạm vi chuyên môn, tình trạng. Hạn dùng để trống nếu là CCHN cũ không thời hạn. <b>Mốc chu kỳ CME</b> để trống = ngày gia hạn gần nhất, không có thì ngày cấp.</li>
-    <li><b>Đối chiếu</b>: bấm <b>Tra cứu medinet</b> (mở tracuu.medinet.org.vn), tìm theo số GPHN / họ tên, so tình trạng và nơi đăng ký hành nghề. Khớp thì bấm <b>Đã đối chiếu hôm nay</b>. Thấy đăng ký hành nghề nơi khác thì ghi vào ô "Nơi đăng ký hành nghề"; thấy bị đình chỉ / thu hồi thì đổi <b>Tình trạng</b> — nhóm Zalo minh bạch nhận tin ngay.</li>
+    <li><b>Nhập nhanh từ medinet</b> (v1.11.0): trong form GPHN chỉ cần gõ <b>Số GPHN</b> → bấm <b>Tra</b> → hệ thống lấy từ trang Sở Y tế TP.HCM và <b>điền sẵn</b> ngày cấp, nơi cấp, đối tượng, phạm vi, tình trạng. Kiểm tra lại rồi <b>Lưu</b>.</li>
+    <li><b>Đối chiếu tự động</b>: bấm <b>Tra cứu tự động</b> trên thẻ GPHN (hoặc để hệ thống tự tra lúc 06:30, mỗi người 30 ngày một lần). Khung <b>Kết quả medinet</b> hiện tình trạng, <b>chỗ khác hồ sơ tô đỏ</b> và danh sách <b>nơi công tác</b>; khớp hoàn toàn thì tự ghi "đã đối chiếu". Muốn tra tay vẫn bấm <b>Mở medinet</b>; thấy bị đình chỉ / thu hồi thì đổi <b>Tình trạng</b> — nhóm Zalo minh bạch nhận tin ngay.</li>
     <li><b>Thêm văn bằng / chứng chỉ</b>: bấm <b>Thêm</b>, chọn loại (Văn bằng, Chứng chỉ chuyên môn / định hướng, CME, Chức danh nghề nghiệp, An toàn bức xạ, Ngoại ngữ – tin học, Sư phạm y học, Khác), nhập tên, nơi cấp, số hiệu, ngày cấp, hạn dùng; đính kèm <b>file scan PDF / JPG / PNG ≤ 10 MB</b>. Với <b>CME</b> bắt buộc ngày cấp và số tiết.</li>
   </ol>
   <div class="tw"><table>
@@ -497,10 +498,12 @@ flowchart TD
     <p>BS. An có GPHN cấp 01/03/2020. Hôm nay 21/09/2026 → chu kỳ hiện tại <b>01/03/2025 – 01/03/2030</b>. Chứng chỉ 100 tiết cấp 06/2024 thuộc chu kỳ trước nên <b>không tính</b>; chứng chỉ 16 tiết (03/2025) + 24 tiết (05/2026) → chu kỳ này <b>40/120 tiết</b>. 24 tháng gần nhất (từ 21/09/2024): 16 + 24 = <b>40/48 tiết</b> → cảnh báo "CME 2 năm gần nhất: 40/48 tiết".</p>
   </div>
   <div class="grid">
-    <div class="card"><h4>⚠ Cảnh báo khi nào</h4><ul><li>Chức danh bắt buộc mà chưa có GPHN</li><li>(Người được cấp GPHN chưa đủ 2 năm chưa bị xét mốc 48 tiết)</li><li>GPHN tình trạng khác "Hoạt động"</li><li>GPHN / chứng chỉ đã hết hạn hoặc còn ≤ 90 ngày</li><li>CME 2 năm dưới 48 tiết</li><li>Chu kỳ còn ≤ 180 ngày mà chưa đủ 120 tiết</li><li>Quá 12 tháng chưa đối chiếu medinet</li></ul></div>
+    <div class="card"><h4>⚠ Cảnh báo khi nào</h4><ul><li>Chức danh bắt buộc mà chưa có GPHN</li><li>(Người được cấp GPHN chưa đủ 2 năm chưa bị xét mốc 48 tiết)</li><li>GPHN tình trạng khác "Hoạt động"</li><li>GPHN / chứng chỉ đã hết hạn hoặc còn ≤ 90 ngày</li><li>CME 2 năm dưới 48 tiết</li><li>Chu kỳ còn ≤ 180 ngày mà chưa đủ 120 tiết</li><li>Quá 12 tháng chưa đối chiếu medinet</li><li><b>medinet</b>: GPHN không còn hoạt động, tên / ngày cấp / phạm vi khác hồ sơ, không tìm thấy số GPHN, <b>đang đăng ký hành nghề cả ở nơi khác</b>, chưa ghi nơi công tác tại phòng khám</li></ul></div>
     <div class="card"><h4>📣 Thấy cảnh báo ở đâu</h4><ul><li>Huy hiệu <b>⚠ Hồ sơ hành nghề</b> trên thẻ nhân viên</li><li>Dải <b>Cảnh báo hành nghề</b> ở Tổng quan (bấm để xem từng người)</li><li><b>Nhóm Zalo minh bạch</b> lúc 07:30 — <b>một tin tổng hợp</b> các vấn đề mới, mỗi vấn đề nhắc tối đa <b>1 lần / tháng</b> ("chưa đối chiếu medinet" chỉ hiện trên web)</li></ul></div>
   </div>
   <div class="callout"><b>Ai xem được?</b><p>Chỉ Nhân sự, Quản trị và chính chủ (nhân viên xem hồ sơ của mình, mở được file của mình ở Trang cá nhân, không sửa được). Trưởng phòng không xem được. Nhân sự không tự cập nhật hồ sơ hành nghề của chính mình — nhờ Nhân sự khác hoặc Quản trị. Tin Zalo không kèm file hay CCCD. Các ngưỡng 48 / 120 / 5 năm / 90 ngày sửa ở Cấu hình → Ngưỡng.</p></div>
+  <div class="callout"><b>Cấu hình tra cứu medinet</b> <span class="pill a">Quản trị</span><p>Cấu hình → <b>Tra cứu GPHN trên medinet</b>: bật/tắt tự tra hằng ngày, số ngày giữa 2 lần tra (mặc định 30), và <b>số GPHĐ của phòng khám</b> (vd. <code>06410/HCM-GPHĐ</code>) — cần có số này thì hệ thống mới nhận ra nhân viên "đăng ký hành nghề ở nơi khác". Nguồn là trang công khai của Sở Y tế TP.HCM: GPHN do tỉnh khác cấp có thể không có (báo "không tìm thấy" — tra tay). Trang medinet lỗi thì hệ thống giữ kết quả cũ, không cảnh báo sai.</p></div>
+  <div class="ex"><div class="t">Ví dụ kết quả tra</div><p>BS. An — medinet: <b>Hoạt động</b>, khớp hồ sơ. Nơi công tác: Phòng khám của mình (Nội tổng hợp, T2–CN 07:00–17:00) · <b>⚠ Phòng khám đa khoa X</b> (Da liễu, T2–T7 17:30–20:00) → cảnh báo "Đang đăng ký hành nghề cả ở: Phòng khám đa khoa X (T2: 17:30 → 20:00…)". Làm ngoài giờ ở nơi khác có thể hợp lệ — Nhân sự xem lịch để chắc không trùng giờ làm ở phòng khám.</p></div>
   <div class="callout warn"><b>Sao lưu file scan</b><p>File scan lưu ở thư mục <code>data/credentials/</code> trên máy chủ. Bản sao lưu tự động hằng đêm chỉ gồm cơ sở dữ liệu — khi chép sao lưu ra ngoài máy, nhớ chép cả thư mục này.</p></div>
 </section>
 
@@ -962,7 +965,7 @@ stateDiagram-v2
   <details><summary>Đăng xuất trên điện thoại thì máy tính cũng bị thoát?</summary><p>Đúng, có chủ đích: đăng xuất ở bất kỳ đâu sẽ thoát tài khoản trên mọi thiết bị (kể cả phiên lỡ để lại ở máy dùng chung). Đăng nhập lại là được. Đổi mật khẩu cũng vậy.</p></details>
 </section>
 
-<footer>Face Beo · Cẩm nang sử dụng · cập nhật 21/09/2026 (phiên bản ứng dụng v1.10.2 · https://face.ydsg.website)</footer>
+<footer>Face Beo · Cẩm nang sử dụng · cập nhật 22/09/2026 (phiên bản ứng dụng v1.11.0 · https://face.ydsg.website)</footer>
 </main>
 </div>
 

@@ -22,8 +22,9 @@ import { can } from "./permissions";
 import { startOfWeek } from "./attendance";
 import { credentialAlerts } from "./credential-access";
 import { clearFaceAvatar } from "./face-avatar";
+import { medinetCheck } from "./medinet-check";
 
-export const JOBS = ["absence-check", "missing-checkout", "zalo-token-refresh", "snapshot-cleanup", "db-backup", "roster-reminder", "roster-report", "request-overdue", "credential-check"] as const;
+export const JOBS = ["absence-check", "missing-checkout", "zalo-token-refresh", "snapshot-cleanup", "db-backup", "roster-reminder", "roster-report", "request-overdue", "credential-check", "medinet-check"] as const;
 export type JobName = (typeof JOBS)[number];
 
 type DigestItem = { name: string; code: string; note?: string };
@@ -436,5 +437,7 @@ export async function runJob(name: JobName, now = new Date()) {
       return dbBackup(now);
     case "credential-check":
       return credentialCheck(now);
+    case "medinet-check":
+      return medinetCheck(now);
   }
 }

@@ -7,7 +7,7 @@
   MiniFASNetV2 phía server), đơn từ, tính công/chốt công tháng, xuất Excel, thông báo Zalo OA (nhiều nhóm theo loại tin: minh bạch / chấm công / đơn từ + tin riêng).
 - Stack: Next.js 15 App Router, Prisma 6 (SQLite WAL), zod 4, luxon, exceljs, node-cron, jose JWT (HS256, 7 ngày, `sessionVersion`),
   vitest 4 (test tích hợp gọi thẳng route handler, DB `data/test.db`).
-- Phiên bản hiện tại: **v1.10.4** (tag GitHub `v1.10.4`, repo `yutobeo2024/Face-beo`). Phiên bản ghi trong prose (README, PRD,
+- Phiên bản hiện tại: **v1.11.0** (tag GitHub `v1.11.0`, repo `yutobeo2024/Face-beo`). Phiên bản ghi trong prose (README, PRD,
   OPEN-DECISIONS), không có CHANGELOG; `package.json` version không dùng để đánh số.
 
 ## Lệnh
@@ -66,5 +66,6 @@ chạy cron / khóa Zalo thật song song với VPS (refresh token Zalo dùng m�
 - Chạy thử một phòng. Dữ liệu hiện có (máy cũ và seed demo) chỉ là mockup; máy mới/vận hành thật bắt đầu sạch theo `docs/HANDOFF.md`
   mục 1b: `db:deploy` → `db:seed:base` → `admin:create` (v1.5.4, logic ở `src/lib/bootstrap.ts`). Rà lại hệ số ca, ngày lễ trong năm.
 - Sao lưu ngoài VPS: service `backup` → Cloudflare R2 mã hóa 03:30 (v1.10.4, `deploy/backup.sh`, khôi phục `deploy/restore-offsite.sh`). D7 đổi token tunnel + OA Secret Key webhook (đã lộ trong ảnh chụp 21/09/2026).
-- D5 tự tra cứu GPHN trên medinet (đợt 2 hồ sơ hành nghề — cần thử kỹ thuật, trang tải bằng JS, có thể bị chặn).
+- Tra cứu medinet (v1.11.0, `src/lib/medinet.ts` + `medinet-check.ts`): đọc HTML trang Sở Y tế TP.HCM — Sở đổi giao diện thì sửa bộ đọc +
+  cập nhật mẫu `tests/fixtures/medinet-*.html` (luôn **ẩn danh**, không commit dữ liệu người thật); không gọi medinet trong test.
 - D4 tin Zalo cá nhân (ZNS hay tin tư vấn); Cloudflare Tunnel cho webhook; sản xuất: Windows service, HTTPS trong LAN, backup ra ngoài máy.

@@ -4,6 +4,7 @@ import { requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { announce, onceKey } from "@/lib/announce";
 import { credentialProfile, loadCredentialTarget } from "@/lib/credential-access";
+import { refreshStoredMedinet } from "@/lib/medinet-check";
 import { LICENSE_STATUS_LABEL, MEDINET_URL, licenseSchema } from "@/lib/credentials";
 
 /** Hồ sơ hành nghề của một nhân viên: GPHN, văn bằng / chứng chỉ / CME, tiến độ CME, cảnh báo. Nhân sự / Quản trị và chính chủ. */
@@ -36,7 +37,9 @@ export const PUT = handle<{ id: string }>(async (req, ctx) => {
     // Đổi số GPHN → lần đối chiếu medinet cũ không còn giá trị.
     ...(before && before.number !== body.number ? { verifiedAt: null, verifiedById: null } : {}),
   };
-  const license = await prisma.practiceLicense.upsert({ where: { employeeId: e.id }, create: { employeeId: e.id, ...data }, update: data });
+  const license0 = await prisma.practiceLicense.upsert({ where: { employeeId: e.id }, create: { employeeId: e.id, ...data }, update: data });
+  if (before) await refreshStoredMedinet(e.id, before.number !== data.number);
+  const license = before ? await prisma.practiceLicense.findUniqueOrThrow({ where: { employeeId: e.id } }) : license0;
   await audit({ actorId: u.id, action: "CREDENTIAL_UPDATE", entity: "PracticeLicense", entityId: e.id, detail: { number: data.number, status: data.status, before: before ? { number: before.number, status: before.status } : null } });
   // GPHN không còn "Hoạt động" → báo ngay nhóm minh bạch (không chờ job hằng ngày).
   if (data.status !== "ACTIVE" && before?.status !== data.status) {

@@ -16,21 +16,18 @@ Ghi lại những điểm đã phát hiện trong quá trình làm và test, c�
 - **Trạng thái:** chờ quyết định. Giai đoạn 1 (v1.4) chỉ gửi tin vào nhóm minh bạch; tin cá nhân vẫn ở chế độ hiện có (gửi tin tư vấn nếu nhân viên
   đã liên kết, không thì ghi `SKIPPED_NO_ZALO`).
 
-### D5. Tự tra cứu GPHN trên medinet (đợt 2 của hồ sơ hành nghề)
-
-- **Ghi nhận:** 21/09/2026 (v1.9.0). Chủ dự án muốn hệ thống tự phát hiện GPHN không hợp lệ, đăng ký hành nghề nơi khác, tình trạng "không còn
-  hoạt động" rồi báo nhóm Zalo minh bạch.
-- **Hiện trạng:** tracuu.medinet.org.vn tải kết quả bằng JavaScript, không có API công khai, có thể có captcha / chặn tự động. Đợt 1 làm tay: nút
-  "Tra cứu medinet" + "Đã đối chiếu hôm nay", nhắc khi quá 12 tháng chưa đối chiếu.
-- **Cần làm:** thử kỹ thuật (gọi endpoint JSON của trang hoặc trình duyệt không giao diện), tần suất nhẹ (vd. mỗi người 1 lần / tháng), so khớp theo
-  quy tắc (số GPHN, họ tên, tình trạng, nơi đăng ký) — không cần AI; nếu bị chặn thì giữ cách làm tay.
-- **Trạng thái:** chưa làm.
-
 ### D7. Đổi các bí mật đã lộ khi triển khai
 
 - Token Cloudflare Tunnel và `ZALO_WEBHOOK_SECRET` từng hiện trong ảnh chụp màn hình lúc cài đặt (21/09/2026). Cần **Refresh token** tunnel và
   tạo lại OA Secret Key webhook (nếu Zalo cho), dán lại vào `/opt/facebeo/.env`, `up -d --force-recreate`.
 - **Trạng thái:** chờ chủ dự án thao tác.
+
+## Đã chốt v1.11.0 (22/09/2026)
+
+- **D5 tự tra cứu GPHN trên medinet (đợt 2)**: làm được — trang tracuu.medinet.org.vn tra bằng 2 yêu cầu dữ liệu (`/chungchihanhnghey`,
+  `/chungchihanhngheydetail`), không captcha. Nút "Tra" điền sẵn form GPHN, nút "Tra cứu tự động", job 06:30 (30 ngày / người, ≤ 30 người /
+  ngày, cách ≥ 4 giây). Không tự sửa dữ liệu Nhân sự — chỉ cảnh báo khi khác, tự ghi "đã đối chiếu" khi khớp. "Đăng ký nơi khác" xét theo
+  **số GPHĐ của phòng khám** (Cấu hình). Hạn chế: chỉ dữ liệu Sở Y tế TP.HCM; trang đổi giao diện phải sửa bộ đọc. Xem PRD v2.1 mục 24.
 
 ## Đã chốt v1.10.4 (22/09/2026)
 
