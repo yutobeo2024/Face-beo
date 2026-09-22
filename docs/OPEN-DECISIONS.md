@@ -22,6 +22,11 @@ Ghi lại những điểm đã phát hiện trong quá trình làm và test, c�
   tạo lại OA Secret Key webhook (nếu Zalo cho), dán lại vào `/opt/facebeo/.env`, `up -d --force-recreate`.
 - **Trạng thái:** chờ chủ dự án thao tác.
 
+## Đã chốt v1.13.0 (22/09/2026)
+
+- **Ảnh đại diện tự chọn**: khung 3:4, file ≤ 5 MB, nhân viên tự đổi, Nhân sự / Quản trị đổi hộ; không dùng nhận diện; xóa khi nghỉ việc
+  (xóa khuôn mặt thì giữ). Xem PRD v2.1 mục 27.
+
 ## Đã chốt v1.12.1 (22/09/2026)
 
 - **Ca cố định luôn theo một mẫu tuần có trong Cấu hình** — bỏ lựa chọn ẩn "Ca mặc định, nghỉ Chủ nhật"; dữ liệu cũ tự gán mẫu tương đương (lịch không

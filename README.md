@@ -328,13 +328,14 @@ Chạy `npm audit` trước mỗi lần phát hành. Mục tiêu là **0 lỗ h�
 - Chạy `npx prisma migrate deploy` mỗi lần cập nhật. SQLite được bật `journal_mode=WAL` và `busy_timeout=5000` khi khởi động.
 - Cookie session dùng cờ `secure` trong production. Nếu thử nghiệm trong LAN qua HTTP, đặt `INSECURE_COOKIES=true` (không dùng khi chạy thật).
 - Mô hình Human được phục vụ từ `public/models` (do `npm install` chép vào). Nếu chép lại mô hình sau khi build, phải khởi động lại `next start`.
-- Sao lưu ra ngoài máy chủ (v1.10.4): service `backup` đẩy bản DB mới nhất + `data/credentials/` + `data/avatars/` lên **Cloudflare R2**, mã hóa, mỗi ngày 03:30,
+- Sao lưu ra ngoài máy chủ (v1.10.4): service `backup` đẩy bản DB mới nhất + `data/credentials/` + `data/avatars/` + `data/photos/` lên **Cloudflare R2**, mã hóa, mỗi ngày 03:30,
   giữ 30 ngày; khôi phục bằng `deploy/restore-offsite.sh` (xem `docs/DEPLOY-VPS.md` mục Sao lưu). Cất bản `.env` ra ngoài máy chủ.
 - Khi vượt khoảng 500 nhân viên hoặc cần nhiều máy chủ: đổi `provider` sang `postgresql`.
 
 ## Bảo mật và dữ liệu cá nhân
 
 - Chỉ lưu embedding khuôn mặt, mã hóa AES-256-GCM bằng `BIOMETRIC_KEY` (khóa để ngoài DB). Không lưu ảnh enroll, trừ 1 ảnh đại diện nhìn thẳng 256×256 ở `data/avatars/` (v1.10.0) — chỉ chính chủ và người có quyền xem snapshot trong phạm vi phòng xem được; xóa cùng mẫu khuôn mặt (xóa khuôn mặt, rút đồng ý, nghỉ việc).
+  Ảnh đại diện tự chọn (v1.13.0) ở `data/photos/` không phải dữ liệu sinh trắc: 600×800 JPEG đã bỏ EXIF, xóa khi nghỉ việc.
 - Snapshot nằm ở `data/snapshots/YYYY/MM/DD/`, ngoài thư mục `public`, chỉ xem được qua `/api/snapshots/*` (ADMIN hoặc quản lý trực tiếp). Tự xóa sau `snapshotRetentionDays` (mặc định 90 ngày).
 - Giới hạn tần suất: đăng nhập 10 lượt/phút/IP; quét kiosk 60 lượt/phút/thiết bị.
 - Mọi input đều được validate bằng zod. Log không chứa embedding, token hay mật khẩu.

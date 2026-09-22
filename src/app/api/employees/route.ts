@@ -10,7 +10,8 @@ import { announce } from "@/lib/announce";
 import { ROLE_LABEL, type Role } from "@/lib/roles";
 import { PERSONAL_KEYS, canSeePersonal, createEmployee, maskPersonal } from "@/lib/employees";
 import { exemptInfo, keepTrackedUnlessAdmin } from "@/lib/attendance-scope";
-import { avatarUrlFor, canViewSnapshots } from "@/lib/face-avatar";
+import { canViewSnapshots } from "@/lib/face-avatar";
+import { displayAvatarUrl, photoEditRule } from "@/lib/profile-photo";
 
 const listQuery = z.object({
   departmentId: optId,
@@ -23,7 +24,7 @@ const listQuery = z.object({
 export const GET = handle(async (req) => {
   const u = await requirePerm(req, ["employees.view", "employees.manage"]);
   const q = parseQuery(req, listQuery);
-  const [manage, snaps] = await Promise.all([can(u, "employees.manage"), canViewSnapshots(u)]);
+  const [manage, snaps, privileged] = await Promise.all([can(u, "employees.manage"), canViewSnapshots(u), can(u, "roles.assignPrivileged")]);
   const rows = await prisma.employee.findMany({
     where: {
       ...employeeScopeWhere(u, q.departmentId),
@@ -64,11 +65,13 @@ export const GET = handle(async (req) => {
       faceTemplates: { select: { modelVersion: true } },
       faceAvatarKey: true,
       faceAvatarAt: true,
+      photoKey: true,
+      photoAt: true,
       _count: { select: { schedules: true } },
     },
   });
   return json({
-    employees: rows.map(({ faceTemplates, zaloUserId, _count, faceAvatarKey, faceAvatarAt, ...raw }) => {
+    employees: rows.map(({ faceTemplates, zaloUserId, _count, faceAvatarKey, faceAvatarAt, photoKey, photoAt, ...raw }) => {
       // Thông tin cá nhân (SĐT, CCCD, ngày sinh, giới tính, địa chỉ): chỉ người có quyền quản lý nhân viên và chính chủ thấy.
       const e = maskPersonal(raw, u);
       const current = faceTemplates.filter((t) => t.modelVersion === FACE_MODEL_VERSION).length;
@@ -77,8 +80,10 @@ export const GET = handle(async (req) => {
         zaloLinked: !!zaloUserId,
         // v1.12.0: chế độ chấm công hiệu lực (đặt riêng thắng cấu hình phòng).
         attendance: exemptInfo({ attendanceExempt: raw.attendanceExempt, department: raw.department }),
-        // Ảnh khuôn mặt đại diện (v1.10.0): chỉ chính chủ và người xem được snapshot trong phạm vi phòng.
-        avatarUrl: avatarUrlFor(u, { id: raw.id, departmentId: raw.departmentId, faceAvatarKey, faceAvatarAt }, snaps),
+        // Ảnh đại diện: ảnh tự chọn (v1.13.0) → ảnh khuôn mặt lúc enroll (chỉ chính chủ + người xem được snapshot trong phạm vi phòng).
+        avatarUrl: displayAvatarUrl(u, { id: raw.id, departmentId: raw.departmentId, faceAvatarKey, faceAvatarAt, photoKey, photoAt }, snaps),
+        hasPhoto: !!photoKey,
+        canEditPhoto: raw.active && photoEditRule(u, raw, { manage, privileged }),
         faceCount: current,
         faceStatus: current > 0 ? "ENROLLED" : faceTemplates.length > 0 ? "REENROLL" : "NONE",
         hasSchedules: _count.schedules > 0,

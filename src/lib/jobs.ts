@@ -22,6 +22,7 @@ import { can } from "./permissions";
 import { startOfWeek } from "./attendance";
 import { credentialAlerts } from "./credential-access";
 import { clearFaceAvatar } from "./face-avatar";
+import { clearProfilePhoto } from "./profile-photo";
 import { medinetCheck } from "./medinet-check";
 import { TRACKED_WHERE } from "./attendance-scope";
 
@@ -232,6 +233,7 @@ export async function snapshotCleanup(now = new Date()) {
   const faces = await prisma.faceTemplate.deleteMany({ where: { employee: { active: false } } });
   if (faces.count) invalidateFaceCache();
   for (const e of await prisma.employee.findMany({ where: { active: false, faceAvatarKey: { not: null } }, select: { id: true } })) await clearFaceAvatar(e.id);
+  for (const e of await prisma.employee.findMany({ where: { active: false, photoKey: { not: null } }, select: { id: true } })) await clearProfilePhoto(e.id);
   return { removedDirs, clearedLogs: cleared.count, expiredPairCodes: pair.count, expiredLinkCodes: links.count, deletedTemplates: faces.count };
 }
 

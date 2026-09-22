@@ -50,6 +50,9 @@ model Employee {
   attendanceExempt   Boolean?
   faceAvatarKey      String?
   faceAvatarAt       DateTime?
+  // v1.13.0: ảnh đại diện tự chọn (không dùng nhận diện), 600×800 JPEG ở data/photos/<id>/<key>; ưu tiên hơn ảnh khuôn mặt. Xóa khi nghỉ việc.
+  photoKey           String?
+  photoAt            DateTime?
   passwordHash       String
   mustChangePassword Boolean           @default(true)
   role               String            @default("EMPLOYEE") // ADMIN | HR | MANAGER | EMPLOYEE

@@ -9,6 +9,7 @@ import { Icon } from "@/components/icons";
 import { useToast } from "@/components/toast";
 import { useMe } from "./me-nav";
 import { CredentialsPanel } from "@/components/credentials-panel";
+import { PhotoEditor } from "@/components/photo-editor";
 
 type Day = {
   date: string;
@@ -44,7 +45,10 @@ type Overview = {
     address: string | null;
     jobTitle: { name: string } | null;
     specialty: { name: string } | null;
+    id: number;
     avatarUrl: string | null;
+    hasPhoto: boolean;
+    canEditPhoto: boolean;
   };
   today: Day;
   week: string;
@@ -242,7 +246,7 @@ export default function MeHome() {
         )}
       </Card>
 
-      {data && <PersonalInfo me={data.me} />}
+      {data && <PersonalInfo me={data.me} onPhotoChanged={() => void reload()} />}
       {data && <MyCredentials employeeId={me.id} />}
 
       {data?.me.faceEnrolled && (
@@ -287,7 +291,7 @@ function MyCredentials({ employeeId }: { employeeId: number }) {
 }
 
 /** Thông tin cá nhân của chính mình (chỉ đọc). Nhân sự cập nhật trong hồ sơ nhân viên. */
-function PersonalInfo({ me }: { me: Overview["me"] }) {
+function PersonalInfo({ me, onPhotoChanged }: { me: Overview["me"]; onPhotoChanged: () => void }) {
   const GENDER: Record<string, string> = { NAM: "Nam", NU: "Nữ", KHAC: "Khác" };
   const rows: [string, string | null | undefined][] = [
     ["Mã nhân viên", me.code],
@@ -302,12 +306,19 @@ function PersonalInfo({ me }: { me: Overview["me"] }) {
   return (
     <Card className="mt-4">
       <CardHeader title="Thông tin cá nhân" />
-      {me.avatarUrl && (
-        <div className="flex items-center gap-3 px-4 pt-3">
-          <Avatar name={me.name} src={me.avatarUrl} className="size-16" />
-          <p className="text-xs text-slate-500">Ảnh đại diện lấy từ ảnh nhìn thẳng lúc enroll khuôn mặt. Rút lại đồng ý thì ảnh bị xóa cùng dữ liệu khuôn mặt.</p>
+      <div className="flex items-start gap-4 px-4 pt-3">
+        <Avatar rect name={me.name} src={me.avatarUrl} className="w-24 text-2xl" />
+        <div className="min-w-0 flex-1 space-y-2">
+          <p className="text-xs text-slate-500">
+            {me.hasPhoto
+              ? "Ảnh đại diện bạn tự chọn — chỉ để hiển thị, không dùng để nhận diện khuôn mặt khi chấm công."
+              : me.avatarUrl
+                ? "Đang dùng ảnh nhìn thẳng lúc enroll khuôn mặt. Bạn có thể tải ảnh yêu thích để thay (không ảnh hưởng chấm công)."
+                : "Chưa có ảnh đại diện. Tải ảnh yêu thích (JPG / PNG / WebP, tối đa 5 MB), sau đó cắt khung cho vừa."}
+          </p>
+          {me.canEditPhoto && <PhotoEditor employeeId={me.id} name={me.name} hasPhoto={me.hasPhoto} onChanged={onPhotoChanged} />}
         </div>
-      )}
+      </div>
       <dl className="grid gap-x-4 gap-y-1 px-4 py-3 text-sm sm:grid-cols-[10rem_1fr]">
         {rows.map(([k, v]) => (
           <div key={k} className="contents">

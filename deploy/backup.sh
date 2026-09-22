@@ -3,7 +3,7 @@
 #   sh backup.sh            chạy nền: mỗi ngày 03:30 (sau job db-backup 03:00 của app)
 #   sh backup.sh once       chạy một lần ngay
 #   sh backup.sh restore [YYYYMMDD]   tải + giải mã + giải nén bản sao lưu (mới nhất nếu bỏ trống) vào /restore
-# Mỗi bản: facebeo-YYYYMMDD.tar.gz = bản DB mới nhất trong backups/ (VACUUM INTO — nhất quán) + credentials/ + avatars/.
+# Mỗi bản: facebeo-YYYYMMDD.tar.gz = bản DB mới nhất trong backups/ (VACUUM INTO — nhất quán) + credentials/ + avatars/ + photos/.
 # Cấu hình lấy từ /opt/facebeo/.env: R2_ACCOUNT_ID, R2_BUCKET, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, BACKUP_CRYPT_PASSWORD, BACKUP_CRYPT_SALT.
 set -u
 DATA=/data
@@ -45,7 +45,7 @@ run_once() {
   work=$(mktemp -d)
   mkdir -p "$work/pack/backups"
   cp "$db" "$work/pack/backups/"
-  for d in credentials avatars; do [ -d "$DATA/$d" ] && cp -r "$DATA/$d" "$work/pack/"; done
+  for d in credentials avatars photos; do [ -d "$DATA/$d" ] && cp -r "$DATA/$d" "$work/pack/"; done
   if ! tar -czf "$work/$name" -C "$work/pack" .; then log "LỖI: nén thất bại"; write_status false "$name" 0 "nén thất bại"; rm -rf "$work"; return 1; fi
   size=$(wc -c < "$work/$name" | tr -d ' ')
   if rclone copyto "$work/$name" "r2crypt:daily/$name" --retries 5 --low-level-retries 10 -q; then

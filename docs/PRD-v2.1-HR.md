@@ -462,3 +462,17 @@ công được tính trực tiếp từ planner. Quản lý được cấp `org.
   (chưa có lịch sử thì chụp bản gốc trước); nhật ký `PATTERN_UPDATE`. Chạy lại an toàn. Lịch các ngày đã qua / tháng đã chốt không đổi.
 - **Giao diện**: form nhân viên — Ca cố định: chỉ ô **Mẫu tuần** (bắt buộc) + dòng "Lịch: T2–T6 … · T7 … · CN nghỉ"; Xoay ca: ô **Ca mặc định**. Thẻ:
   "Cố định · mẫu <tên>". Nhập Excel: lựa chọn "không mẫu" đổi tên thành "Tự dùng mẫu <ca> T2–T7".
+
+## 27. Ảnh đại diện tự chọn (v1.13.0, 22/09/2026)
+
+- **Mục đích**: nhân viên dùng ảnh mình thích thay cho ảnh nhìn thẳng lúc enroll. Ảnh **không** dùng để nhận diện, không đụng mẫu khuôn mặt.
+- **Lưu trữ**: `data/photos/<id>/<uuid>.jpg` (ngoài public). Cột `Employee.photoKey`, `Employee.photoAt`. Logic ở `src/lib/profile-photo.ts`, API
+  `/api/employees/[id]/photo` (GET / PUT thân ảnh thô / DELETE), nhật ký `PHOTO_UPDATE` / `PHOTO_DELETE`, không gửi Zalo.
+- **Cắt ảnh** (`src/components/photo-editor.tsx`, canvas, không thư viện ngoài): khung cố định 3:4. Kéo để di chuyển, thanh trượt / con lăn / hai ngón
+  tay để phóng to 1–5×, xoay 90°. Ảnh luôn phủ kín khung. Xuất JPEG 600×800.
+- **Giới hạn**: file chọn ≤ 5 MB (JPG / PNG / WebP, ≤ 40 triệu điểm ảnh, kiểm ở trình duyệt). Máy chủ nhận ảnh đã cắt ≤ 2 MB: đọc thân có giới hạn
+  (không tin Content-Length), kiểm chữ ký file, ≤ 25 triệu điểm ảnh, mã hóa lại bằng sharp (xoay theo EXIF rồi bỏ metadata) → 600×800 JPEG q85.
+- **Quyền**: sửa = chính chủ; người có `employees.manage` trong phạm vi phòng (mặc định Nhân sự); tài khoản Nhân sự / Quản trị của người khác chỉ
+  Quản trị. Xem = ai xem được nhân viên đó (`canViewEmployee`: chính chủ, Nhân sự / Quản trị, quản lý phòng).
+- **Hiển thị**: ảnh tự chọn → ảnh khuôn mặt (quyền như v1.10.0) → chữ viết tắt. Thẻ nhân viên và Trang cá nhân dùng khung chữ nhật đứng 3:4.
+- **Vòng đời**: xóa khuôn mặt / rút đồng ý **không** xóa. Nghỉ việc, xóa tài khoản → xóa (job dọn hằng ngày bắt ca sót). Sao lưu R2 gồm `photos/`.

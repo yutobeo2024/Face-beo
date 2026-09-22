@@ -7,7 +7,7 @@ import { summarizeRange } from "@/lib/attendance-service";
 import { startOfWeek, todayVN, weekDates } from "@/lib/attendance";
 import { toDayRow } from "@/lib/day-rows";
 import { FACE_MODEL_VERSION } from "@/lib/roles";
-import { avatarUrlFor } from "@/lib/face-avatar";
+import { displayAvatarUrl } from "@/lib/profile-photo";
 import { exemptInfo } from "@/lib/attendance-scope";
 
 /** Lịch tuần + trạng thái công hôm nay của chính nhân viên. */
@@ -39,6 +39,8 @@ export const GET = handle(async (req) => {
         specialty: { select: { name: true } },
         faceAvatarAt: true,
         faceAvatarKey: true,
+        photoKey: true,
+        photoAt: true,
         attendanceExempt: true,
       },
     }),
@@ -46,12 +48,15 @@ export const GET = handle(async (req) => {
     prisma.faceTemplate.count({ where: { employeeId: u.id, modelVersion: FACE_MODEL_VERSION } }),
   ]);
   return json({
-    me: (({ faceAvatarKey, faceAvatarAt, attendanceExempt, ...rest }) => ({
+    me: (({ faceAvatarKey, faceAvatarAt, photoKey, photoAt, attendanceExempt, ...rest }) => ({
       ...rest,
       attendanceExempt: exemptInfo({ attendanceExempt, department: rest.department }).exempt,
+      id: u.id,
       role: u.role,
       faceEnrolled: faces > 0,
-      avatarUrl: avatarUrlFor(u, { id: u.id, departmentId: u.departmentId, faceAvatarKey, faceAvatarAt }, false),
+      avatarUrl: displayAvatarUrl(u, { id: u.id, departmentId: u.departmentId, faceAvatarKey, faceAvatarAt, photoKey, photoAt }, false),
+      hasPhoto: !!photoKey,
+      canEditPhoto: true, // chính chủ (phiên chỉ tồn tại khi đang làm việc)
     }))(emp),
     today: toDayRow(summaries.get(`${u.id}|${today}`)!),
     week: monday,

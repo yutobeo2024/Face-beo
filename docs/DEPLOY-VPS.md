@@ -8,7 +8,7 @@ Caddy / ufw / container khác.
 ```
 /opt/facebeo/
   .env        # cấu hình + bí mật (chmod 600) — KHÔNG commit
-  data/       # facebeo.db, snapshots/, backups/, credentials/, avatars/
+  data/       # facebeo.db, snapshots/, backups/, credentials/, avatars/, photos/
   models/     # w600k_r50.onnx, MiniFASNetV2.onnx
   src/        # git clone của repo
 ```
@@ -33,7 +33,7 @@ git clone https://github.com/yutobeo2024/Face-beo.git /opt/facebeo/src
 2. Từ máy local (Git Bash, thư mục dự án):
    ```bash
    scp data/facebeo.db root@103.142.27.210:/opt/facebeo/data/
-   scp -r data/credentials data/avatars root@103.142.27.210:/opt/facebeo/data/      # nếu có
+   scp -r data/credentials data/avatars data/photos root@103.142.27.210:/opt/facebeo/data/      # nếu có
    scp -r data/snapshots data/backups root@103.142.27.210:/opt/facebeo/data/        # tùy chọn
    scp models/*.onnx root@103.142.27.210:/opt/facebeo/models/                        # hoặc tải lại ở bước 4
    scp .env root@103.142.27.210:/opt/facebeo/.env
@@ -98,7 +98,7 @@ image cũ vẫn phục vụ; gián đoạn chỉ vài giây lúc đổi containe
 
 - Job `db-backup` (03:00) ghi `VACUUM INTO` vào `/opt/facebeo/data/backups/`, giữ 14 bản — **vẫn nằm trên VPS**.
 - **Ra ngoài VPS — Cloudflare R2 (v1.10.4)**: service `backup` (image `rclone/rclone`, `deploy/backup.sh`) mỗi ngày **03:30** nén bản DB mới
-  nhất trong `backups/` + `credentials/` + `avatars/` → **mã hóa** (rclone crypt) → bucket R2 `facebeo-backup`, thư mục `facebeo/daily/`,
+  nhất trong `backups/` + `credentials/` + `avatars/` + `photos/` → **mã hóa** (rclone crypt) → bucket R2 `facebeo-backup`, thư mục `facebeo/daily/`,
   giữ **30 ngày**. Không đưa `snapshots/` (ảnh quét tự xóa sau 90 ngày) và **không đưa `.env`** lên R2.
   - Biến trong `/opt/facebeo/.env`: `R2_ACCOUNT_ID`, `R2_BUCKET`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` (token R2 chỉ quyền Object Read & Write
     trên đúng bucket), `BACKUP_CRYPT_PASSWORD`, `BACKUP_CRYPT_SALT` (tạo ngẫu nhiên trên VPS).

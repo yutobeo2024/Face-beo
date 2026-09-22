@@ -463,6 +463,16 @@ flowchart TD
   <div class="callout"><b>Ảnh đại diện trên thẻ nhân viên</b> (v1.10.0)
     <p>Người đã enroll có ảnh khuôn mặt thật thay cho chữ viết tắt — bấm ảnh để xem lớn. <b>Ai thấy ảnh</b>: Nhân sự, Quản trị, quản lý phòng của người đó và chính họ (ở Trang cá nhân); người khác vẫn thấy chữ viết tắt. Ảnh bị xóa khi xóa khuôn mặt, rút đồng ý hoặc cho nghỉ việc. Người enroll <b>trước bản này</b> chưa có ảnh — bấm <b>Enroll lại</b> để có ảnh. Khi sao lưu ra ngoài máy, chép cả thư mục <code>data/avatars/</code>.</p>
   </div>
+  <div class="callout ok"><b>Ảnh đại diện tự chọn</b> (v1.13.0)
+    <p>Mỗi người có thể thay ảnh nhìn thẳng bằng <b>ảnh mình thích</b>. Ảnh này <b>chỉ để hiển thị</b>, không dùng để nhận diện khi chấm công, nên đổi ảnh không ảnh hưởng máy chấm công.</p>
+    <ul>
+      <li><b>Ai được đổi</b>: chính chủ (Trang cá nhân → Thông tin cá nhân → <b>Tải ảnh đại diện</b> / <b>Đổi ảnh</b>). Nhân sự và Quản trị đổi cho người khác: bấm ảnh trên thẻ nhân viên. Nhân sự không đổi được ảnh của tài khoản Nhân sự / Quản trị khác, chỉ Quản trị làm được. Quản lý phòng chỉ xem, không đổi.</li>
+      <li><b>Cắt ảnh</b>: chọn file xong, ảnh hiện trong <b>khung chữ nhật đứng 3:4</b>. Kéo để di chuyển, dùng thanh trượt, con lăn chuột hoặc hai ngón tay để phóng to / thu nhỏ. Có nút <b>Xoay 90°</b> và <b>Đặt lại</b>. Bấm <b>Lưu ảnh</b>.</li>
+      <li><b>Giới hạn</b>: file JPG / PNG / WebP, tối đa <b>5 MB</b>. Ví dụ: ảnh điện thoại 4 MB được nhận, ảnh 7 MB bị từ chối. Máy chủ lưu bản 600×800 khoảng 100 KB và bỏ thông tin vị trí (GPS) trong ảnh.</li>
+      <li><b>Thứ tự hiển thị</b>: ảnh tự chọn → ảnh nhìn thẳng lúc enroll → chữ viết tắt. Bấm <b>Xóa ảnh</b> để quay về ảnh enroll.</li>
+      <li><b>Ai thấy</b>: chính chủ, Nhân sự, Quản trị, quản lý phòng của người đó. Xóa khuôn mặt hoặc rút đồng ý <b>không</b> xóa ảnh tự chọn. Cho nghỉ việc thì ảnh bị xóa.</li>
+    </ul>
+  </div>
   <div class="callout ok"><b>Mẹo để nhận diện chính xác</b>
     <p>• Bỏ khẩu trang, mũ; kính thường được nhưng nên enroll đúng như khi đi làm. • Người có nét giống nhau (anh chị em) vẫn phân biệt được, nhưng enroll kỹ cả 5 góc. • Danh sách nhân viên hiện <b>"Enroll lại"</b> khi mẫu cũ không còn dùng được sau khi nâng cấp mô hình.</p>
   </div>
@@ -975,7 +985,7 @@ stateDiagram-v2
   <details><summary>Đăng xuất trên điện thoại thì máy tính cũng bị thoát?</summary><p>Đúng, có chủ đích: đăng xuất ở bất kỳ đâu sẽ thoát tài khoản trên mọi thiết bị (kể cả phiên lỡ để lại ở máy dùng chung). Đăng nhập lại là được. Đổi mật khẩu cũng vậy.</p></details>
 </section>
 
-<footer>Face Beo · Cẩm nang sử dụng · cập nhật 22/09/2026 (phiên bản ứng dụng v1.12.1 · https://face.ydsg.website)</footer>
+<footer>Face Beo · Cẩm nang sử dụng · cập nhật 22/09/2026 (phiên bản ứng dụng v1.13.0 · https://face.ydsg.website)</footer>
 </main>
 </div>
 

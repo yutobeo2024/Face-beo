@@ -221,16 +221,25 @@ export function Segmented<T extends string>({ value, onChange, options, classNam
 
 // ---------------------------------------------------------------- Modal / Sheet
 /** Mobile: bottom sheet; desktop: hộp thoại giữa màn hình. */
+const modalStack: object[] = [];
+let savedOverflow = "";
+
 export function Modal({ open, onClose, title, children, footer, wide }: { open: boolean; onClose: () => void; title: string; children: React.ReactNode; footer?: React.ReactNode; wide?: boolean }) {
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    // Hộp thoại lồng nhau (vd. cắt ảnh mở trong hộp xem ảnh): Esc chỉ đóng hộp trên cùng; khóa cuộn trang theo bộ đếm.
+    const token = {};
+    modalStack.push(token);
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && modalStack.at(-1) === token && onClose();
     document.addEventListener("keydown", onKey);
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    if (modalStack.length === 1) {
+      savedOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+    }
     return () => {
       document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = prev;
+      modalStack.splice(modalStack.indexOf(token), 1);
+      if (!modalStack.length) document.body.style.overflow = savedOverflow;
     };
   }, [open, onClose]);
   if (!open) return null;
@@ -256,12 +265,14 @@ export function Modal({ open, onClose, title, children, footer, wide }: { open: 
 }
 
 /** Chữ viết tắt trên nền màu theo tên; có `src` (ảnh khuôn mặt đại diện, v1.10.0) thì hiện ảnh, tải lỗi thì quay về chữ viết tắt. */
-export function Avatar({ name, className, src }: { name: string; className?: string; src?: string | null }) {
+/** `rect`: khung chữ nhật đứng 3:4 (ảnh đại diện, v1.13.0) — người gọi đặt chiều rộng (vd. `w-16`). */
+export function Avatar({ name, className, src, rect }: { name: string; className?: string; src?: string | null; rect?: boolean }) {
   const [broken, setBroken] = useState<string | null>(null);
+  const shape = rect ? "aspect-[3/4] rounded-xl" : "size-9 rounded-full";
   if (src && broken !== src) {
     return (
       // eslint-disable-next-line @next/next/no-img-element -- ảnh sau API có kiểm quyền, không qua next/image
-      <img src={src} alt={name} loading="lazy" onError={() => setBroken(src)} className={cx("inline-block size-9 shrink-0 rounded-full bg-slate-100 object-cover", className)} />
+      <img src={src} alt={name} loading="lazy" onError={() => setBroken(src)} className={cx("inline-block shrink-0 bg-slate-100 object-cover", shape, className)} />
     );
   }
   const parts = name.trim().split(/\s+/);
@@ -269,7 +280,7 @@ export function Avatar({ name, className, src }: { name: string; className?: str
   const hue = [...name].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7);
   return (
     <span
-      className={cx("inline-flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white", className)}
+      className={cx("inline-flex shrink-0 items-center justify-center font-bold text-white", rect ? "text-lg" : "text-xs", shape, className)}
       style={{ background: `hsl(${hue} 45% 45%)` }}
       aria-hidden
     >

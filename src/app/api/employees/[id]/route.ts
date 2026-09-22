@@ -1,7 +1,8 @@
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
 import { deleteCredentialDir } from "@/lib/credential-files";
-import { avatarUrlFor, canViewSnapshots, clearFaceAvatar } from "@/lib/face-avatar";
+import { canViewSnapshots, clearFaceAvatar } from "@/lib/face-avatar";
+import { clearProfilePhoto, displayAvatarUrl } from "@/lib/profile-photo";
 import { keepTrackedUnlessAdmin } from "@/lib/attendance-scope";
 import { ensurePatternFor } from "@/lib/work-patterns";
 import { randomTempPassword } from "@/lib/temp-password";
@@ -44,19 +45,22 @@ export const GET = handle<{ id: string }>(async (req, ctx) => {
       faceTemplates: { select: { modelVersion: true, createdAt: true } },
       faceAvatarKey: true,
       faceAvatarAt: true,
+      photoKey: true,
+      photoAt: true,
     },
   });
   if (!e) throw notFound();
   if (!canViewEmployee(u, e)) throw forbidden();
-  const { faceTemplates, faceAvatarKey, faceAvatarAt, ...all } = e;
+  const { faceTemplates, faceAvatarKey, faceAvatarAt, photoKey, photoAt, ...all } = e;
   const rest = maskPersonal(all, u);
-  const avatarUrl = avatarUrlFor(u, { id: e.id, departmentId: e.departmentId, faceAvatarKey, faceAvatarAt }, await canViewSnapshots(u));
+  const avatarUrl = displayAvatarUrl(u, { id: e.id, departmentId: e.departmentId, faceAvatarKey, faceAvatarAt, photoKey, photoAt }, await canViewSnapshots(u));
   return json({
     employee: {
       ...rest,
       faceCount: faceTemplates.filter((t) => t.modelVersion === FACE_MODEL_VERSION).length,
       faceEnrolledAt: faceTemplates[0]?.createdAt ?? null,
       avatarUrl,
+      hasPhoto: !!photoKey,
     },
   });
 });
@@ -134,6 +138,7 @@ export const PATCH = handle<{ id: string }>(async (req, ctx) => {
   if (fields.active === false) {
     const del = await prisma.faceTemplate.deleteMany({ where: { employeeId: id } });
     await clearFaceAvatar(id);
+    await clearProfilePhoto(id); // ảnh tự chọn cũng là dữ liệu cá nhân: xóa khi nghỉ việc
     if (del.count) {
       invalidateFaceCache();
       await audit({ actorId: u.id, action: "FACE_DELETE", entity: "Employee", entityId: id, detail: { reason: "inactive", count: del.count } });
@@ -231,6 +236,7 @@ export const DELETE = handle<{ id: string }>(async (req, ctx) => {
   invalidateFaceCache();
   await deleteCredentialDir(id).catch(() => {}); // file scan văn bằng / chứng chỉ (dòng DB xóa theo cascade)
   await clearFaceAvatar(id, { dbAlreadyGone: true }).catch(() => {});
+  await clearProfilePhoto(id, { dbAlreadyGone: true }).catch(() => {});
   await audit({ actorId: u.id, action: "EMPLOYEE_DELETE", entity: "Employee", entityId: id, detail: { code: e.code, name: e.name, role: e.role, departmentId: e.departmentId } });
   await announce(u, `đã xóa tài khoản tạo nhầm ${e.code} — ${e.name}`, { key: `emp-delete:${id}`, detail: "Tài khoản chưa có chấm công / đơn từ / lịch" });
   return json({ ok: true });

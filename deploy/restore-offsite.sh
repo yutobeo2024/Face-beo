@@ -17,14 +17,14 @@ console.log('integrity_check:', db.prepare('PRAGMA integrity_check').get().integ
 for (const t of ['Employee', 'AttendanceLog', 'LeaveRequest', 'Credential', 'FaceTemplate'])
   console.log(t.padEnd(14), db.prepare('SELECT COUNT(*) AS n FROM \"' + t + '\"').get().n);
 "
-echo "== File đi kèm: credentials $(find /opt/facebeo/restore/credentials -type f 2>/dev/null | wc -l) file, avatars $(find /opt/facebeo/restore/avatars -type f 2>/dev/null | wc -l) file"
+echo "== File đi kèm: credentials $(find /opt/facebeo/restore/credentials -type f 2>/dev/null | wc -l) file, avatars $(find /opt/facebeo/restore/avatars -type f 2>/dev/null | wc -l) file, photos $(find /opt/facebeo/restore/photos -type f 2>/dev/null | wc -l) file"
 cat <<EOF
 
 Muốn THAY dữ liệu đang chạy bằng bản này (mất dữ liệu phát sinh sau thời điểm sao lưu):
   $COMPOSE stop app
   cp $DB /opt/facebeo/data/facebeo.db && rm -f /opt/facebeo/data/facebeo.db-wal /opt/facebeo/data/facebeo.db-shm
-  rm -rf /opt/facebeo/data/credentials /opt/facebeo/data/avatars
-  cp -r /opt/facebeo/restore/credentials /opt/facebeo/restore/avatars /opt/facebeo/data/ 2>/dev/null || true
+  rm -rf /opt/facebeo/data/credentials /opt/facebeo/data/avatars /opt/facebeo/data/photos
+  cp -r /opt/facebeo/restore/credentials /opt/facebeo/restore/avatars /opt/facebeo/restore/photos /opt/facebeo/data/ 2>/dev/null || true
   $COMPOSE start app
 Xong việc thì xóa bản tạm: rm -rf /opt/facebeo/restore
 EOF
