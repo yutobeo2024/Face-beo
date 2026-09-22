@@ -372,6 +372,9 @@ export default function SettingsPage() {
                   </Button>
                 }
               />
+              <p className="px-4 pt-3 text-xs text-slate-500 sm:px-5">
+                Mỗi nhân viên ca cố định theo đúng một mẫu ở đây (chọn trong hồ sơ nhân viên) — mẫu quyết định ca từng ngày. Nhân viên xoay ca không dùng mẫu, xếp ca hằng tuần.
+              </p>
               <ul className="divide-y divide-slate-100">
                 {patterns.data?.patterns.map((pt) => (
                   <li key={pt.id} className="flex items-center gap-3 px-4 py-3 sm:px-5">

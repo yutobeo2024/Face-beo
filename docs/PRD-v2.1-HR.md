@@ -71,8 +71,8 @@ Ngoại lệ: ADMIN chỉ tự duyệt được đơn của mình khi không cò
   1. Lịch ngày trong tuần đã đăng ký.
   2. Ngày lễ → nghỉ.
   3. Nhân viên xoay ca mà tuần chưa đăng ký → **"Chưa có lịch"**.
-  4. Mẫu tuần.
-  5. Ca mặc định, nghỉ Chủ nhật.
+  4. Mẫu tuần (nhân viên ca cố định luôn có mẫu — v1.12.1, mục 26).
+  5. (Chỉ còn cho lịch sử trước v1.12.1) Ca mặc định, nghỉ Chủ nhật.
 - **"Chưa có lịch":**
   - không báo vắng, không tính trễ; mọi lần quét vẫn được lưu;
   - HR nhận thông báo; dashboard có danh sách riêng;
@@ -450,3 +450,15 @@ công được tính trực tiếp từ planner. Quản lý được cấp `org.
 - **Giới hạn đã biết**: cờ là trạng thái hiện tại, không theo mốc ngày — đổi giữa tháng thì các tháng **chưa chốt** hiển thị theo trạng thái mới
   (nên chốt công các tháng trước rồi mới đổi); báo cáo trải qua cả tháng đã chốt lẫn chưa chốt giữ người có trong bản chụp cho cả khoảng. Đơn bổ
   sung công của người không chấm công vẫn tạo / duyệt được như đơn thường. Ô "Chấm công" chỉ có khi **sửa** nhân viên (tạo mới luôn theo phòng).
+
+## 26. Ca cố định luôn theo một mẫu tuần trong Cấu hình (v1.12.1, 22/09/2026)
+
+- **Lý do**: lựa chọn ẩn "— Ca mặc định, nghỉ Chủ nhật —" (không mẫu: T2–T7 = ca mặc định) không có trong Cấu hình nên khó hiểu; đổi "Ca mặc định"
+  của người đã có mẫu tuần thì lịch không đổi (mẫu thắng) — gây nhầm (NV002). Chủ dự án chốt: lịch cố định phải là **mẫu trong Cấu hình**; ca mặc
+  định chủ yếu cho **nhóm xoay ca** (ô trống của tuần đã đăng ký).
+- **Máy chủ**: `ensurePatternFor(ca)` (`src/lib/work-patterns.ts`) tìm / tạo mẫu "<tên ca> T2–T7" (T2–T7 = ca, CN nghỉ). Mọi đường lưu nhân viên cố định
+  thiếu mẫu (tạo, sửa, nhập Excel, `admin:create`) đều gán mẫu tương đương → lịch **y hệt** trước. Ca không tồn tại → 400.
+- **Dữ liệu cũ**: `backfillFixedPatterns()` chạy khi khởi động — nhân viên đang làm, cố định, chưa có mẫu → gán mẫu tương đương, ghi lịch từ hôm nay
+  (chưa có lịch sử thì chụp bản gốc trước); nhật ký `PATTERN_UPDATE`. Chạy lại an toàn. Lịch các ngày đã qua / tháng đã chốt không đổi.
+- **Giao diện**: form nhân viên — Ca cố định: chỉ ô **Mẫu tuần** (bắt buộc) + dòng "Lịch: T2–T6 … · T7 … · CN nghỉ"; Xoay ca: ô **Ca mặc định**. Thẻ:
+  "Cố định · mẫu <tên>". Nhập Excel: lựa chọn "không mẫu" đổi tên thành "Tự dùng mẫu <ca> T2–T7".

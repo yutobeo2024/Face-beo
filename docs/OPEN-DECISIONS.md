@@ -22,6 +22,11 @@ Ghi lại những điểm đã phát hiện trong quá trình làm và test, c�
   tạo lại OA Secret Key webhook (nếu Zalo cho), dán lại vào `/opt/facebeo/.env`, `up -d --force-recreate`.
 - **Trạng thái:** chờ chủ dự án thao tác.
 
+## Đã chốt v1.12.1 (22/09/2026)
+
+- **Ca cố định luôn theo một mẫu tuần có trong Cấu hình** — bỏ lựa chọn ẩn "Ca mặc định, nghỉ Chủ nhật"; dữ liệu cũ tự gán mẫu tương đương (lịch không
+  đổi). Ca mặc định chủ yếu cho nhóm xoay ca. Xem PRD v2.1 mục 26.
+
 ## Đã chốt v1.12.0 (22/09/2026)
 
 - **Ban Giám đốc / Quản trị không chấm công**: cấu hình theo phòng + từng người (theo phòng / không chấm / vẫn chấm); không cảnh báo, không Zalo,

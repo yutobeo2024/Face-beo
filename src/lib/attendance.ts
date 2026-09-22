@@ -158,7 +158,8 @@ function diffMinutes(a: Date, b: Date): number {
  * Ca của một (nhân viên, ngày). `schedule` chỉ được truyền vào khi lịch đó CÓ HIỆU LỰC (đã đăng ký / do Nhân sự đặt) —
  * bản nháp không bao giờ tới đây.
  *  - Có lịch hiệu lực trong ngày: dùng lịch (kể cả ngày lễ — làm ngày lễ).
- *  - FIXED: theo mẫu tuần (ngày lễ nghỉ); chưa gán mẫu => ca mặc định, nghỉ Chủ nhật (hành vi cũ).
+ *  - FIXED: theo mẫu tuần (ngày lễ nghỉ). Nhánh "chưa gán mẫu => ca mặc định, nghỉ Chủ nhật" chỉ còn cho LỊCH SỬ trước v1.12.1
+ *    (ScheduleAssignment cũ) — từ v1.12.1 nhân viên cố định luôn có mẫu tuần (ensurePatternFor).
  *  - ROTATING: tuần đã đăng ký mà ô trống => ca mặc định như bảng xếp ca hiển thị; tuần chưa đăng ký => "Chưa có lịch".
  */
 export function resolveDayPlan(args: {

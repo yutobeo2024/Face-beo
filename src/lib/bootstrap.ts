@@ -11,6 +11,7 @@ import type { prisma } from "./db";
 import { ensureDefaultPermissions } from "./permissions";
 import { DEFAULT_APP_SETTINGS } from "./settings";
 import { BASELINE_DATE, snapshotAssignment } from "./schedule-assignments";
+import { ensurePatternFor } from "./work-patterns";
 import { randomTempPassword } from "./temp-password";
 import { changePasswordSchema, employeeCreateSchema, phoneSchema } from "./validators";
 
@@ -198,7 +199,7 @@ export async function createFirstAdmin(db: Db, input: FirstAdminInput) {
     await assertNoActiveAdmin(tx); // kiểm lại trong giao dịch: hai lệnh chạy cùng lúc không tạo được hai Quản trị
     const dept = (await tx.department.findUnique({ where: { name: deptName } })) ?? (await tx.department.create({ data: { name: deptName } }));
     const e = await tx.employee.create({
-      data: { code, name, phone, passwordHash, mustChangePassword: true, role: "ADMIN", departmentId: dept.id, defaultShiftId: shift.id, scheduleType: "FIXED" },
+      data: { code, name, phone, passwordHash, mustChangePassword: true, role: "ADMIN", departmentId: dept.id, defaultShiftId: shift.id, scheduleType: "FIXED", workPatternId: (await ensurePatternFor(shift.id, tx)).id },
     });
     await snapshotAssignment(e.id, BASELINE_DATE, tx);
     await tx.auditLog.create({

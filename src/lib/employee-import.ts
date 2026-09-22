@@ -11,6 +11,7 @@ import { badRequest } from "./api";
 import ExcelJS from "exceljs";
 import { prisma } from "./db";
 import { keepTrackedUnlessAdmin } from "./attendance-scope";
+import { ensurePatternFor } from "./work-patterns";
 import type { AuthUser } from "./auth";
 import { assertCanCreate, assertCanModify } from "./employee-guards";
 import { can } from "./permissions";
@@ -525,7 +526,11 @@ export async function commitImport(items: ImportItem[], actor: AuthUser) {
     secrets.push({ temp, hash: await bcrypt.hash(temp, 10) });
     await new Promise((r) => setImmediate(r)); // nhường lượt cho request khác giữa các lần băm
   }
-  const scheduleChanged = updates.filter((u) => SCHEDULE_KEYS.some((k) => u.data && k in u.data)).map((u) => u.employeeId!);
+  // + người cố định chưa có mẫu tuần: sẽ được gán mẫu tương đương (v1.12.1) → ghi lịch từ hôm nay như sửa tay.
+  const legacy = new Set(
+    (await prisma.employee.findMany({ where: { id: { in: updates.map((u) => u.employeeId!) }, scheduleType: "FIXED", workPatternId: null }, select: { id: true } })).map((e) => e.id),
+  );
+  const scheduleChanged = updates.filter((u) => legacy.has(u.employeeId!) || SCHEDULE_KEYS.some((k) => u.data && k in u.data)).map((u) => u.employeeId!);
   await ensureBaseline(scheduleChanged);
 
   const result = await prisma.$transaction(
@@ -571,7 +576,11 @@ export async function commitImport(items: ImportItem[], actor: AuthUser) {
         const data: Record<string, unknown> = { ...rest };
         delete data.code; // mã là khóa tra cứu, không đổi
         if (departmentId !== undefined) data.departmentId = departmentId === "unassigned" ? await unassigned() : departmentId;
-        const before = await tx.employee.findUniqueOrThrow({ where: { id: it.employeeId! }, select: { departmentId: true } });
+        const before = await tx.employee.findUniqueOrThrow({ where: { id: it.employeeId! }, select: { departmentId: true, scheduleType: true, workPatternId: true, defaultShiftId: true } });
+        // v1.12.1: ca cố định luôn có mẫu tuần (thiếu → mẫu tương đương "T2–T7 = ca mặc định, CN nghỉ").
+        if (((data.scheduleType as string | undefined) ?? before.scheduleType) === "FIXED" && !("workPatternId" in data ? data.workPatternId : before.workPatternId)) {
+          data.workPatternId = (await ensurePatternFor((data.defaultShiftId as number | undefined) ?? before.defaultShiftId, tx)).id;
+        }
         await tx.employee.update({ where: { id: it.employeeId! }, data });
         if (data.departmentId !== undefined && data.departmentId !== before.departmentId) {
           moved.push(it.employeeId!);

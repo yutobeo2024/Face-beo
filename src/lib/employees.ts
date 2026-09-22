@@ -5,6 +5,7 @@
 import bcrypt from "bcryptjs";
 import { Prisma } from "@prisma/client";
 import { prisma } from "./db";
+import { ensurePatternFor } from "./work-patterns";
 import { badRequest } from "./api";
 import { BASELINE_DATE, snapshotAssignment } from "./schedule-assignments";
 import { assertCatalogIds } from "./catalogs";
@@ -82,6 +83,8 @@ export async function createEmployee(input: NewEmployee, actorId: number | null,
   if (input.workPatternId && !(await db.workPattern.findUnique({ where: { id: input.workPatternId } }))) throw badRequest("Mẫu tuần không tồn tại");
   await assertCatalogIds(input, db);
   const scheduleType = input.scheduleType ?? "FIXED";
+  // v1.12.1: ca cố định luôn theo một mẫu tuần trong Cấu hình (thiếu → mẫu tương đương "T2–T7 = ca mặc định, CN nghỉ").
+  const workPatternId = scheduleType === "FIXED" ? (input.workPatternId ?? (await ensurePatternFor(input.defaultShiftId, db)).id) : null;
   // Không có mật khẩu mặc định chung: không truyền thì sinh mật khẩu tạm ngẫu nhiên. Nhập Excel băm sẵn ngoài giao dịch (opts.passwordHash).
   const tempPassword = input.password || opts.passwordHash ? null : randomTempPassword();
   const e = await db.employee.create({
@@ -97,7 +100,7 @@ export async function createEmployee(input: NewEmployee, actorId: number | null,
       departmentId: input.departmentId,
       defaultShiftId: input.defaultShiftId,
       scheduleType,
-      workPatternId: scheduleType === "FIXED" ? (input.workPatternId ?? null) : null,
+      workPatternId,
       jobTitleId: input.jobTitleId ?? null,
       specialtyId: input.specialtyId ?? null,
       passwordHash: opts.passwordHash ?? (await bcrypt.hash(input.password ?? tempPassword!, 10)),

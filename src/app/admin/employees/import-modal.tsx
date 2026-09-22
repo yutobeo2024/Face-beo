@@ -159,7 +159,7 @@ export function ImportModal({
             <Field label="Mẫu tuần mặc định">
               {(id) => (
                 <Select id={id} value={pattern} onChange={(e) => (setPattern(e.target.value), setPreview(null))}>
-                  <option value="none">— Không (ca mặc định T2–T7, nghỉ CN) —</option>
+                  <option value="none">— Tự dùng mẫu “&lt;ca mặc định&gt; T2–T7” (CN nghỉ; tạo nếu chưa có) —</option>
                   {patterns.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.name}

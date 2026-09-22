@@ -4,6 +4,13 @@ import { getTemplates } from "./lib/face-matcher";
 import { startCron } from "./lib/cron";
 
 await ensureDb().catch((e) => console.error("[boot] không bật được WAL:", e.message));
+// v1.12.1: nhân viên ca cố định chưa gán mẫu tuần → gán mẫu tương đương (lịch không đổi). Chạy lại an toàn.
+if (process.env.NEXT_PHASE !== "phase-production-build") {
+  import("./lib/work-patterns")
+    .then(({ backfillFixedPatterns }) => backfillFixedPatterns())
+    .then((d) => d.length && console.log(`[boot] gán mẫu tuần cho ${d.length} nhân viên ca cố định:`, d.map((x) => `${x.code} → ${x.pattern}`).join(", ")))
+    .catch((e) => console.error("[boot] gán mẫu tuần lỗi:", e.message));
+}
 getTemplates()
   .then((t) => console.log(`[boot] đã nạp ${t.length} template khuôn mặt`))
   .catch((e) => console.error("[boot] nạp template lỗi:", e.message));

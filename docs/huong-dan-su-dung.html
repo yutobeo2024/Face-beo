@@ -334,7 +334,7 @@ gantt
   <p class="lead"><span class="pill a">Quản trị</span> Menu <b>Cấu hình</b>.</p>
 
   <h3>5.1 Mẫu tuần làm việc (cho nhóm ca cố định)</h3>
-  <p>Mẫu tuần gán một ca cho từng thứ, để trống là nghỉ. Nhân viên cố định gắn một mẫu thì không cần xếp ca hằng tuần.</p>
+  <p>Mẫu tuần gán một ca cho từng thứ, để trống là nghỉ. <b>Mỗi nhân viên ca cố định theo đúng một mẫu ở đây</b> (v1.12.1 — không còn lựa chọn ẩn "ca mặc định, nghỉ Chủ nhật"), nên nhìn danh sách mẫu là biết mọi lịch đang dùng. Muốn "T2–T7 cùng một ca, CN nghỉ" thì tạo / chọn mẫu như vậy (hệ thống tự tạo mẫu "&lt;tên ca&gt; T2–T7" khi nhập Excel hoặc dữ liệu cũ thiếu mẫu).</p>
   <div class="tw"><table>
     <tr><th>Mẫu</th><th>T2</th><th>T3</th><th>T4</th><th>T5</th><th>T6</th><th>T7</th><th>CN</th></tr>
     <tr><td>HC T2–T6 + T7 sáng</td><td>HC</td><td>HC</td><td>HC</td><td>HC</td><td>HC</td><td>Sáng T7</td><td>nghỉ</td></tr>
@@ -389,9 +389,8 @@ flowchart TD
   C -- Có --> R2["Nghỉ lễ"]
   C -- Không --> D{"X thuộc nhóm<br/>xoay ca?"}
   D -- "Có, tuần chưa đăng ký" --> R3["⚠️ Chưa có lịch<br/>không báo vắng, không tính trễ"]
-  D -- "Không (cố định)" --> E{"Có mẫu tuần?"}
-  E -- Có --> R4["Ca theo mẫu tuần<br/>(ô trống = nghỉ)"]
-  E -- Không --> R5["Ca mặc định,<br/>nghỉ Chủ nhật"]
+  D -- "Không (cố định)" --> E["Mẫu tuần của X<br/>(bắt buộc, trong Cấu hình)"]
+  E --> R4["Ca theo mẫu tuần<br/>(ô trống = nghỉ)"]
 </pre>
     <div class="cap">Hình 3. Thứ tự ưu tiên khi xác định ca. Bản nháp lịch tuần không bao giờ được tính.</div>
   </div>
@@ -423,7 +422,14 @@ flowchart TD
   <h3>6.1 Thêm / sửa nhân viên</h3>
   <ol class="steps">
     <li>Bấm <b>Thêm nhân viên</b>, nhập mã, họ tên, phòng ban, vai trò (Nhân sự không gán được vai trò Nhân sự/Quản trị).</li>
-    <li>Chọn <b>loại lịch</b>: <b>Cố định</b> (chọn mẫu tuần hoặc ca mặc định) hoặc <b>Xoay ca</b> (theo lịch tuần quản lý xếp).</li>
+    <li>Chọn <b>loại lịch</b>:
+      <div class="tw"><table>
+        <tr><th>Loại lịch</th><th>Chọn gì</th><th>Ca từng ngày lấy từ đâu</th></tr>
+        <tr><td><b>Ca cố định</b></td><td><b>Mẫu tuần làm việc</b> (bắt buộc) — form hiện ngay "Lịch: T2–T6 … · T7 … · CN nghỉ"</td><td>Mẫu tuần (Cấu hình → Mẫu tuần làm việc)</td></tr>
+        <tr><td><b>Xoay ca</b></td><td><b>Ca mặc định</b></td><td>Bảng Xếp ca hằng tuần; ô để trống trong tuần đã đăng ký = ca mặc định</td></tr>
+      </table></div>
+      <p>Ví dụ: NV002 ca cố định, mẫu "Sáng sớm T2–T7" → T2–T7 làm Sáng sớm. Muốn làm HC 07:30–16:30, T7 buổi sáng → đổi <b>Mẫu tuần</b> sang "HC T2–T6 + T7 sáng" (không phải đổi ca mặc định — với ca cố định ô này không còn hiện). Đổi lịch có hiệu lực <b>từ hôm nay</b>.</p>
+    </li>
     <li>Chọn <b>Chức danh</b> (Bác sĩ, Điều dưỡng, Kỹ thuật viên…) và <b>Chuyên khoa / chuyên môn</b> (Tai Mũi Họng, Mắt, Siêu âm…). Hai mục này chỉ để mô tả: hiện dưới tên nhân viên, trong bảng xếp ca (vd. "Bác sĩ · Tai Mũi Họng"), lọc danh sách và thêm cột trong Excel — <b>không</b> ảnh hưởng quyền hay người duyệt đơn. Quản trị sửa danh sách ở <b>Cấu hình → Chức danh &amp; chuyên khoa</b> (xóa một mục thì người đang dùng được để trống).</li>
     <li><b>Thông tin cá nhân</b> (v1.8.0): SĐT (không bắt buộc — nhân viên đăng nhập bằng mã NV), <b>CCCD</b> (12 số), <b>ngày sinh</b>, <b>giới tính</b>, <b>địa chỉ</b>. Chỉ Nhân sự, Quản trị và chính chủ xem được; trưởng phòng không thấy. Không đưa vào tin Zalo, nhật ký chỉ ghi "đã đổi". Nhân viên xem thông tin của mình ở Trang cá nhân.</li>
     <li>Mật khẩu ban đầu: nhập tay, hoặc để trống để hệ thống <b>sinh mật khẩu tạm ngẫu nhiên</b> (hiện <b>một lần</b> sau khi lưu — ghi lại và đưa cho nhân viên). Nhân viên bắt buộc đổi ở lần đăng nhập đầu. Sau này có thể <b>đặt lại mật khẩu</b> trong hồ sơ.</li>
@@ -969,7 +975,7 @@ stateDiagram-v2
   <details><summary>Đăng xuất trên điện thoại thì máy tính cũng bị thoát?</summary><p>Đúng, có chủ đích: đăng xuất ở bất kỳ đâu sẽ thoát tài khoản trên mọi thiết bị (kể cả phiên lỡ để lại ở máy dùng chung). Đăng nhập lại là được. Đổi mật khẩu cũng vậy.</p></details>
 </section>
 
-<footer>Face Beo · Cẩm nang sử dụng · cập nhật 22/09/2026 (phiên bản ứng dụng v1.12.0 · https://face.ydsg.website)</footer>
+<footer>Face Beo · Cẩm nang sử dụng · cập nhật 22/09/2026 (phiên bản ứng dụng v1.12.1 · https://face.ydsg.website)</footer>
 </main>
 </div>
 

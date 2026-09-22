@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { deleteCredentialDir } from "@/lib/credential-files";
 import { avatarUrlFor, canViewSnapshots, clearFaceAvatar } from "@/lib/face-avatar";
 import { keepTrackedUnlessAdmin } from "@/lib/attendance-scope";
+import { ensurePatternFor } from "@/lib/work-patterns";
 import { randomTempPassword } from "@/lib/temp-password";
 import { todayVN } from "@/lib/attendance";
 import { applyScheduleChangeFromToday, ensureBaseline } from "@/lib/schedule-assignments";
@@ -84,12 +85,17 @@ export const PATCH = handle<{ id: string }>(async (req, ctx) => {
     data.sessionVersion = { increment: 1 };
   }
   if (fields.active === true && !e.active) data.leftAt = null;
-  // Nhân viên xoay ca không dùng mẫu tuần.
+  // Nhân viên xoay ca không dùng mẫu tuần; ca cố định LUÔN có mẫu tuần trong Cấu hình (v1.12.1) — thiếu thì gán mẫu tương đương
+  // "T2–T7 = ca mặc định, CN nghỉ" (lịch từng ngày y như trước).
   if ((fields.scheduleType ?? e.scheduleType) === "ROTATING") data.workPatternId = null;
   if (fields.workPatternId && !(await prisma.workPattern.findUnique({ where: { id: fields.workPatternId } }))) throw badRequest("Mẫu tuần không tồn tại");
   if (fields.defaultShiftId && !(await prisma.shift.findUnique({ where: { id: fields.defaultShiftId } }))) throw badRequest("Ca mặc định không tồn tại");
   if (fields.departmentId && !(await prisma.department.findUnique({ where: { id: fields.departmentId } }))) throw badRequest("Phòng ban không tồn tại");
   await assertCatalogIds(fields);
+  // Kiểm xong mới gán (không để lại mẫu mới tạo khi lượt sửa bị từ chối).
+  if ((fields.scheduleType ?? e.scheduleType) === "FIXED" && !("workPatternId" in data ? data.workPatternId : e.workPatternId)) {
+    data.workPatternId = (await ensurePatternFor((fields.defaultShiftId ?? e.defaultShiftId) as number)).id;
+  }
   // Mật khẩu tạm ngẫu nhiên (không dùng mật khẩu mặc định đoán được), bắt buộc đổi ở lần đăng nhập sau.
   const tempPassword = resetPassword ? randomTempPassword() : null;
   if (resetPassword) {

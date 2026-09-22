@@ -63,7 +63,25 @@ type Form = {
   specialtyId: string;
   attendanceExempt?: "" | "true" | "false";
 };
-type Pattern = { id: number; name: string; monShiftId: number | null };
+type Pattern = { id: number; name: string } & Record<(typeof DAY_KEYS)[number], number | null>;
+const DAY_KEYS = ["monShiftId", "tueShiftId", "wedShiftId", "thuShiftId", "friShiftId", "satShiftId", "sunShiftId"] as const;
+const DAY_SHORT = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
+/** Tóm tắt ca từng ngày của mẫu tuần, gộp các ngày liền nhau cùng ca: "T2–T6: HC CỐ ĐỊNH 07:30–16:30 · T7: … · CN: nghỉ". */
+function patternSummary(p: Pattern, shifts: Shift[]) {
+  const label = (id: number | null) => {
+    const sh = id != null ? shifts.find((x) => x.id === id) : null;
+    return sh ? `${sh.name} ${sh.startTime}–${sh.endTime}` : "nghỉ";
+  };
+  const parts: string[] = [];
+  let i = 0;
+  while (i < 7) {
+    let j = i;
+    while (j + 1 < 7 && p[DAY_KEYS[j + 1]] === p[DAY_KEYS[i]]) j++;
+    parts.push(`${i === j ? DAY_SHORT[i] : `${DAY_SHORT[i]}–${DAY_SHORT[j]}`}: ${label(p[DAY_KEYS[i]])}`);
+    i = j + 1;
+  }
+  return parts.join(" · ");
+}
 
 const ROLE: Record<string, string> = { ADMIN: "Quản trị", HR: "Nhân sự", MANAGER: "Quản lý", EMPLOYEE: "Nhân viên" };
 const PRIVILEGED = ["ADMIN", "HR"];
@@ -109,11 +127,20 @@ export default function EmployeesPage() {
   const alertOf = new Map((credAlerts.data?.items ?? []).map((a) => [a.id, a.issues]));
 
   function openCreate() {
-    setForm({ code: "", name: "", phone: "", nationalId: "", dateOfBirth: "", gender: "", address: "", role: "EMPLOYEE", departmentId: String(depts.data?.departments[0]?.id ?? ""), defaultShiftId: String(shifts.data?.shifts[0]?.id ?? ""), active: true, scheduleType: "FIXED", workPatternId: String(patterns.data?.patterns.find((p) => p.monShiftId === shifts.data?.shifts[0]?.id)?.id ?? ""), jobTitleId: "", specialtyId: "" });
+    setForm({ code: "", name: "", phone: "", nationalId: "", dateOfBirth: "", gender: "", address: "", role: "EMPLOYEE", departmentId: String(depts.data?.departments[0]?.id ?? ""), defaultShiftId: String(shifts.data?.shifts[0]?.id ?? ""), active: true, scheduleType: "FIXED", workPatternId: "", jobTitleId: "", specialtyId: "" });
   }
 
   async function save() {
     if (!form) return;
+    if (form.scheduleType === "FIXED" && !form.workPatternId) {
+      toast.error("Chọn Mẫu tuần làm việc (ca cố định luôn theo một mẫu tuần trong Cấu hình)");
+      return;
+    }
+    // Ca mặc định của người cố định = ca đầu tuần của mẫu — chỉ đặt khi tạo mới / đổi mẫu (sửa SĐT… không làm đổi âm thầm).
+    const prevPattern = form.id ? data?.employees.find((x) => x.id === form.id)?.workPatternId : undefined;
+    const patternChanged = !form.id || String(prevPattern ?? "") !== form.workPatternId;
+    const pat = form.scheduleType === "FIXED" && patternChanged ? patterns.data?.patterns.find((x) => String(x.id) === form.workPatternId) : undefined;
+    const firstShift = pat ? DAY_KEYS.map((k) => pat[k]).find((v) => v != null) : undefined;
     setBusy(true);
     try {
       const body = {
@@ -124,7 +151,7 @@ export default function EmployeesPage() {
           : {}),
         role: form.role,
         departmentId: Number(form.departmentId),
-        defaultShiftId: Number(form.defaultShiftId),
+        defaultShiftId: firstShift ?? Number(form.defaultShiftId),
         scheduleType: form.scheduleType,
         workPatternId: form.scheduleType === "FIXED" && form.workPatternId ? Number(form.workPatternId) : null,
         jobTitleId: form.jobTitleId ? Number(form.jobTitleId) : null,
@@ -276,7 +303,7 @@ export default function EmployeesPage() {
                     <p className="truncate text-xs font-medium text-brand-800">{[e.jobTitle?.name, e.specialty?.name].filter(Boolean).join(" · ")}</p>
                   )}
                   <p className="truncate text-xs text-slate-500">
-                    {e.scheduleType === "ROTATING" ? `Xoay ca · mặc định ${e.defaultShift.name}` : `Cố định · ${e.workPattern?.name ?? `${e.defaultShift.name} ${e.defaultShift.startTime}–${e.defaultShift.endTime}`}`}
+                    {e.scheduleType === "ROTATING" ? `Xoay ca · mặc định ${e.defaultShift.name}` : (e.workPattern ? `Cố định · mẫu ${e.workPattern.name}` : "Cố định · chưa chọn mẫu tuần")}
                     {e.phone && ` · ${e.phone}`}
                   </p>
                 </div>
@@ -426,17 +453,6 @@ export default function EmployeesPage() {
                 </Select>
               )}
             </Field>
-            <Field label="Ca mặc định">
-              {(id) => (
-                <Select id={id} value={form.defaultShiftId} onChange={(e) => setForm({ ...form, defaultShiftId: e.target.value })}>
-                  {shifts.data?.shifts.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name} {s.startTime}–{s.endTime}
-                    </option>
-                  ))}
-                </Select>
-              )}
-            </Field>
             <Field label="Chức danh" hint="Chỉ để mô tả, lọc và xuất Excel — không ảnh hưởng quyền.">
               {(id) => (
                 <Select id={id} value={form.jobTitleId} onChange={(e) => setForm({ ...form, jobTitleId: e.target.value })}>
@@ -480,11 +496,11 @@ export default function EmployeesPage() {
                 </Select>
               )}
             </Field>
-            {form.scheduleType === "FIXED" && (
-              <Field label="Mẫu tuần làm việc">
+            {form.scheduleType === "FIXED" ? (
+              <Field label="Mẫu tuần làm việc *" hint="Mẫu tuần quyết định ca từng ngày. Thêm / sửa mẫu ở Cấu hình → Mẫu tuần làm việc.">
                 {(id) => (
                   <Select id={id} value={form.workPatternId} onChange={(e) => setForm({ ...form, workPatternId: e.target.value })}>
-                    <option value="">— Ca mặc định, nghỉ Chủ nhật —</option>
+                    {!form.workPatternId && <option value="">— Chọn mẫu tuần —</option>}
                     {patterns.data?.patterns.map((p) => (
                       <option key={p.id} value={p.id}>
                         {p.name}
@@ -493,7 +509,23 @@ export default function EmployeesPage() {
                   </Select>
                 )}
               </Field>
+            ) : (
+              <Field label="Ca mặc định" hint="Tự điền cho ngày để trống trong tuần đã đăng ký ca (xếp ca vẫn đổi được từng ngày).">
+                {(id) => (
+                  <Select id={id} value={form.defaultShiftId} onChange={(e) => setForm({ ...form, defaultShiftId: e.target.value })}>
+                    {shifts.data?.shifts.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name} {s.startTime}–{s.endTime}
+                      </option>
+                    ))}
+                  </Select>
+                )}
+              </Field>
             )}
+            {form.scheduleType === "FIXED" && (() => {
+              const p = patterns.data?.patterns.find((x) => String(x.id) === form.workPatternId);
+              return p ? <p className="-mt-1 rounded-xl bg-brand-50 px-3 py-2 text-sm text-brand-900 sm:col-span-2">Lịch: {patternSummary(p, shifts.data?.shifts ?? [])}</p> : null;
+            })()}
             {form.id && current && (
               <div className="space-y-2 rounded-xl bg-slate-50 p-3 sm:col-span-2">
                 <label className="flex items-center gap-2 text-sm font-medium text-slate-700">

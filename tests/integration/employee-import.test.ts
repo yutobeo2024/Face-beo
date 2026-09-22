@@ -117,7 +117,10 @@ describe("xem trước & nhập", () => {
     expect(body).toMatchObject({ created: 2, updated: 0 });
     const a = await prisma.employee.findUniqueOrThrow({ where: { code: `${tag}A` }, include: { department: true } });
     expect(a.department.name).toBe("Chưa phân phòng");
-    expect(a).toMatchObject({ defaultShiftId: shift.id, role: "EMPLOYEE", scheduleType: "FIXED", workPatternId: null, phone: null, mustChangePassword: true });
+    expect(a).toMatchObject({ defaultShiftId: shift.id, role: "EMPLOYEE", scheduleType: "FIXED", phone: null, mustChangePassword: true });
+    // v1.12.1: ca cố định luôn có mẫu tuần — "không mẫu" → mẫu tương đương T2–T7 = ca mặc định, CN nghỉ.
+    const pat = await prisma.workPattern.findUniqueOrThrow({ where: { id: a.workPatternId! } });
+    expect([pat.monShiftId, pat.satShiftId, pat.sunShiftId]).toEqual([shift.id, shift.id, null]);
     expect(await prisma.scheduleAssignment.count({ where: { employeeId: a.id } })).toBe(1);
     const b = await prisma.employee.findUniqueOrThrow({ where: { code: `${tag}B` } });
     expect(b).toMatchObject({ phone: "0987000222", nationalId: "079190000555", dateOfBirth: "1990-03-05", gender: "NU", departmentId: dept.id, role: "MANAGER", scheduleType: "ROTATING" });
