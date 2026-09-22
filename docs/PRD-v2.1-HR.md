@@ -429,3 +429,5 @@ công được tính trực tiếp từ planner. Quản lý được cấp `org.
 - **API**: `POST /api/employees/[id]/license/medinet`, `POST /api/medinet/lookup` (Nhân sự / Quản trị, 20 lượt/phút/người),
   `GET/PUT /api/settings/medinet` (`settings.system`).
 - **Hạn chế**: chỉ dữ liệu TP.HCM (GPHN tỉnh khác có thể "không tìm thấy" → tra tay); Sở đổi giao diện thì phải sửa bộ đọc (đã có test mẫu).
+- **v1.11.1 (bản vá)**: tra thật trên máy chủ bị từ chối vì User-Agent có tiếng Việt có dấu (header HTTP chỉ nhận Latin-1) → đổi sang chữ không
+  dấu; test giả lập mạng giờ kiểm header như `fetch` thật. Đã kiểm trên VPS: tra `0015578/BYT-CCHN` thành công (0,9 giây).

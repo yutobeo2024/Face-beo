@@ -22,7 +22,7 @@ Ghi lại những điểm đã phát hiện trong quá trình làm và test, c�
   tạo lại OA Secret Key webhook (nếu Zalo cho), dán lại vào `/opt/facebeo/.env`, `up -d --force-recreate`.
 - **Trạng thái:** chờ chủ dự án thao tác.
 
-## Đã chốt v1.11.0 (22/09/2026)
+## Đã chốt v1.11.0–v1.11.1 (22/09/2026)
 
 - **D5 tự tra cứu GPHN trên medinet (đợt 2)**: làm được — trang tracuu.medinet.org.vn tra bằng 2 yêu cầu dữ liệu (`/chungchihanhnghey`,
   `/chungchihanhngheydetail`), không captcha. Nút "Tra" điền sẵn form GPHN, nút "Tra cứu tự động", job 06:30 (30 ngày / người, ≤ 30 người /
