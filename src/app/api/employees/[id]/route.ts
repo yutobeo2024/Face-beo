@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
 import { deleteCredentialDir } from "@/lib/credential-files";
 import { avatarUrlFor, canViewSnapshots, clearFaceAvatar } from "@/lib/face-avatar";
+import { keepTrackedUnlessAdmin } from "@/lib/attendance-scope";
 import { randomTempPassword } from "@/lib/temp-password";
 import { todayVN } from "@/lib/attendance";
 import { applyScheduleChangeFromToday, ensureBaseline } from "@/lib/schedule-assignments";
@@ -67,6 +68,10 @@ export const PATCH = handle<{ id: string }>(async (req, ctx) => {
   if (!e) throw notFound();
   await assertCanModify(u, e, { role: body.role, active: body.active, departmentId: body.departmentId });
   await assertUniqueEmployee({ phone: body.phone !== e.phone ? body.phone : undefined, nationalId: body.nationalId !== e.nationalId ? body.nationalId : undefined }, id);
+  // Không chấm công = không bị cảnh báo trễ / vắng: chỉ Quản trị đặt được (người khác có thể tự "thoát" chấm công cho mình / phòng mình).
+  if (body.attendanceExempt !== undefined && body.attendanceExempt !== e.attendanceExempt && u.role !== "ADMIN") {
+    throw forbidden("Chỉ Quản trị được đổi chế độ chấm công của nhân viên");
+  }
   const { resetPassword, unlinkZalo, ...fields } = body;
   // Không phải Nhân sự / Quản trị (vd. Quản lý được cấp quyền quản lý nhân viên): bỏ qua trường cá nhân của người khác — form của họ
   // không có các ô này, không để giá trị rỗng xóa mất dữ liệu.
@@ -128,6 +133,8 @@ export const PATCH = handle<{ id: string }>(async (req, ctx) => {
       await audit({ actorId: u.id, action: "FACE_DELETE", entity: "Employee", entityId: id, detail: { reason: "inactive", count: del.count } });
     }
   }
+  // Chuyển vào phòng "không chấm công" bởi người không phải Quản trị: giữ lại chấm công (chỉ Quản trị được miễn).
+  const keptTracked = fields.departmentId && fields.departmentId !== e.departmentId ? await keepTrackedUnlessAdmin(u.role, [id]) : 0;
   await audit({
     actorId: u.id,
     action: resetPassword ? "PASSWORD_RESET" : "EMPLOYEE_UPDATE",
@@ -144,14 +151,18 @@ export const PATCH = handle<{ id: string }>(async (req, ctx) => {
   if (fields.name && fields.name !== e.name) changes.push("đổi họ tên");
   if (fields.jobTitleId !== undefined && fields.jobTitleId !== e.jobTitleId) changes.push("đổi chức danh");
   if (fields.specialtyId !== undefined && fields.specialtyId !== e.specialtyId) changes.push("đổi chuyên khoa");
+  if (fields.attendanceExempt !== undefined && fields.attendanceExempt !== e.attendanceExempt) {
+    changes.push(`chấm công: ${fields.attendanceExempt === true ? "KHÔNG CHẤM CÔNG" : fields.attendanceExempt === false ? "vẫn chấm công" : "theo phòng"}`);
+  }
   // Thông tin cá nhân: chỉ ghi là có cập nhật, không đưa giá trị vào tin nhóm.
   if ((["phone", "nationalId", "dateOfBirth", "gender", "address"] as const).some((k) => fields[k] !== undefined && fields[k] !== e[k])) changes.push("cập nhật thông tin cá nhân");
   if (fields.active === false && e.active) changes.push("CHO NGHỈ VIỆC (đã xóa dữ liệu khuôn mặt, thoát mọi thiết bị)");
   if (fields.active === true && !e.active) changes.push("kích hoạt lại tài khoản");
+  if (keptTracked) changes.push("phòng mới không chấm công nhưng người này vẫn chấm công (chỉ Quản trị được miễn)");
   if (resetPassword) changes.push("đặt lại mật khẩu");
   if (unlinkZalo) changes.push("hủy liên kết Zalo");
   // Sửa hồ sơ của chính mình (SĐT, hủy Zalo...) là thao tác ngang quyền nhân viên — không công khai vào nhóm.
-  const selfPersonal = id === u.id && !fields.role && fields.active === undefined && !fields.departmentId;
+  const selfPersonal = id === u.id && !fields.role && fields.active === undefined && !fields.departmentId && fields.attendanceExempt === undefined;
   if (changes.length && !selfPersonal) {
     await announce(u, `đã sửa hồ sơ ${e.code} — ${e.name}`, { key: onceKey("emp-update", id), detail: changes.join("; ") });
   }

@@ -107,7 +107,7 @@ footer{color:var(--muted);font-size:.85rem;text-align:center;padding:10px}
 <div class="layout">
 <nav class="toc" id="toc">
   <div class="brand">📘 Cẩm nang Face Beo</div>
-  <div class="sub">Hướng dẫn sử dụng · bản v1.11</div>
+  <div class="sub">Hướng dẫn sử dụng · bản v1.12</div>
   <button class="menu-mobile" onclick="document.getElementById('toc').classList.toggle('open')">☰ Mục lục</button>
   <ol>
     <li class="grp">Bắt đầu</li>
@@ -367,6 +367,10 @@ gantt
     <p>Phòng <b>không có trưởng phòng</b> thì đơn tự chuyển cho Nhân sự duyệt.</p>
   </div>
   <p><b>Đổi tên phòng</b> (nút ✎): chỉ đổi nhãn — nhân viên, lịch, phạm vi quản lý, số liệu đã chốt đều giữ nguyên. <b>Xóa phòng</b> (nút 🗑): chỉ khi phòng <b>trống hoàn toàn</b> — không nhân viên (kể cả đã nghỉ việc, vì hồ sơ vẫn ghi phòng), không tuần đã đăng ký ca, không ngày đã chốt công. Phòng đã từng có người thì không xóa được, đúng chủ đích để bảng công và lương cũ còn tên phòng; muốn gộp phòng thì chuyển hết nhân viên sang phòng mới rồi đổi tên phòng cũ. Xóa phòng sẽ xóa hệ số công riêng của phòng và gỡ phòng khỏi các liên kết ở mục Thông tin (liên kết chỉ dành riêng phòng đó sẽ tạm ẩn).</p>
+
+  <div class="callout"><b>Phòng / người không chấm công</b> <span class="pill a">Quản trị</span> (v1.12.0)
+    <p>Ban Giám đốc (và Quản trị) không chấm công giờ giấc: tích <b>"Không chấm công (cả phòng)"</b> dưới phòng <b>Ban Giám đốc</b>. Từng người chỉnh riêng trong <b>Nhân viên → Sửa → Chấm công</b>: <i>Theo phòng ban</i> (mặc định) · <i>Không chấm công</i> (vd. Quản trị ở phòng khác) · <i>Vẫn chấm công</i> (thành viên BGĐ muốn chấm). Người không chấm công: <b>không</b> nhận nhắc / tin Zalo chưa chấm vào, quên chấm ra, vắng; <b>không</b> hiện ở Tổng quan, Chấm công, Báo cáo &amp; Excel, Xếp ca, chốt công; thẻ nhân viên có nhãn tím <b>"Không chấm công"</b>. Họ vẫn đăng nhập, duyệt đơn, có hồ sơ và hồ sơ hành nghề như thường; lỡ quét kiosk thì vẫn ghi nhận nhưng không cảnh báo. Chỉ <b>Quản trị</b> đổi được, mỗi lần đổi báo nhóm Zalo minh bạch — Nhân sự tạo / chuyển người vào phòng không chấm công thì người đó vẫn được chấm công cho tới khi Quản trị đổi. Tháng đã chốt công giữ nguyên như lúc chốt; <b>nên chốt công các tháng trước rồi mới đổi</b>, vì cờ áp cho mọi tháng chưa chốt.</p>
+  </div>
 
   <h3>5.3 Ngày lễ</h3>
   <p>Nhập các ngày lễ trong năm. Ngày lễ: nhân viên cố định được nghỉ, không bị báo vắng. Ai đi làm ngày lễ phải có <b>đơn tăng ca đã duyệt</b> mới được tính OT; ngày công ngày lễ = 0.</p>
@@ -702,7 +706,7 @@ sequenceDiagram
   <h2><span class="num">11.</span>Theo dõi chấm công hằng ngày</h2>
   <p class="lead"><span class="pill h">Nhân sự</span> <span class="pill m">Quản lý</span> Menu <b>Tổng quan</b> và <b>Chấm công</b>.</p>
   <h3>11.1 Tổng quan (dashboard)</h3>
-  <p>Mỗi sáng mở Tổng quan để thấy: số người đã vào, đi trễ, vắng, nghỉ phép; danh sách <b>"Chưa có lịch"</b>; số đơn quá hạn bạn có quyền xử lý; cảnh báo hệ thống (Zalo, máy chủ nhận diện) nếu là Quản trị.</p>
+  <p>Mỗi sáng mở Tổng quan để thấy: số người đã vào, đi trễ, vắng, nghỉ phép; danh sách <b>"Chưa có lịch"</b>; số đơn quá hạn bạn có quyền xử lý; cảnh báo hệ thống (Zalo, máy chủ nhận diện) nếu là Quản trị. Người <b>không chấm công</b> (Ban Giám đốc — mục 5.2) không tính vào các con số và danh sách này.</p>
   <h3>11.2 Chấm công</h3>
   <p>Chọn ngày, phòng và bộ lọc: <b>Tất cả · Đi trễ · Về sớm · Vắng · Thiếu giờ ra · Ngoài ca · Sửa tay · Nghỉ phép</b>. Bấm ảnh thu nhỏ để xem snapshot lúc quét (kiểm tra có đúng người không).</p>
   <h3>11.3 Việc tự động của hệ thống</h3>
@@ -894,7 +898,7 @@ stateDiagram-v2
 
   <h3>15.1 Nhóm minh bạch nhận tin gì</h3>
   <div class="grid">
-    <div class="card"><h4>✅ Có gửi</h4><ul><li>Duyệt đơn, chấm tay của HR/Quản trị</li><li>Thêm/sửa nhân viên, khuôn mặt, mật khẩu</li><li>Đăng ký/sửa ca tuần, hệ số công, mẫu tuần, gán quản lý/xóa phòng</li><li>Phân quyền, chốt/mở khóa công</li><li>Phòng chưa đăng ký ca, đơn quá 48 giờ</li><li>Cảnh báo hồ sơ hành nghề: GPHN không hoạt động / hết hạn, thiếu tiết CME, chứng chỉ hết hạn (mục 6.5)</li></ul></div>
+    <div class="card"><h4>✅ Có gửi</h4><ul><li>Duyệt đơn, chấm tay của HR/Quản trị</li><li>Thêm/sửa nhân viên, khuôn mặt, mật khẩu</li><li>Đăng ký/sửa ca tuần, hệ số công, mẫu tuần, gán quản lý/xóa phòng</li><li>Phân quyền, chốt/mở khóa công</li><li>Phòng chưa đăng ký ca, đơn quá 48 giờ</li><li>Quản trị đặt / bỏ "Không chấm công" cho phòng hoặc nhân viên</li><li>Cảnh báo hồ sơ hành nghề: GPHN không hoạt động / hết hạn, thiếu tiết CME, chứng chỉ hết hạn (mục 6.5)</li></ul></div>
     <div class="card"><h4>❌ Không gửi</h4><ul><li>Từng lần quét chấm công</li><li>Việc cá nhân như HR tự gửi / hủy đơn của mình</li></ul></div>
   </div>
 
@@ -965,7 +969,7 @@ stateDiagram-v2
   <details><summary>Đăng xuất trên điện thoại thì máy tính cũng bị thoát?</summary><p>Đúng, có chủ đích: đăng xuất ở bất kỳ đâu sẽ thoát tài khoản trên mọi thiết bị (kể cả phiên lỡ để lại ở máy dùng chung). Đăng nhập lại là được. Đổi mật khẩu cũng vậy.</p></details>
 </section>
 
-<footer>Face Beo · Cẩm nang sử dụng · cập nhật 22/09/2026 (phiên bản ứng dụng v1.11.1 · https://face.ydsg.website)</footer>
+<footer>Face Beo · Cẩm nang sử dụng · cập nhật 22/09/2026 (phiên bản ứng dụng v1.12.0 · https://face.ydsg.website)</footer>
 </main>
 </div>
 

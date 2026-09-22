@@ -8,6 +8,7 @@
  * Chặn kiểu gian lận "biết mình trễ → sửa ca hôm nay → chấm → sửa lại": quản lý không đụng được tuần đang chạy.
  */
 import { prisma } from "./db";
+import { TRACKED_WHERE } from "./attendance-scope";
 import { badRequest, forbidden } from "./api";
 import { assertDept, type AuthUser } from "./auth";
 import { can } from "./permissions";
@@ -69,6 +70,10 @@ async function applyCellsLocked(u: AuthUser, allCells: Cell[], reason?: string |
   if (!cells.length && allCells.length) await assertDatesUnlocked(allCells.map((c) => c.date));
   const ids = [...new Set(cells.map((c) => c.employeeId))];
   const emps = await prisma.employee.findMany({ where: { id: { in: ids } }, select: { id: true, code: true, name: true, departmentId: true } });
+  // v1.12.0: không xếp ca cho người không chấm công.
+  const trackedIds = new Set((await prisma.employee.findMany({ where: { AND: [{ id: { in: ids } }, TRACKED_WHERE] }, select: { id: true } })).map((e) => e.id));
+  const notTracked = emps.find((e) => !trackedIds.has(e.id));
+  if (notTracked) throw badRequest(`${notTracked.code} — ${notTracked.name} thuộc diện không chấm công, không xếp ca`);
   const empById = new Map(emps.map((e) => [e.id, e]));
   const weeks = [...new Set(cells.map((c) => startOfWeek(c.date)))];
   const statuses = await weekStatuses([...new Set(emps.map((e) => e.departmentId))], weeks);

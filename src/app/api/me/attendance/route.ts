@@ -3,6 +3,8 @@ import { DateTime } from "luxon";
 import { handle, json, parseQuery } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
 import { summarizeRange } from "@/lib/attendance-service";
+import { exemptInfo } from "@/lib/attendance-scope";
+import { prisma } from "@/lib/db";
 import { TZ, todayVN } from "@/lib/attendance";
 import { toDayRow } from "@/lib/day-rows";
 import { MONTH_RE } from "@/lib/payroll-lock";
@@ -17,6 +19,12 @@ export const GET = handle(async (req) => {
   const start = DateTime.fromISO(`${month}-01`, { zone: TZ });
   const from = start.toISODate()!;
   const to = start.endOf("month").toISODate()!;
+  const me = await prisma.employee.findUniqueOrThrow({ where: { id: u.id }, select: { attendanceExempt: true, department: { select: { attendanceExempt: true } } } });
+  if (exemptInfo(me).exempt) {
+    // Không chấm công: không có ca, không tính trễ / vắng (v1.12.0).
+    const zero = { workDays: 0, lateCount: 0, lateMinutes: 0, earlyCount: 0, earlyMinutes: 0, otMinutes: 0, workMinutes: 0, leaveDays: 0, absentDays: 0, missingOut: 0 };
+    return json({ month, days: [], totals: zero, exempt: true });
+  }
   const { summaries } = await summarizeRange([u.id], from, to);
   const days = [...summaries.values()].map(toDayRow);
   const totals = {

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { prisma } from "@/lib/db";
+import { TRACKED_WHERE } from "@/lib/attendance-scope";
 import { badRequest, handle, json, parseQuery } from "@/lib/api";
 import { employeeScopeWhere } from "@/lib/auth";
 import { dateStr, optId } from "@/lib/validators";
@@ -28,7 +29,7 @@ export const GET = handle(async (req) => {
   const emps = await prisma.employee.findMany({
     where: {
       // Dùng AND: bộ lọc phạm vi có thể là { id: -1 } (phòng ngoài phạm vi) — không để employeeId ghi đè lên nó.
-      AND: [employeeScopeWhere(u, q.departmentId), q.employeeId ? { id: q.employeeId } : {}],
+      AND: [employeeScopeWhere(u, q.departmentId), q.employeeId ? { id: q.employeeId } : {}, TRACKED_WHERE], // v1.12.0: bỏ người không chấm công
       OR: [{ active: true }, { leftAt: { gte: vnDayRange(from).start } }],
     },
     orderBy: [{ departmentId: "asc" }, { code: "asc" }],

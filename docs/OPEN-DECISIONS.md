@@ -22,6 +22,11 @@ Ghi lại những điểm đã phát hiện trong quá trình làm và test, c�
   tạo lại OA Secret Key webhook (nếu Zalo cho), dán lại vào `/opt/facebeo/.env`, `up -d --force-recreate`.
 - **Trạng thái:** chờ chủ dự án thao tác.
 
+## Đã chốt v1.12.0 (22/09/2026)
+
+- **Ban Giám đốc / Quản trị không chấm công**: cấu hình theo phòng + từng người (theo phòng / không chấm / vẫn chấm); không cảnh báo, không Zalo,
+  ẩn khỏi mọi phần chấm công (Tổng quan, Chấm công, Báo cáo & Excel, Xếp ca, chốt công). Chỉ Quản trị đổi. Xem PRD v2.1 mục 25.
+
 ## Đã chốt v1.11.0–v1.11.1 (22/09/2026)
 
 - **D5 tự tra cứu GPHN trên medinet (đợt 2)**: làm được — trang tracuu.medinet.org.vn tra bằng 2 yêu cầu dữ liệu (`/chungchihanhnghey`,

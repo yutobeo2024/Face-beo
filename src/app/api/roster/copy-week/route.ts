@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { TRACKED_WHERE } from "@/lib/attendance-scope";
 import { badRequest, handle, json, parseJson } from "@/lib/api";
 import { employeeScopeWhere } from "@/lib/auth";
 import { requirePerm } from "@/lib/permissions";
@@ -16,7 +17,7 @@ export const POST = handle(async (req) => {
   const emps = await prisma.employee.findMany({
     where: {
       // Dùng AND: bộ lọc phạm vi có thể là { id: -1 } — không để employeeIds ghi đè lên nó.
-      AND: [employeeScopeWhere(u, body.departmentId), body.employeeIds ? { id: { in: body.employeeIds } } : {}],
+      AND: [employeeScopeWhere(u, body.departmentId), body.employeeIds ? { id: { in: body.employeeIds } } : {}, TRACKED_WHERE],
       active: true,
       scheduleType: "ROTATING",
     },

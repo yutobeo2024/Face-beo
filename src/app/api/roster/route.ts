@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { prisma } from "@/lib/db";
+import { TRACKED_WHERE } from "@/lib/attendance-scope";
 import { handle, json, parseJson, parseQuery } from "@/lib/api";
 import { employeeScopeWhere } from "@/lib/auth";
 import { dateStr, optId, rosterUpdateSchema } from "@/lib/validators";
@@ -21,7 +22,7 @@ export const GET = handle(async (req) => {
   const monday = startOfWeek(q.week ?? todayVN());
   const dates = weekDates(monday);
   const emps = await prisma.employee.findMany({
-    where: { ...employeeScopeWhere(u, q.departmentId), active: true, ...(q.group === "rotating" ? { scheduleType: "ROTATING" } : {}) },
+    where: { AND: [employeeScopeWhere(u, q.departmentId), { active: true, ...(q.group === "rotating" ? { scheduleType: "ROTATING" } : {}) }, TRACKED_WHERE] },
     orderBy: [{ departmentId: "asc" }, { scheduleType: "desc" }, { code: "asc" }],
     select: {
       id: true,

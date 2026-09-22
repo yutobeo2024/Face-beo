@@ -1,6 +1,7 @@
 /** Bảng công tổng hợp + chi tiết, xuất Excel phía server (PRD mục 5). */
 import ExcelJS from "exceljs";
 import { prisma } from "./db";
+import { TRACKED_WHERE } from "./attendance-scope";
 import { summarizeRange } from "./attendance-service";
 import { lockedMonths } from "./payroll-lock-state";
 import { addDays, vnDayRange, vnTime, weekday, type DayStatus } from "./attendance";
@@ -99,6 +100,8 @@ export async function listReportEmployees(where: object, from: string, to: strin
       AND: [
         { OR: [{ active: true }, { leftAt: { gte: vnDayRange(from).start } }, { id: { in: frozen.map((x) => x.employeeId) } }] },
         deptIds ? { OR: [{ departmentId: { in: deptIds } }, { id: { in: [...frozen, ...movedIn].map((x) => x.employeeId) } }] } : {},
+        // v1.12.0: người "không chấm công" không có trong báo cáo — trừ khi đã nằm trong bản chụp tháng đã chốt (lịch sử bất biến).
+        { OR: [TRACKED_WHERE, { id: { in: frozen.map((x) => x.employeeId) } }] },
       ],
     },
     select: {

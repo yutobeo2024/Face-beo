@@ -23,6 +23,7 @@ import { startOfWeek } from "./attendance";
 import { credentialAlerts } from "./credential-access";
 import { clearFaceAvatar } from "./face-avatar";
 import { medinetCheck } from "./medinet-check";
+import { TRACKED_WHERE } from "./attendance-scope";
 
 export const JOBS = ["absence-check", "missing-checkout", "zalo-token-refresh", "snapshot-cleanup", "db-backup", "roster-reminder", "roster-report", "request-overdue", "credential-check", "medinet-check"] as const;
 export type JobName = (typeof JOBS)[number];
@@ -52,7 +53,8 @@ export async function absenceCheck(now = new Date()) {
   const today = vnDate(now);
   const yesterday = addDays(today, -1);
   const emps = await prisma.employee.findMany({
-    where: { active: true },
+    // Người "không chấm công" (Ban Giám đốc…) không bị xét vắng / trễ, không nhận tin (v1.12.0).
+    where: { AND: [{ active: true }, TRACKED_WHERE] },
     select: {
       id: true,
       name: true,
@@ -154,7 +156,12 @@ export async function missingCheckout(now = new Date()) {
     if (!by.has(k)) by.set(k, []);
     by.get(k)!.push(l);
   }
-  const ids = [...new Set(logs.map((l) => l.employeeId))];
+  // Chỉ người được chấm công: người "không chấm công" lỡ quét kiosk thì không bị nhắc quên chấm ra (v1.12.0).
+  const tracked = new Set(
+    (await prisma.employee.findMany({ where: { AND: [{ id: { in: [...new Set(logs.map((l) => l.employeeId))] } }, TRACKED_WHERE] }, select: { id: true } })).map((e) => e.id),
+  );
+  for (const k of [...by.keys()]) if (!tracked.has(Number(k.split("|")[0]))) by.delete(k);
+  const ids = [...tracked];
   if (!ids.length) return { flagged: 0 };
   const planner = await buildPlanner(ids, from, today);
   let flagged = 0;
@@ -244,7 +251,7 @@ export async function dbBackup(now = new Date()) {
 
 /** Các phòng có nhân viên xoay ca đang làm việc nhưng tuần `week` chưa đăng ký ca. */
 async function unregisteredDepartments(week: string) {
-  const rot = await prisma.employee.groupBy({ by: ["departmentId"], where: { active: true, scheduleType: "ROTATING" }, _count: true });
+  const rot = await prisma.employee.groupBy({ by: ["departmentId"], where: { AND: [{ active: true, scheduleType: "ROTATING" }, TRACKED_WHERE] }, _count: true });
   if (!rot.length) return [];
   const reg = await prisma.rosterWeek.findMany({ where: { weekStart: week, status: "REGISTERED" }, select: { departmentId: true } });
   const done = new Set(reg.map((r) => r.departmentId));

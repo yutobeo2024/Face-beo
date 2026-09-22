@@ -14,6 +14,8 @@ type Emp = {
   code: string;
   name: string;
   avatarUrl?: string | null;
+  attendanceExempt?: boolean | null;
+  attendance?: { exempt: boolean; source: "EMPLOYEE" | "DEPARTMENT" | null };
   phone?: string | null;
   nationalId?: string | null;
   dateOfBirth?: string | null;
@@ -59,6 +61,7 @@ type Form = {
   workPatternId: string;
   jobTitleId: string;
   specialtyId: string;
+  attendanceExempt?: "" | "true" | "false";
 };
 type Pattern = { id: number; name: string; monShiftId: number | null };
 
@@ -126,6 +129,8 @@ export default function EmployeesPage() {
         workPatternId: form.scheduleType === "FIXED" && form.workPatternId ? Number(form.workPatternId) : null,
         jobTitleId: form.jobTitleId ? Number(form.jobTitleId) : null,
         specialtyId: form.specialtyId ? Number(form.specialtyId) : null,
+        // Chế độ chấm công: chỉ Quản trị thấy / đổi (server cũng kiểm).
+        ...(me.role === "ADMIN" && form.id && form.attendanceExempt !== undefined ? { attendanceExempt: form.attendanceExempt === "" ? null : form.attendanceExempt === "true" } : {}),
       };
       if (form.id) {
         await api(`/api/employees/${form.id}`, { method: "PATCH", body: { ...body, active: form.active } });
@@ -280,6 +285,7 @@ export default function EmployeesPage() {
                 <FaceBadge e={e} />
                 {e.zaloLinked ? <Badge tone="brand">Zalo ✓</Badge> : <Badge tone="neutral">Chưa liên kết Zalo</Badge>}
                 {!e.active && <Badge tone="absent">Đã nghỉ việc</Badge>}
+                {e.attendance?.exempt && <Badge tone="violet">Không chấm công{e.attendance.source === "DEPARTMENT" ? " (theo phòng)" : ""}</Badge>}
                 {e.lockedUntil && new Date(e.lockedUntil) > new Date() && <Badge tone="absent">Đang khóa đăng nhập</Badge>}
                 {alertOf.has(e.id) && (
                   <span title={alertOf.get(e.id)!.map((i) => i.text).join(" · ")}>
@@ -325,6 +331,7 @@ export default function EmployeesPage() {
                       workPatternId: e.workPatternId ? String(e.workPatternId) : "",
                       jobTitleId: e.jobTitleId ? String(e.jobTitleId) : "",
                       specialtyId: e.specialtyId ? String(e.specialtyId) : "",
+                      attendanceExempt: e.attendanceExempt === true ? "true" : e.attendanceExempt === false ? "false" : "",
                     })
                   }
                 >
@@ -454,6 +461,17 @@ export default function EmployeesPage() {
                 </Select>
               )}
             </Field>
+            {me.role === "ADMIN" && form.id && (
+              <Field label="Chấm công" hint="Không chấm công: không cảnh báo / Zalo trễ, vắng, quên chấm; ẩn khỏi chấm công, báo cáo, xếp ca (vd. Ban Giám đốc).">
+                {(id) => (
+                  <Select id={id} value={form.attendanceExempt ?? ""} onChange={(e) => setForm({ ...form, attendanceExempt: e.target.value as Form["attendanceExempt"] })}>
+                    <option value="">Theo phòng ban</option>
+                    <option value="true">Không chấm công</option>
+                    <option value="false">Vẫn chấm công (dù phòng không chấm công)</option>
+                  </Select>
+                )}
+              </Field>
+            )}
             <Field label="Loại lịch làm việc" hint={form.scheduleType === "ROTATING" ? "Phải có lịch tuần đã đăng ký; chưa đăng ký => “Chưa có lịch”." : "Tự động theo mẫu tuần, không cần xếp ca hằng tuần."}>
               {(id) => (
                 <Select id={id} value={form.scheduleType} onChange={(e) => setForm({ ...form, scheduleType: e.target.value as Form["scheduleType"] })}>

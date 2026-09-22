@@ -8,6 +8,7 @@ import { startOfWeek, todayVN, weekDates } from "@/lib/attendance";
 import { toDayRow } from "@/lib/day-rows";
 import { FACE_MODEL_VERSION } from "@/lib/roles";
 import { avatarUrlFor } from "@/lib/face-avatar";
+import { exemptInfo } from "@/lib/attendance-scope";
 
 /** Lịch tuần + trạng thái công hôm nay của chính nhân viên. */
 export const GET = handle(async (req) => {
@@ -26,7 +27,7 @@ export const GET = handle(async (req) => {
         code: true,
         name: true,
         zaloLinkedAt: true,
-        department: { select: { name: true } },
+        department: { select: { name: true, attendanceExempt: true } },
         defaultShift: { select: { name: true, startTime: true, endTime: true } },
         // Thông tin cá nhân của chính mình (chỉ đọc; sai thì báo Nhân sự sửa).
         phone: true,
@@ -38,14 +39,16 @@ export const GET = handle(async (req) => {
         specialty: { select: { name: true } },
         faceAvatarAt: true,
         faceAvatarKey: true,
+        attendanceExempt: true,
       },
     }),
     prisma.leaveRequest.count({ where: { employeeId: u.id, status: { in: ["PENDING", "MANAGER_APPROVED"] } } }),
     prisma.faceTemplate.count({ where: { employeeId: u.id, modelVersion: FACE_MODEL_VERSION } }),
   ]);
   return json({
-    me: (({ faceAvatarKey, faceAvatarAt, ...rest }) => ({
+    me: (({ faceAvatarKey, faceAvatarAt, attendanceExempt, ...rest }) => ({
       ...rest,
+      attendanceExempt: exemptInfo({ attendanceExempt, department: rest.department }).exempt,
       role: u.role,
       faceEnrolled: faces > 0,
       avatarUrl: avatarUrlFor(u, { id: u.id, departmentId: u.departmentId, faceAvatarKey, faceAvatarAt }, false),

@@ -431,3 +431,22 @@ công được tính trực tiếp từ planner. Quản lý được cấp `org.
 - **Hạn chế**: chỉ dữ liệu TP.HCM (GPHN tỉnh khác có thể "không tìm thấy" → tra tay); Sở đổi giao diện thì phải sửa bộ đọc (đã có test mẫu).
 - **v1.11.1 (bản vá)**: tra thật trên máy chủ bị từ chối vì User-Agent có tiếng Việt có dấu (header HTTP chỉ nhận Latin-1) → đổi sang chữ không
   dấu; test giả lập mạng giờ kiểm header như `fetch` thật. Đã kiểm trên VPS: tra `0015578/BYT-CCHN` thành công (0,9 giây).
+
+## 25. Không chấm công cho Ban Giám đốc / Quản trị (v1.12.0, 22/09/2026)
+
+- **Cấu hình theo phòng + từng người**: `Department.attendanceExempt` (tích "Không chấm công (cả phòng)" — vd. Ban Giám đốc);
+  `Employee.attendanceExempt` = null (theo phòng, mặc định) · true (không chấm công) · false (vẫn chấm công dù phòng không chấm công).
+  Hiệu lực: đặt riêng thắng phòng (`exemptInfo`, `TRACKED_WHERE` trong `src/lib/attendance-scope.ts`, ghép bằng AND).
+- **Không cảnh báo, không Zalo**: `absenceCheck` (ABSENT_WARNING, tin nhóm ⏰/❌, ABSENT_DIGEST cho quản lý), `missingCheckout`
+  (MISSING_OUT_NUDGE, tin nhóm 🚪), nhắc / báo cáo đăng ký ca xoay (không đếm người không chấm công).
+- **Ẩn** khỏi Tổng quan, Chấm công, Báo cáo & Excel (giữ người đã có trong bản chụp tháng đã chốt), chốt công tháng mới, Xếp ca / chép tuần. Kiosk vẫn
+  ghi log nếu họ quét. `/me`: "Bạn không cần chấm công", ẩn thẻ hôm nay / lịch tuần.
+- **Quyền**: chỉ **Quản trị** đổi cờ (phòng / người) — Nhân sự, Quản lý không thể tự "thoát" chấm công cho mình / phòng mình; mỗi lần đổi báo nhóm
+  minh bạch, ghi nhật ký. Nhập Excel không đặt được cờ.
+- **Dữ liệu thật**: bật cho phòng "Ban Giám đốc" (AD01, NV002) khi triển khai.
+- **Chặn lách quyền**: Nhân sự / Quản lý / nhập Excel **tạo mới hoặc chuyển** người vào phòng "không chấm công" → người đó được đặt riêng "vẫn chấm
+  công" (`keepTrackedUnlessAdmin`), kèm ghi chú trong tin nhóm; Quản trị chuyển thì theo phòng. Kiosk: người không chấm công quét vẫn ghi log nhưng
+  không nhắc trễ (LATE_REMINDER) và màn hình không hiện trễ / sớm. `/me/attendance`: hiện "Bạn không cần chấm công". Xếp ca: từ chối (400).
+- **Giới hạn đã biết**: cờ là trạng thái hiện tại, không theo mốc ngày — đổi giữa tháng thì các tháng **chưa chốt** hiển thị theo trạng thái mới
+  (nên chốt công các tháng trước rồi mới đổi); báo cáo trải qua cả tháng đã chốt lẫn chưa chốt giữ người có trong bản chụp cho cả khoảng. Đơn bổ
+  sung công của người không chấm công vẫn tạo / duyệt được như đơn thường. Ô "Chấm công" chỉ có khi **sửa** nhân viên (tạo mới luôn theo phòng).

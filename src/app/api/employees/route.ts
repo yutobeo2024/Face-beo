@@ -9,6 +9,7 @@ import { assertCanCreate } from "@/lib/employee-guards";
 import { announce } from "@/lib/announce";
 import { ROLE_LABEL, type Role } from "@/lib/roles";
 import { PERSONAL_KEYS, canSeePersonal, createEmployee, maskPersonal } from "@/lib/employees";
+import { exemptInfo, keepTrackedUnlessAdmin } from "@/lib/attendance-scope";
 import { avatarUrlFor, canViewSnapshots } from "@/lib/face-avatar";
 
 const listQuery = z.object({
@@ -45,7 +46,8 @@ export const GET = handle(async (req) => {
       role: true,
       active: true,
       departmentId: true,
-      department: { select: { name: true } },
+      department: { select: { name: true, attendanceExempt: true } },
+      attendanceExempt: true,
       defaultShiftId: true,
       defaultShift: { select: { name: true, startTime: true, endTime: true } },
       scheduleType: true,
@@ -73,6 +75,8 @@ export const GET = handle(async (req) => {
       return {
         ...e,
         zaloLinked: !!zaloUserId,
+        // v1.12.0: chế độ chấm công hiệu lực (đặt riêng thắng cấu hình phòng).
+        attendance: exemptInfo({ attendanceExempt: raw.attendanceExempt, department: raw.department }),
         // Ảnh khuôn mặt đại diện (v1.10.0): chỉ chính chủ và người xem được snapshot trong phạm vi phòng.
         avatarUrl: avatarUrlFor(u, { id: raw.id, departmentId: raw.departmentId, faceAvatarKey, faceAvatarAt }, snaps),
         faceCount: current,
@@ -91,6 +95,7 @@ export const POST = handle(async (req) => {
   // Người không phải Nhân sự / Quản trị không đặt thông tin cá nhân của người khác.
   if (!canSeePersonal(u)) for (const k of PERSONAL_KEYS) delete (body as Record<string, unknown>)[k];
   const { employee: e, tempPassword } = await createEmployee(body, u.id);
+  await keepTrackedUnlessAdmin(u.role, [e.id]); // tạo vào phòng "không chấm công": chỉ Quản trị được miễn
   await announce(u, `đã tạo nhân viên ${e.code} — ${e.name}`, { key: `emp-create:${e.id}`, detail: `Vai trò: ${ROLE_LABEL[e.role as Role] ?? e.role}` });
   return json({ employee: { id: e.id, code: e.code }, ...(tempPassword ? { tempPassword } : {}) }, { status: 201 });
 });

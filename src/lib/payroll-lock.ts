@@ -4,6 +4,7 @@
  */
 import { DateTime } from "luxon";
 import { prisma } from "./db";
+import { TRACKED_WHERE } from "./attendance-scope";
 import { badRequest, forbidden } from "./api";
 import { deptScope, type AuthUser } from "./auth";
 import { TZ, todayVN } from "./attendance";
@@ -53,6 +54,7 @@ async function snapshotMonth(u: AuthUser, month: string, from: string, to: strin
   const emps = await prisma.employee.findMany({
     where: {
       OR: [{ active: true }, { logs: { some: { workDate: { gte: from, lte: to } } } }, { leftAt: { gte: DateTime.fromISO(from, { zone: TZ }).toJSDate() } }],
+      AND: [TRACKED_WHERE], // v1.12.0: không chốt công người không chấm công
     },
     select: { id: true },
   });

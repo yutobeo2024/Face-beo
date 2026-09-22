@@ -14,6 +14,8 @@ const schema = z.object({
   managerId: z.number().int().positive().nullable().optional(),
   // Không .default(): PATCH chỉ đổi trường được gửi.
   approvalMode: z.enum(APPROVAL_MODES).optional(),
+  // v1.12.0: cả phòng không chấm công (vd. Ban Giám đốc). Chỉ Quản trị.
+  attendanceExempt: z.boolean().optional(),
 });
 
 /** Đổi tên, gán quản lý, đổi cách duyệt đơn của phòng ban. Người được gán tự lên vai trò MANAGER nếu đang là EMPLOYEE. */
@@ -28,6 +30,7 @@ export const PATCH = handle<{ id: string }>(async (req, ctx) => {
   // Cách duyệt đơn quyết định Nhân sự có được kiểm soát hay không: Quản lý không tự đổi được kể cả khi được cấp org.manage
   // (mặc định chỉ Quản trị có org.manage; Nhân sự đổi được nếu Quản trị cấp quyền "Tổ chức").
   if (body.approvalMode !== undefined && u.role !== "ADMIN" && u.role !== "HR") throw forbidden("Quản lý không được đổi cách duyệt đơn của phòng");
+  if (body.attendanceExempt !== undefined && body.attendanceExempt !== d.attendanceExempt && u.role !== "ADMIN") throw forbidden("Chỉ Quản trị được đổi chế độ chấm công của phòng");
   let promoted: { id: number; code: string; name: string } | null = null;
   if (body.managerId) {
     const m = await prisma.employee.findUnique({ where: { id: body.managerId } });
@@ -53,6 +56,12 @@ export const PATCH = handle<{ id: string }>(async (req, ctx) => {
     await announce(u, `đã ${m ? `gán ${m.code} — ${m.name} làm quản lý` : "gỡ quản lý"} phòng ${d.name}`, {
       key: `dept-manager:${id}:${Date.now()}`,
       detail: promoted ? "Tự động nâng vai trò Nhân viên → Quản lý" : undefined,
+    });
+  }
+  if (body.attendanceExempt !== undefined && body.attendanceExempt !== d.attendanceExempt) {
+    await announce(u, `đã ${body.attendanceExempt ? "đặt KHÔNG CHẤM CÔNG cho" : "bật lại chấm công cho"} phòng ${d.name}`, {
+      key: `dept-exempt:${id}:${Date.now()}`,
+      detail: body.attendanceExempt ? "Không cảnh báo / Zalo trễ, vắng, quên chấm; ẩn khỏi chấm công, báo cáo, xếp ca" : undefined,
     });
   }
   if (body.approvalMode !== undefined && body.approvalMode !== d.approvalMode) {

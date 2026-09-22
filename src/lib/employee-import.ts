@@ -10,6 +10,7 @@ import { Prisma } from "@prisma/client";
 import { badRequest } from "./api";
 import ExcelJS from "exceljs";
 import { prisma } from "./db";
+import { keepTrackedUnlessAdmin } from "./attendance-scope";
 import type { AuthUser } from "./auth";
 import { assertCanCreate, assertCanModify } from "./employee-guards";
 import { can } from "./permissions";
@@ -537,6 +538,7 @@ export async function commitImport(items: ImportItem[], actor: AuthUser) {
         return d.id;
       };
       const out: { code: string; name: string; department: string; result: string; tempPassword: string }[] = [];
+      const moved: number[] = []; // tạo mới / đổi phòng — xét giữ chấm công (keepTrackedUnlessAdmin)
       for (const [i, it] of creates.entries()) {
         const d = it.data!;
         const departmentId = d.departmentId === "unassigned" ? await unassigned() : d.departmentId!;
@@ -561,6 +563,7 @@ export async function commitImport(items: ImportItem[], actor: AuthUser) {
           tx,
           { via: "import", passwordHash: secrets[i].hash },
         );
+        moved.push(employee.id);
         out.push({ code: employee.code, name: employee.name, department: "", result: "Tạo mới", tempPassword: secrets[i].temp });
       }
       for (const it of updates) {
@@ -571,6 +574,7 @@ export async function commitImport(items: ImportItem[], actor: AuthUser) {
         const before = await tx.employee.findUniqueOrThrow({ where: { id: it.employeeId! }, select: { departmentId: true } });
         await tx.employee.update({ where: { id: it.employeeId! }, data });
         if (data.departmentId !== undefined && data.departmentId !== before.departmentId) {
+          moved.push(it.employeeId!);
           // Như sửa tay: lịch tương lai do phòng cũ xếp không "ăn theo" phòng mới.
           const dropped = await tx.workSchedule.deleteMany({ where: { employeeId: it.employeeId!, date: { gt: todayVN() } } });
           if (dropped.count) {
@@ -584,6 +588,8 @@ export async function commitImport(items: ImportItem[], actor: AuthUser) {
         });
         out.push({ code: it.code, name: (data.name as string) ?? it.name, department: "", result: `Cập nhật: ${it.changes.join(", ")}`, tempPassword: "" });
       }
+      // Nhập Excel (tạo mới / đổi phòng) vào phòng "không chấm công" bởi người không phải Quản trị: giữ lại chấm công (chỉ Quản trị được miễn — v1.12.0).
+      await keepTrackedUnlessAdmin(actor.role, moved, tx);
       return out;
     },
     { timeout: 60_000 },

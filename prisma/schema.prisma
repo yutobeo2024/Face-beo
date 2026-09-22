@@ -15,6 +15,8 @@ model Department {
   employees Employee[] @relation("DeptMembers")
   // Cách duyệt đơn của Nhân viên trong phòng có quản lý (v1.7.0): MANAGER_OR_HR | TWO_STEP | MANAGER_ONLY
   approvalMode String @default("MANAGER_OR_HR")
+  // v1.12.0: cả phòng không chấm công giờ giấc (vd. Ban Giám đốc) — không cảnh báo / Zalo, ẩn khỏi chấm công, báo cáo, xếp ca
+  attendanceExempt Boolean @default(false)
 }
 
 // Danh mục chức danh / chuyên khoa (v1.7.0): thuộc tính của nhân viên, không ảnh hưởng phân quyền.
@@ -44,6 +46,8 @@ model Employee {
   gender             String? // NAM | NU | KHAC
   address            String?
   // v1.10.0: ảnh đại diện = 1 ảnh nhìn thẳng đã cắt khuôn mặt lúc enroll (data/avatars/<id>/<key>); xóa cùng mẫu khuôn mặt.
+  // v1.12.0: null = theo phòng; true = không chấm công; false = vẫn chấm công dù phòng không chấm công
+  attendanceExempt   Boolean?
   faceAvatarKey      String?
   faceAvatarAt       DateTime?
   passwordHash       String

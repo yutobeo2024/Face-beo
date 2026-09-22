@@ -74,6 +74,8 @@ export const employeeUpdateSchema = employeeCreateSchema
     active: z.boolean().optional(),
     resetPassword: z.boolean().optional(),
     unlinkZalo: z.boolean().optional(),
+    // v1.12.0: null = theo phòng · true = không chấm công · false = vẫn chấm công. Chỉ Quản trị đổi được (kiểm ở route).
+    attendanceExempt: z.boolean().nullable().optional(),
   });
 
 // Chuỗi rỗng / null không được coi là 0 (tránh vô tình đặt hệ số 0 công khi xóa ô nhập).

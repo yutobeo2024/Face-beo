@@ -26,6 +26,7 @@ type Day = {
 type Month = {
   month: string;
   days: Day[];
+  exempt?: boolean;
   totals: { workDays: number; lateCount: number; lateMinutes: number; earlyCount: number; earlyMinutes: number; otMinutes: number; workMinutes: number; leaveDays: number; absentDays: number; missingOut: number };
 };
 
@@ -55,10 +56,15 @@ export default function MyAttendancePage() {
         <IconButton icon="chevronRight" label="Tháng sau" onClick={() => shift(1)} disabled={month >= today.slice(0, 7)} />
       </Card>
       {error && <ErrorBox message={error} onRetry={reload} />}
+      {data?.exempt && (
+        <div className="rounded-2xl border border-violet-200 bg-violet-50 p-4 text-sm text-violet-900">
+          <b>Bạn không cần chấm công.</b> Tài khoản thuộc diện không chấm công giờ giấc (vd. Ban Giám đốc) — không có ca, không tính trễ / vắng.
+        </div>
+      )}
       {loading && !data ? (
         <Loading />
       ) : (
-        data && (
+        data && !data.exempt && (
           <>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <StatCard label="Ngày công" value={data.totals.workDays} tone="ontime" hint={`${fmtMinutes(data.totals.workMinutes)} giờ công`} />

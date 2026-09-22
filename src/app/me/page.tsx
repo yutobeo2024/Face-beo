@@ -33,6 +33,7 @@ type Overview = {
     name: string;
     role: string;
     faceEnrolled: boolean;
+    attendanceExempt?: boolean;
     zaloLinkedAt: string | null;
     department: { name: string };
     defaultShift: { name: string; startTime: string; endTime: string };
@@ -95,7 +96,15 @@ export default function MeHome() {
 
       {error && <ErrorBox message={error} onRetry={reload} />}
 
-      {/* Thẻ hôm nay */}
+      {data?.me.attendanceExempt && (
+        <div className="rounded-3xl bg-gradient-to-br from-brand-700 to-brand-900 p-5 text-white shadow-[var(--shadow-pop)]">
+          <p className="text-sm text-brand-100">{t ? `${WEEKDAY_LONG[weekdayOf(t.date)]}, ${fmtDay(t.date)}` : "Hôm nay"}</p>
+          <p className="mt-1 text-lg font-semibold">Bạn không cần chấm công</p>
+          <p className="mt-1 text-sm text-brand-100">Tài khoản thuộc diện không chấm công giờ giấc — không có ca, không bị tính trễ / vắng, không nhận nhắc chấm công.</p>
+        </div>
+      )}
+      {/* Thẻ hôm nay (chưa tải xong: chưa hiện, tránh nháy với người không chấm công) */}
+      {data && !data.me.attendanceExempt && (
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand-700 to-brand-900 p-5 text-white shadow-[var(--shadow-pop)]">
         <div aria-hidden className="absolute -top-10 -right-10 size-40 rounded-full bg-white/10" />
         <div className="relative flex items-start justify-between gap-3">
@@ -136,6 +145,7 @@ export default function MeHome() {
           </div>
         )}
       </div>
+      )}
 
       {data && !data.me.faceEnrolled && (
         <div className="mt-3 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-3.5 text-sm text-amber-900">
@@ -170,6 +180,7 @@ export default function MeHome() {
       </div>
 
       {/* Lịch tuần */}
+      {data && !data.me.attendanceExempt && (
       <Card className="mt-4">
         <CardHeader
           title="Lịch làm việc tuần"
@@ -210,6 +221,7 @@ export default function MeHome() {
           {!data && Array.from({ length: 7 }, (_, i) => <Skeleton key={i} className="m-3 h-12" />)}
         </ul>
       </Card>
+      )}
 
       {/* Thông báo */}
       <Card className="mt-4">

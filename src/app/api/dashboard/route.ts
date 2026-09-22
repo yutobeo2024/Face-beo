@@ -11,6 +11,7 @@ import { can, requirePerm } from "@/lib/permissions";
 import { canDecideRequest, canExecuteCorrection } from "@/lib/notify";
 import { correctionStillExecutable, OVERDUE_LOOKBACK_DAYS, OVERDUE_REMIND_HOURS } from "@/lib/jobs";
 import { lockedMonths } from "@/lib/payroll-lock-state";
+import { TRACKED_WHERE } from "@/lib/attendance-scope";
 
 /** Dashboard hôm nay (PRD mục 5): 5 thẻ + danh sách trễ/vắng; MANAGER chỉ thấy phòng mình. */
 export const GET = handle(async (req) => {
@@ -19,7 +20,7 @@ export const GET = handle(async (req) => {
   const [seeSuspicious, seeSystem] = await Promise.all([can(u, "suspicious.view"), can(u, "settings.system")]);
   const today = todayVN();
   const emps = await prisma.employee.findMany({
-    where: { ...employeeScopeWhere(u, q.departmentId), active: true },
+    where: { AND: [employeeScopeWhere(u, q.departmentId), { active: true }, TRACKED_WHERE] }, // v1.12.0: bỏ người không chấm công
     orderBy: [{ departmentId: "asc" }, { code: "asc" }],
     select: {
       id: true,
@@ -168,7 +169,7 @@ export const GET = handle(async (req) => {
 /** Phòng (trong phạm vi) có nhân viên xoay ca nhưng tuần này / tuần sau chưa đăng ký ca. */
 async function rosterWarnings(deptIds: number[], today: string) {
   const scope = [...new Set(deptIds)];
-  const rot = await prisma.employee.groupBy({ by: ["departmentId"], where: { active: true, scheduleType: "ROTATING", departmentId: { in: scope } }, _count: true });
+  const rot = await prisma.employee.groupBy({ by: ["departmentId"], where: { AND: [{ active: true, scheduleType: "ROTATING", departmentId: { in: scope } }, TRACKED_WHERE] }, _count: true });
   if (!rot.length) return [];
   const thisWeek = startOfWeek(today);
   const weeks = [thisWeek, addDays(thisWeek, 7)];

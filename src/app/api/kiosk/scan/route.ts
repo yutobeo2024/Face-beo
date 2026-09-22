@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { exemptInfo } from "@/lib/attendance-scope";
 import { handle, HttpError, json } from "@/lib/api";
 import { requireDevice } from "@/lib/kiosk-auth";
 import { rateLimit } from "@/lib/rate-limit";
@@ -109,7 +110,10 @@ export const POST = handle(async (req) => {
     return json({ result: "NO_MATCH", message: "Không nhận ra khuôn mặt. Vui lòng thử lại." });
   }
 
-  const emp = await prisma.employee.findUnique({ where: { id: m.employeeId }, select: { id: true, name: true, code: true, avatarUrl: true, active: true } });
+  const emp = await prisma.employee.findUnique({
+    where: { id: m.employeeId },
+    select: { id: true, name: true, code: true, avatarUrl: true, active: true, attendanceExempt: true, department: { select: { attendanceExempt: true } } },
+  });
   if (!emp?.active) return json({ result: "NO_MATCH", message: "Không nhận ra khuôn mặt. Vui lòng thử lại." });
 
   const snapshotUrl = snapshotBuf ? await saveSnapshot(snapshotBuf, body.capturedAt) : null;
@@ -144,7 +148,9 @@ export const POST = handle(async (req) => {
     });
   }
   const log = outcome.log;
-  if (outcome.status === "CREATED") {
+  // Người "không chấm công" (Ban Giám đốc…) lỡ quét: vẫn ghi log nhưng không nhắc trễ, không hiện trễ / sớm (v1.12.0).
+  const exempt = exemptInfo(emp).exempt;
+  if (outcome.status === "CREATED" && !exempt) {
     void notifyLateIfNeeded({ employeeId: emp.id, log, plan: outcome.plan, requests: outcome.requests });
   }
   return json({
@@ -153,10 +159,10 @@ export const POST = handle(async (req) => {
     type: log.type,
     time: vnTime(log.checkTime),
     workDate: log.workDate,
-    isLate: log.isLate,
-    lateMinutes: log.lateMinutes,
-    isEarly: log.isEarly,
-    earlyMinutes: log.earlyMinutes,
+    isLate: exempt ? false : log.isLate,
+    lateMinutes: exempt ? 0 : log.lateMinutes,
+    isEarly: exempt ? false : log.isEarly,
+    earlyMinutes: exempt ? 0 : log.earlyMinutes,
     outOfShift: log.shiftId == null,
   });
 });

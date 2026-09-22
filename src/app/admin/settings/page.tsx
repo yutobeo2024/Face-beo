@@ -5,7 +5,7 @@ import { fmtDay, weekdayOf, WEEKDAY_LONG } from "@/lib/client/format";
 import { Badge, Button, Card, CardHeader, ErrorBox, Field, IconButton, Loading, Modal, PageHeader, Select } from "@/components/ui";
 import { useDepartments } from "@/components/dept-select";
 import { useToast } from "@/components/toast";
-import { useCan } from "../admin-nav";
+import { useAdminUser, useCan } from "../admin-nav";
 import { APPROVAL_MODES, APPROVAL_MODE_LABEL } from "@/lib/roles";
 
 type Settings = { matchThreshold: number; matchMargin: number; livenessThreshold: number; livenessServerThreshold: number; absentAfterMinutes: number; snapshotRetentionDays: number; otRoundMinutes: number; cmeTwoYearHours: number; cmeCycleHours: number; cmeCycleYears: number; credentialWarnDays: number };
@@ -42,6 +42,7 @@ const FIELDS: { key: keyof Settings; label: string; hint: string; step: number }
 
 export default function SettingsPage() {
   const can = useCan();
+  const me = useAdminUser();
   const sys = can("settings.system");
   const org = can("org.manage");
   const toast = useToast();
@@ -327,6 +328,18 @@ export default function SettingsPage() {
                       </option>
                     ))}
                   </Select>
+                  {me.role === "ADMIN" && (
+                    <label className="flex items-center gap-2 text-xs text-slate-600" title="Không cảnh báo / Zalo trễ, vắng, quên chấm; ẩn khỏi chấm công, báo cáo, xếp ca">
+                      <input
+                        type="checkbox"
+                        className="size-4 accent-brand-700"
+                        checked={!!d.attendanceExempt}
+                        disabled={busy}
+                        onChange={(e) => run(() => api(`/api/departments/${d.id}`, { method: "PATCH", body: { attendanceExempt: e.target.checked } }), e.target.checked ? "Cả phòng không chấm công" : "Đã bật lại chấm công", depts.reload)}
+                      />
+                      Không chấm công (cả phòng — vd. Ban Giám đốc)
+                    </label>
+                  )}
                 </div>
               </li>
             ))}
