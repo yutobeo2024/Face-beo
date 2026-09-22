@@ -9,6 +9,8 @@ echo "Phiên bản: $(git describe --tags --always)"
 COMPOSE="docker compose -f deploy/docker-compose.yml -p facebeo --env-file /opt/facebeo/.env"
 $COMPOSE build app
 $COMPOSE up -d
+# backup.sh gắn dạng bind-mount 1 file: git thay file (inode mới) thì container cũ vẫn đọc bản cũ → tạo lại service backup.
+$COMPOSE up -d --force-recreate backup
 echo "Chờ app khởi động…"
 for i in $(seq 1 60); do
   if docker exec facebeo-app-1 curl -fsS -o /dev/null http://localhost:3000/login 2>/dev/null; then echo "OK: /login trả 200"; exit 0; fi
