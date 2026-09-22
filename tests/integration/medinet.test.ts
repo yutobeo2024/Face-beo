@@ -23,7 +23,8 @@ let calls: string[] = [];
 let mode: "ok" | "notfound" | "down" = "ok";
 
 function fakeMedinet() {
-  __setMedinetFetch((async (url: string | URL | Request) => {
+  __setMedinetFetch((async (url: string | URL | Request, init?: RequestInit) => {
+    new Headers(init?.headers); // kiểm header như fetch thật (ký tự ngoài Latin-1 → lỗi ByteString, v1.11.1)
     const u = String(url);
     calls.push(u.replace(/^https:\/\/[^/]+/, ""));
     if (mode === "down") throw new Error("ECONNRESET");

@@ -71,3 +71,20 @@ describe("so sánh với hồ sơ", () => {
     expect(medinetIssues(null)).toEqual([]);
   });
 });
+
+describe("header gửi medinet", () => {
+  it("chỉ gồm ký tự Latin-1 (fetch thật từ chối tiếng Việt có dấu trong header)", async () => {
+    const { __setMedinetFetch, lookupMedinet } = await import("@/lib/medinet");
+    let headers: Headers | null = null;
+    __setMedinetFetch((async (_u: string | URL | Request, init?: RequestInit) => {
+      headers = new Headers(init?.headers); // ném lỗi ByteString nếu có ký tự > 255
+      return new Response("<div>0 kết quả</div>");
+    }) as typeof fetch);
+    try {
+      expect(await lookupMedinet("0012345/BYT-CCHN")).toMatchObject({ ok: true, record: null });
+      for (const [, v] of headers!) expect([...v].every((c) => c.charCodeAt(0) <= 255)).toBe(true);
+    } finally {
+      __setMedinetFetch(null);
+    }
+  });
+});

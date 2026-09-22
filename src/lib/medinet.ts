@@ -223,7 +223,8 @@ function enqueue<T>(fn: () => Promise<T>): Promise<T> {
 async function post(path: string, body: unknown, contentType: string): Promise<string> {
   const res = await (g.__medinetFetch ?? fetch)(`${MEDINET_BASE}${path}`, {
     method: "POST",
-    headers: { "Content-Type": contentType, "X-Requested-With": "XMLHttpRequest", Referer: `${MEDINET_BASE}/`, "User-Agent": "Mozilla/5.0 (FaceBeo HR; tra cứu GPHN nhân viên)" },
+    // Header HTTP chỉ nhận ký tự Latin-1: KHÔNG dùng tiếng Việt có dấu (fetch từ chối: "Cannot convert argument to a ByteString").
+    headers: { "Content-Type": contentType, "X-Requested-With": "XMLHttpRequest", Referer: `${MEDINET_BASE}/`, "User-Agent": "Mozilla/5.0 (FaceBeo HR; GPHN lookup)" },
     body: JSON.stringify(body),
     signal: AbortSignal.timeout(TIMEOUT_MS),
   });
