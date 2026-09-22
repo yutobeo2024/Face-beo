@@ -39,15 +39,25 @@ export async function ensurePatternFor(shiftId: number, db: Db = prisma) {
   if (found) return found;
   const shift = await db.shift.findUnique({ where: { id: shiftId }, select: { name: true } });
   if (!shift) throw badRequest("Ca mặc định không tồn tại");
+  const isSame = (p: Record<string, unknown>) => (Object.keys(same) as (keyof typeof same)[]).every((k) => p[k] === same[k]);
   let name = `${shift.name} T2–T7`;
-  for (let i = 2; await db.workPattern.findUnique({ where: { name } }); i++) name = `${shift.name} T2–T7 (${i})`;
+  for (let i = 2; ; i++) {
+    const taken = await db.workPattern.findUnique({ where: { name } });
+    if (!taken) break;
+    // Tên đã có: cùng nội dung (vd. lượt lưu song song vừa tạo xong) → dùng lại, KHÔNG tạo bản "(2)" trùng nội dung.
+    if (isSame(taken)) return taken;
+    name = `${shift.name} T2–T7 (${i})`;
+  }
   try {
     return await db.workPattern.create({ data: { name, ...same } });
   } catch (err) {
-    // Hai lượt lưu cùng lúc cùng tạo mẫu: lượt sau dùng lại mẫu lượt trước vừa tạo (không 500).
+    // Hai lượt cùng tạo đúng tên này cùng lúc: lượt sau đợi lượt trước ghi xong rồi dùng lại mẫu đó (không 500, không trùng).
     if ((err as { code?: string }).code === "P2002") {
-      const again = await db.workPattern.findFirst({ where: same, orderBy: { id: "asc" } });
-      if (again) return again;
+      for (let attempt = 0; attempt < 10; attempt++) {
+        const again = await db.workPattern.findFirst({ where: same, orderBy: { id: "asc" } });
+        if (again) return again;
+        await new Promise((r) => setTimeout(r, 50));
+      }
     }
     throw err;
   }
