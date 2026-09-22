@@ -536,8 +536,10 @@ describe("QC D3 — nhắc đơn quá hạn", () => {
     const now = new Date();
     const r = await mk(admin.id, new Date(now.getTime() - 49 * HOUR));
     await requestOverdue(now);
-    expect(await count(`req-overdue24:${r.id}:${admin.id}`)).toBe(0);
-    expect(await count(`req-overdue48:${r.id}:${admin.id}`)).toBe(0);
+    // So ĐÚNG khóa: đếm tiền tố "req-overdue24:<đơn>:1" sẽ khớp nhầm tin gửi NV016 ("…:16").
+    const exact = (key: string) => prisma.notificationLog.count({ where: { dedupeKey: key } });
+    expect(await exact(`req-overdue24:${r.id}:${admin.id}`)).toBe(0);
+    expect(await exact(`req-overdue48:${r.id}:${admin.id}`)).toBe(0);
     const handlers = (await approversFor(admin.id)).filter((id) => id !== admin.id);
     expect(await count(`req-overdue24:${r.id}:`)).toBe(handlers.length);
     expect(await count(`grp:req-overdue48:${r.id}`)).toBe(1);

@@ -231,13 +231,16 @@ describe("QC-C6 sau khi chấm tay", () => {
     const before = (await summarizeRange([e7.id], d, d)).summaries.get(`${e7.id}|${d}`)!;
     expect(before.missingOut).toBe(true);
     const rep0 = await buildAttendanceReport({ id: e7.id }, d, d);
-    const r = await createOk(E7, vnDateTime(d, "17:30"), "OUT");
+    // Giờ ra theo CA THỰC TẾ của ngày đó (thứ Bảy của NV007 là ca nửa ngày) — không cố định 17:xx, để test không hỏng theo thứ chạy.
+    const [eh, em] = before.shift!.endTime.split(":").map(Number);
+    const at = (plus: number) => { const m = eh * 60 + em + plus; return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`; };
+    const r = await createOk(E7, vnDateTime(d, at(30)), "OUT");
     await decide(MHC, r.id);
     expect((await buildAttendanceReport({ id: e7.id }, d, d)).summary[0].correctionCount).toBe(rep0.summary[0].correctionCount);
-    expect((await execute(H, r.id, { checkTime: vnDateTime(d, "17:20").toISOString(), note: "Theo camera cổng" })).status).toBe(200);
+    expect((await execute(H, r.id, { checkTime: vnDateTime(d, at(20)).toISOString(), note: "Theo camera cổng" })).status).toBe(200);
     const after = (await summarizeRange([e7.id], d, d)).summaries.get(`${e7.id}|${d}`)!;
     expect(after.missingOut).toBe(false);
-    expect(after.outTime?.toISOString()).toBe(vnDateTime(d, "17:20").toISOString());
+    expect(after.outTime?.toISOString()).toBe(vnDateTime(d, at(20)).toISOString());
     expect(after.status).toBe("ON_TIME");
     expect(after.isEarly).toBe(false);
     const rep = await buildAttendanceReport({ id: e7.id }, d, d);
