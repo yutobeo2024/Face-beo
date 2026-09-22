@@ -97,9 +97,18 @@ image cũ vẫn phục vụ; gián đoạn chỉ vài giây lúc đổi containe
 ## Sao lưu
 
 - Job `db-backup` (03:00) ghi `VACUUM INTO` vào `/opt/facebeo/data/backups/`, giữ 14 bản — **vẫn nằm trên VPS**.
-- Cần đẩy ra ngoài VPS mỗi đêm: bản mới nhất trong `backups/` + `credentials/` + `avatars/` (và `.env` — cất riêng, chỗ an toàn).
-  Đề xuất `rclone` tới Cloudflare R2 hoặc Google Drive, cron host 03:30 (việc mở — chọn nơi lưu rồi làm).
-- Khôi phục: `fb down` → chép bản `backups/facebeo-YYYYMMDD.db` thành `data/facebeo.db` (xóa `-wal`/`-shm`) → `fb up -d`.
+- **Ra ngoài VPS — Cloudflare R2 (v1.10.4)**: service `backup` (image `rclone/rclone`, `deploy/backup.sh`) mỗi ngày **03:30** nén bản DB mới
+  nhất trong `backups/` + `credentials/` + `avatars/` → **mã hóa** (rclone crypt) → bucket R2 `facebeo-backup`, thư mục `facebeo/daily/`,
+  giữ **30 ngày**. Không đưa `snapshots/` (ảnh quét tự xóa sau 90 ngày) và **không đưa `.env`** lên R2.
+  - Biến trong `/opt/facebeo/.env`: `R2_ACCOUNT_ID`, `R2_BUCKET`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` (token R2 chỉ quyền Object Read & Write
+    trên đúng bucket), `BACKUP_CRYPT_PASSWORD`, `BACKUP_CRYPT_SALT` (tạo ngẫu nhiên trên VPS).
+  - **Cất một bản `/opt/facebeo/.env` ra ngoài máy chủ** (trình quản lý mật khẩu / USB mã hóa): mất mật khẩu mã hóa = không giải mã được bản
+    sao lưu; mất `BIOMETRIC_KEY` = không đọc được mẫu khuôn mặt.
+  - Chạy tay / xem kết quả: `docker exec facebeo-backup-1 sh /scripts/backup.sh once`, `cat /opt/facebeo/backup-status/offsite-status.json`,
+    `docker logs facebeo-backup-1`.
+- **Khôi phục từ R2**: `sh /opt/facebeo/src/deploy/restore-offsite.sh [YYYYMMDD]` → tải + giải mã + giải nén vào `/opt/facebeo/restore`,
+  kiểm `integrity_check`, đếm bản ghi; **không tự ghi đè** — script in các lệnh thay dữ liệu đang chạy.
+- Khôi phục từ bản trên VPS: `fb down` → chép `backups/facebeo-YYYYMMDD.db` thành `data/facebeo.db` (xóa `-wal`/`-shm`) → `fb up -d`.
 
 ## Theo dõi
 

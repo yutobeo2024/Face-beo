@@ -26,20 +26,16 @@ Ghi lại những điểm đã phát hiện trong quá trình làm và test, c�
   quy tắc (số GPHN, họ tên, tình trạng, nơi đăng ký) — không cần AI; nếu bị chặn thì giữ cách làm tay.
 - **Trạng thái:** chưa làm.
 
-### D6. Sao lưu ra ngoài VPS
-
-- **Ghi nhận:** 21/09/2026, khi chuyển máy chủ thật lên VPS. Job `db-backup` (03:00) chỉ ghi vào `/opt/facebeo/data/backups/` — **cùng máy**;
-  VPS hỏng là mất cả dữ liệu lẫn bản sao lưu. File scan (`credentials/`) và ảnh đại diện (`avatars/`) không có trong bản sao lưu DB.
-- **Phương án:** cron trên VPS 03:30 nén bản DB mới nhất + `credentials/` + `avatars/` → `rclone` lên **Cloudflare R2** (đã dùng Cloudflare) hoặc
-  **Google Drive**; giữ 30 ngày; thử khôi phục định kỳ.
-- **Trạng thái:** **tạm hoãn theo chủ dự án (21/09/2026), làm sau.** Tới lúc đó dữ liệu chỉ có bản sao lưu hằng đêm nằm trên chính VPS
-  (`/opt/facebeo/data/backups/`, 14 bản) — VPS hỏng là mất cả hai. Khi làm: chọn R2 hoặc Drive → cài rclone + cron 03:30 → thử khôi phục.
-
 ### D7. Đổi các bí mật đã lộ khi triển khai
 
 - Token Cloudflare Tunnel và `ZALO_WEBHOOK_SECRET` từng hiện trong ảnh chụp màn hình lúc cài đặt (21/09/2026). Cần **Refresh token** tunnel và
   tạo lại OA Secret Key webhook (nếu Zalo cho), dán lại vào `/opt/facebeo/.env`, `up -d --force-recreate`.
 - **Trạng thái:** chờ chủ dự án thao tác.
+
+## Đã chốt v1.10.4 (22/09/2026)
+
+- **D6 sao lưu ra ngoài VPS → Cloudflare R2**: mỗi ngày 03:30, bản DB mới nhất + file scan + ảnh đại diện, mã hóa rclone crypt, giữ 30 ngày;
+  `.env` không lên R2 (chủ dự án tự cất ngoài máy). Khôi phục thử bằng `deploy/restore-offsite.sh`. Xem `docs/DEPLOY-VPS.md`.
 
 ## Đã chốt v1.10.1–v1.10.2 (21/09/2026)
 
