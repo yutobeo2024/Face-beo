@@ -22,9 +22,11 @@ const execute = (cookie: string, id: number, body: object = {}) =>
   executeRoute.POST(req(`/api/requests/${id}/execute`, { method: "POST", cookie, body }), ctx({ id: String(id) }));
 
 /** Ngày làm việc gần nhất trong quá khứ (tránh Chủ nhật), cách hôm nay `back` ngày trở lên. */
+/** Ngày đã qua, không rơi Chủ nhật, và LUÔN nằm trong hạn bổ sung công 3 ngày — gặp Chủ nhật thì tiến về phía hôm nay,
+ *  lùi tiếp sẽ quá hạn và API từ chối (lộ ra vào thứ Tư: hôm nay − 3 = Chủ nhật). */
 function pastWorkday(back: number) {
   let d = addDays(todayVN(), -back);
-  while (weekday(d) === 7) d = addDays(d, -1);
+  while (weekday(d) === 7) d = addDays(d, 1);
   return d;
 }
 

@@ -476,3 +476,21 @@ công được tính trực tiếp từ planner. Quản lý được cấp `org.
   Quản trị. Xem = ai xem được nhân viên đó (`canViewEmployee`: chính chủ, Nhân sự / Quản trị, quản lý phòng).
 - **Hiển thị**: ảnh tự chọn → ảnh khuôn mặt (quyền như v1.10.0) → chữ viết tắt. Thẻ nhân viên và Trang cá nhân dùng khung chữ nhật đứng 3:4.
 - **Vòng đời**: xóa khuôn mặt / rút đồng ý **không** xóa. Nghỉ việc, xóa tài khoản → xóa (job dọn hằng ngày bắt ca sót). Sao lưu R2 gồm `photos/`.
+
+## 28. Cài web app thành app trên máy — PWA (v1.14.0, 23/09/2026)
+
+- **Mục đích**: nhân viên mở Face Beo một chạm từ màn hình chính, chạy `standalone` (không thanh địa chỉ). Vẫn là web app: không qua chợ
+  ứng dụng, cập nhật theo bản deploy.
+- **Manifest**: `public/manifest.webmanifest` (tĩnh, khai ở `metadata.manifest` của `src/app/layout.tsx`) — `scope: "/"`, `start_url: "/me"`,
+  `display: standalone`, icon 192/512 + maskable sinh từ `public/icon.svg` bằng `npm run icons` (`scripts/gen-icons.mjs`). Kiosk giữ manifest
+  riêng `public/kiosk.webmanifest` (fullscreen, ngang) khai trong `src/app/kiosk/layout.tsx` — **không** dùng `app/manifest.ts` nữa vì manifest
+  do Next sinh luôn gắn ở layout gốc, layout con không đè được.
+- **Service worker** `public/sw.js`: điều kiện bắt buộc để Chrome cho cài. **Không lưu đệm gì** của ứng dụng (chỉ `/offline.html`), chỉ xử lý
+  lượt mở trang (GET + navigate), bỏ qua `/api/*` và `/kiosk*`; `skipWaiting` + `clients.claim`; mất mạng thì trả `public/offline.html`.
+  Header `no-cache` cho `/sw.js` và các manifest (`next.config.ts`) để Cloudflare / trình duyệt không giữ bản cũ.
+- **Giao diện** (`src/components/pwa-install.tsx`, luật thuần ở `src/lib/pwa.ts` có test): thanh nhắc trong `AppShell` (áp cho `/me` + `/admin`,
+  không hiện ở `/login`, `/kiosk`), mục "Cài ứng dụng" trong thanh bên + ngăn kéo. "Để sau" = ẩn thanh nhắc **14 ngày**
+  (`localStorage: facebeo.install.snooze`). Đã cài (`display-mode: standalone` / `navigator.standalone`) thì ẩn hết.
+- **Theo nền tảng**: Chrome/Edge/Android dùng `beforeinstallprompt` (bắt sớm bằng script nhỏ ở layout gốc vì Chrome bắn trước khi React chạy);
+  iOS Safari hướng dẫn tay 3 bước (kèm lưu ý app và trình duyệt đăng nhập riêng); webview Zalo/Facebook chỉ hướng dẫn mở bằng trình duyệt;
+  Firefox và mạng LAN `http://` không hiện gì (trình duyệt không cài được).

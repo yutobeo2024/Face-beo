@@ -1,0 +1,24 @@
+{
+  "id": "/",
+  "name": "Face Beo",
+  "short_name": "Face Beo",
+  "description": "Chấm công khuôn mặt · Xếp ca · Đơn từ",
+  "start_url": "/me",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#10695a",
+  "theme_color": "#10695a",
+  "lang": "vi",
+  "dir": "ltr",
+  "categories": ["business", "productivity"],
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Hôm nay", "url": "/me" },
+    { "name": "Đơn từ", "url": "/me/requests" }
+  ]
+}

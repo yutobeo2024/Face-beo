@@ -32,9 +32,11 @@ const cancel = (cookie: string, id: number) => cancelRoute.POST(req(`/api/reques
 const list = async (cookie: string, qs: string) => (await (await requestsRoute.GET(req(`/api/requests?${qs}`, { cookie }), ctx())).json()).requests as Array<Record<string, unknown>>;
 const logsOf = (id: number) => prisma.attendanceLog.count({ where: { sourceRequestId: id } });
 
+/** Ngày đã qua, không rơi Chủ nhật, và LUÔN nằm trong hạn bổ sung công 3 ngày — gặp Chủ nhật thì tiến về phía hôm nay,
+ *  lùi tiếp sẽ quá hạn và API từ chối (lộ ra vào thứ Tư: hôm nay − 3 = Chủ nhật). */
 function pastWorkday(back: number) {
   let d = addDays(todayVN(), -back);
-  while (weekday(d) === 7) d = addDays(d, -1);
+  while (weekday(d) === 7) d = addDays(d, 1);
   return d;
 }
 async function wipeDay(employeeId: number, d: string) {

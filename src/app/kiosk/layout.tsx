@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 
 export const metadata: Metadata = {
   title: "Kiosk chấm công",
+  // Kiosk giữ manifest riêng (toàn màn hình, khóa ngang) — manifest gốc /manifest.webmanifest là của app nhân sự.
+  manifest: "/kiosk.webmanifest",
   appleWebApp: { capable: true, title: "Face Beo Kiosk", statusBarStyle: "black-translucent" },
 };
 

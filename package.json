@@ -10,6 +10,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "icons": "node scripts/gen-icons.mjs",
     "test:tz": "cross-env SKIP_DB_SETUP=1 TZ=UTC vitest run tests/unit && cross-env SKIP_DB_SETUP=1 TZ=Asia/Ho_Chi_Minh vitest run tests/unit",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",

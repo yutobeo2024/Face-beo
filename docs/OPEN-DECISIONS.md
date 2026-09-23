@@ -22,6 +22,11 @@ Ghi lại những điểm đã phát hiện trong quá trình làm và test, c�
   tạo lại OA Secret Key webhook (nếu Zalo cho), dán lại vào `/opt/facebeo/.env`, `up -d --force-recreate`.
 - **Trạng thái:** chờ chủ dự án thao tác.
 
+## Đã chốt v1.14.0 (23/09/2026)
+
+- **Cài web app thành app (PWA)**: thanh nhắc + mục "Cài ứng dụng" trong menu; "Để sau" ẩn 14 ngày; đã cài thì ẩn hẳn; app mở thẳng `/me`
+  (chưa đăng nhập thì qua `/login?next=/me`). Kiosk giữ manifest riêng. Xem PRD v2.1 mục 28.
+
 ## Đã chốt v1.13.0 (22/09/2026)
 
 - **Ảnh đại diện tự chọn**: khung 3:4, file ≤ 5 MB, nhân viên tự đổi, Nhân sự / Quản trị đổi hộ; không dùng nhận diện; xóa khi nghỉ việc

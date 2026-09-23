@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { Icon, type IconName } from "./icons";
 import { Avatar, cx, IconButton } from "./ui";
 import { api } from "@/lib/client/api";
+import { InstallBanner, InstallMenuItem } from "./pwa-install";
 
 export type NavItem = { href: string; label: string; icon: IconName; exact?: boolean; mobile?: boolean };
 export type ShellUser = { name: string; code: string; role: string };
@@ -94,6 +95,9 @@ export function AppShell({ user, nav, extraLinks, children, brandSub }: { user: 
             ))}
           </div>
         )}
+        <div className="mt-2 border-t border-white/10 pt-2">
+          <InstallMenuItem variant="sidebar" />
+        </div>
         <div className="mt-3 flex items-center justify-between gap-2 rounded-xl bg-white/5 p-2.5">
           <div className="flex min-w-0 items-center gap-2.5">
             <Avatar name={user.name} className="size-8" />
@@ -130,6 +134,7 @@ export function AppShell({ user, nav, extraLinks, children, brandSub }: { user: 
                 <Icon name={n.icon} /> {n.label}
               </Link>
             ))}
+            <InstallMenuItem variant="drawer" />
             <button onClick={() => logout(router)} className="mt-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-[15px] font-medium text-rose-600 hover:bg-rose-50">
               <Icon name="logout" /> Đăng xuất
             </button>
@@ -137,7 +142,10 @@ export function AppShell({ user, nav, extraLinks, children, brandSub }: { user: 
         </div>
       )}
 
-      <main className="mx-auto w-full max-w-7xl px-4 pt-4 pb-28 sm:px-6 lg:px-8 lg:pt-8 lg:pb-12">{children}</main>
+      <main className="mx-auto w-full max-w-7xl px-4 pt-4 pb-28 sm:px-6 lg:px-8 lg:pt-8 lg:pb-12">
+        <InstallBanner />
+        {children}
+      </main>
 
       {/* Bottom nav mobile */}
       {mobileNav.length > 0 && (

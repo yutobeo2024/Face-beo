@@ -107,7 +107,7 @@ footer{color:var(--muted);font-size:.85rem;text-align:center;padding:10px}
 <div class="layout">
 <nav class="toc" id="toc">
   <div class="brand">📘 Cẩm nang Face Beo</div>
-  <div class="sub">Hướng dẫn sử dụng · bản v1.12</div>
+  <div class="sub">Hướng dẫn sử dụng · bản v1.14</div>
   <button class="menu-mobile" onclick="document.getElementById('toc').classList.toggle('open')">☰ Mục lục</button>
   <ol>
     <li class="grp">Bắt đầu</li>
@@ -132,6 +132,7 @@ footer{color:var(--muted);font-size:.85rem;text-align:center;padding:10px}
     <li class="grp">Khác</li>
     <li><a href="#zalo">15. Zalo &amp; thông báo</a></li>
     <li><a href="#nhan-vien-tu-phuc-vu">16. Trang cá nhân nhân viên</a></li>
+    <li><a href="#cai-app">16.5 Cài Face Beo thành app</a></li>
     <li><a href="#lich-thang">17. Lịch làm việc hằng tháng</a></li>
     <li><a href="#hoi-dap">18. Hỏi đáp &amp; xử lý sự cố</a></li>
   </ol>
@@ -949,6 +950,30 @@ stateDiagram-v2
   </div>
 </section>
 
+<!-- 16.5 -->
+<section id="cai-app">
+  <h2><span class="num">16.5</span>Cài Face Beo thành app trên điện thoại / máy tính</h2>
+  <p class="lead"><span class="pill e">Nhân viên</span><span class="pill m">Quản lý</span><span class="pill h">Nhân sự</span><span class="pill a">Quản trị</span> Mở nhanh một chạm, chạy <b>không có thanh địa chỉ</b> như một ứng dụng thật. Vẫn là web app: không tốn chỗ, không qua chợ ứng dụng, cập nhật tự động.</p>
+  <p>Mở đúng địa chỉ <code>https://face.ydsg.website</code> (mạng LAN chạy <code>http://</code> không cài được — trình duyệt chỉ cho cài khi có khóa bảo mật).</p>
+  <div class="tw"><table>
+    <tr><th>Máy</th><th>Cách cài</th></tr>
+    <tr><td><b>Android</b> (Chrome, Edge, Samsung Internet)</td><td>Đăng nhập → thanh nhắc <b>"Cài Face Beo vào máy"</b> hiện ở đầu trang → bấm <b>Cài đặt</b> → <b>Cài đặt</b> lần nữa ở hộp thoại của máy.</td></tr>
+    <tr><td><b>iPhone / iPad</b> (bắt buộc dùng <b>Safari</b>)</td><td>Bấm <b>Xem cách cài</b> → làm theo 3 bước: nút <b>Chia sẻ</b> ⬆︎ ở thanh dưới → <b>Thêm vào MH chính</b> → <b>Thêm</b>. Lần đầu mở từ biểu tượng phải <b>đăng nhập lại một lần</b> (app và trình duyệt đăng nhập riêng).</td></tr>
+    <tr><td><b>Máy tính</b> (Chrome, Edge)</td><td>Bấm <b>Cài đặt</b> ở thanh nhắc, hoặc biểu tượng cài ở cuối thanh địa chỉ. App hiện trong Start menu / màn hình nền.</td></tr>
+  </table></div>
+  <ul>
+    <li><b>Để sau</b>: thanh nhắc ẩn <b>14 ngày</b> trên máy đó. Muốn cài sớm hơn thì vào <b>Menu</b> (☰ trên điện thoại, thanh bên trái trên máy tính) → <b>Cài ứng dụng</b>.</li>
+    <li><b>Đã cài rồi</b>: thanh nhắc và mục "Cài ứng dụng" <b>tự biến mất</b>, không làm phiền nữa.</li>
+    <li><b>Mở app</b> vào thẳng Trang cá nhân. Chưa đăng nhập thì hiện trang đăng nhập, xong quay lại đúng chỗ.</li>
+    <li><b>Mất mạng</b>: app hiện trang "Mất kết nối mạng" với nút Thử lại, thay cho trang lỗi khó hiểu của trình duyệt.</li>
+    <li><b>Mở trong Zalo / Facebook</b> thì không cài được: bấm <b>…</b> → <b>Mở trong trình duyệt</b> (Safari hoặc Chrome) rồi cài.</li>
+    <li><b>Gỡ app</b>: giữ biểu tượng → Gỡ cài đặt (điện thoại); trên máy tính mở app → menu ⋮ → Gỡ cài đặt. Dữ liệu vẫn nằm trên máy chủ, không mất gì.</li>
+  </ul>
+  <div class="callout"><b>Kiosk tính riêng</b>
+    <p>Máy tính bảng chấm công vẫn cài bản <b>Face Beo Kiosk</b> (toàn màn hình, khóa ngang) như trước — không đụng gì tới bản app nhân sự này.</p>
+  </div>
+</section>
+
 <!-- 17 -->
 <section id="lich-thang">
   <h2><span class="num">17.</span>Lịch làm việc hằng tháng (ai làm gì, khi nào)</h2>
@@ -985,7 +1010,7 @@ stateDiagram-v2
   <details><summary>Đăng xuất trên điện thoại thì máy tính cũng bị thoát?</summary><p>Đúng, có chủ đích: đăng xuất ở bất kỳ đâu sẽ thoát tài khoản trên mọi thiết bị (kể cả phiên lỡ để lại ở máy dùng chung). Đăng nhập lại là được. Đổi mật khẩu cũng vậy.</p></details>
 </section>
 
-<footer>Face Beo · Cẩm nang sử dụng · cập nhật 22/09/2026 (phiên bản ứng dụng v1.13.0 · https://face.ydsg.website)</footer>
+<footer>Face Beo · Cẩm nang sử dụng · cập nhật 22/09/2026 (phiên bản ứng dụng v1.14.0 · https://face.ydsg.website)</footer>
 </main>
 </div>
 

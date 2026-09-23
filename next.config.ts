@@ -26,6 +26,22 @@ const nextConfig: NextConfig = {
         source: "/models/:path*",
         headers: [{ key: "Cache-Control", value: "public, max-age=604800, immutable" }],
       },
+      // PWA (v1.14.0): service worker và manifest KHÔNG được giữ bản cũ (trình duyệt hoặc Cloudflare), icon thì giữ lâu được.
+      {
+        source: "/sw.js",
+        headers: [
+          { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
+          { key: "Service-Worker-Allowed", value: "/" },
+        ],
+      },
+      {
+        source: "/:file(manifest\.webmanifest|kiosk\.webmanifest|offline\.html)",
+        headers: [{ key: "Cache-Control", value: "public, max-age=0, must-revalidate" }],
+      },
+      {
+        source: "/icons/:path*",
+        headers: [{ key: "Cache-Control", value: "public, max-age=604800" }],
+      },
     ];
   },
 };

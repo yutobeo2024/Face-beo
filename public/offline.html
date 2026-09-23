@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#10695a" />
+    <title>Mất kết nối · Face Beo</title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        margin: 0; min-height: 100dvh; display: flex; align-items: center; justify-content: center; padding: 24px;
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #fff;
+        background: linear-gradient(160deg, #10695a, #062723);
+      }
+      .card { max-width: 24rem; text-align: center; }
+      svg { width: 72px; height: 72px; }
+      h1 { font-size: 1.35rem; margin: 18px 0 8px; }
+      p { margin: 0 0 20px; line-height: 1.55; color: rgba(255, 255, 255, 0.85); font-size: 0.95rem; }
+      button {
+        font: inherit; font-weight: 600; color: #10695a; background: #fff; border: 0; border-radius: 14px;
+        padding: 12px 22px; cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <!-- Logo vẽ thẳng trong trang: lúc mất mạng không tải được file ảnh ngoài. -->
+      <svg viewBox="0 0 64 64" aria-hidden="true">
+        <rect width="64" height="64" rx="16" fill="rgba(255,255,255,.12)" />
+        <circle cx="32" cy="30" r="15" fill="none" stroke="#fff" stroke-width="4" />
+        <circle cx="26.5" cy="27" r="2.4" fill="#fff" />
+        <circle cx="37.5" cy="27" r="2.4" fill="#fff" />
+        <path d="M25.5 34.5c3.6 3.6 9.4 3.6 13 0" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round" />
+      </svg>
+      <h1>Mất kết nối mạng</h1>
+      <p>Face Beo cần mạng để tải lịch làm việc và chấm công. Kiểm tra Wi-Fi hoặc 4G rồi thử lại.</p>
+      <button type="button" onclick="location.reload()">Thử lại</button>
+    </div>
+  </body>
+</html>
