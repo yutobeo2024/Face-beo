@@ -1,5 +1,6 @@
 "use client";
 import { createContext, useContext } from "react";
+import { usePathname } from "next/navigation";
 import { AppShell, type NavItem, type ShellUser } from "@/components/shell";
 
 type MeUser = ShellUser & { id: number };
@@ -19,10 +20,12 @@ const navFor = (chatbot: boolean): NavItem[] =>
   ] as NavItem[];
 
 export function MeNav({ user, adminAccess, chatbot, children }: { user: MeUser; adminAccess: boolean; chatbot: boolean; children: React.ReactNode }) {
+  // Trang chat cần cả bề ngang (khung chat + bảng bên), các trang khác đọc dễ hơn khi cột hẹp.
+  const wide = usePathname()?.startsWith("/me/chatbot");
   return (
     <Ctx.Provider value={user}>
       <AppShell user={user} nav={navFor(chatbot)} brandSub="Nhân viên" extraLinks={adminAccess ? [{ href: "/admin", label: "Trang quản trị", icon: "dashboard" }] : undefined}>
-        <div className="mx-auto max-w-3xl">{children}</div>
+        <div className={wide ? "" : "mx-auto max-w-3xl"}>{children}</div>
       </AppShell>
     </Ctx.Provider>
   );

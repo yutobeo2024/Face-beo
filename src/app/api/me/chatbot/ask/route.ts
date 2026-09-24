@@ -1,25 +1,9 @@
-import { z } from "zod";
 import { handle, json, HttpError, parseJson } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
 import { rateLimit } from "@/lib/rate-limit";
-import { CHAT_PER_MINUTE, MAX_ATTACHMENTS, MAX_ATTACHMENT_BYTES, MAX_ATTACHMENT_TOTAL_BYTES, MAX_MESSAGE_CHARS, askChatbot, assertChatbotAllowed, takeDailySlot, usageToday, base64Chars, CHAT_PER_DAY } from "@/lib/chatbot";
+import { CHAT_PER_MINUTE, askChatbot, assertChatbotAllowed, takeDailySlot, usageToday, CHAT_PER_DAY } from "@/lib/chatbot";
+import { askSchema } from "./schema";
 
-const attachment = z.object({
-  // Ảnh gửi kèm dưới dạng base64 (không kèm phần "data:image/...;base64,").
-  data: z.string().min(1).max(base64Chars(MAX_ATTACHMENT_BYTES)),
-  mime_type: z.string().regex(/^image\/(png|jpe?g|webp|gif|heic|heif)$/i, "Chỉ nhận ảnh"),
-});
-const schema = z.object({
-  message: z.string().trim().max(MAX_MESSAGE_CHARS),
-  attachments: z
-    .array(attachment)
-    .max(MAX_ATTACHMENTS)
-    // Chặn cả tổng dung lượng, không chỉ từng tấm.
-    .refine((a) => a.reduce((n, x) => n + x.data.length, 0) <= base64Chars(MAX_ATTACHMENT_TOTAL_BYTES), "Tổng dung lượng ảnh quá lớn — gửi ít ảnh hoặc ảnh nhỏ hơn")
-    .optional(),
-  // Ngữ cảnh vài lượt gần nhất để chat bot hiểu câu hỏi nối tiếp; máy chủ KHÔNG lưu lại.
-  history: z.array(z.object({ role: z.enum(["user", "ai"]), content: z.string().max(MAX_MESSAGE_CHARS) })).max(10).optional(),
-});
 
 /**
  * Hỏi Chat bot (v1.17.0). Face Beo là cửa duy nhất: kiểm đăng nhập → kiểm quyền dùng → giới hạn tần suất →
@@ -29,7 +13,7 @@ const schema = z.object({
 export const POST = handle(async (req) => {
   const u = await requireUser(req);
   await assertChatbotAllowed(u);
-  const body = await parseJson(req, schema);
+  const body = await parseJson(req, askSchema);
   if (!body.message && !body.attachments?.length) throw new HttpError(400, "Chưa nhập câu hỏi");
 
   const rl = rateLimit(`chatbot:${u.id}`, CHAT_PER_MINUTE);

@@ -8,6 +8,7 @@
  * Nội dung hỏi đáp KHÔNG được lưu ở máy chủ — chỉ đếm số lượt (bảng ChatbotUsage) để chặn lạm dụng.
  */
 import { prisma } from "./db";
+import { rewriteImagePaths, rewriteImageUrl } from "./client/chatbot-text";
 import { badRequest, forbidden, HttpError } from "./api";
 import { todayVN } from "./attendance";
 import type { AuthUser } from "./auth";
@@ -92,7 +93,16 @@ async function releaseUsage(employeeId: number, day: string) {
 
 // ---------------------------------------------------------------------------------------------------------------
 // Gọi sang chat bot (mạng nội bộ VPS). Tách hàm fetch ra để test tiêm bản giả — KHÔNG gọi mạng thật khi chạy test.
-type FetchLike = (url: string, init: RequestInit) => Promise<{ ok: boolean; status: number; json: () => Promise<unknown>; arrayBuffer: () => Promise<ArrayBuffer>; headers: { get: (k: string) => string | null } }>;
+type FetchResponseLike = {
+  ok: boolean;
+  status: number;
+  json: () => Promise<unknown>;
+  arrayBuffer: () => Promise<ArrayBuffer>;
+  headers: { get: (k: string) => string | null };
+  /** Chỉ dùng cho câu trả lời theo luồng (SSE). */
+  body?: ReadableStream<Uint8Array> | null;
+};
+type FetchLike = (url: string, init: RequestInit) => Promise<FetchResponseLike>;
 let fetchImpl: FetchLike = (url, init) => fetch(url, init) as unknown as ReturnType<FetchLike>;
 export function __setChatbotTestHooks(f: FetchLike | null) {
   fetchImpl = f ?? ((url, init) => fetch(url, init) as unknown as ReturnType<FetchLike>);
@@ -113,15 +123,9 @@ export type ChatAsk = {
 };
 export type ChatReply = { reply_text: string; sources: { source_type: string; title: string; image_url: string }[] };
 
-/** Ảnh minh họa trong câu trả lời nằm ở chat bot (`/static/...`) — đổi sang đường của Face Beo (có kiểm quyền). */
-export const IMAGE_PROXY_PREFIX = "/api/me/chatbot/static/";
-export function rewriteImagePaths(markdown: string): string {
-  return markdown.replaceAll("](/static/images/", `](${IMAGE_PROXY_PREFIX}images/`).replaceAll('="/static/images/', `="${IMAGE_PROXY_PREFIX}images/`);
-}
-/** Một đường ảnh đứng riêng (trong danh sách "nguồn"), không nằm trong Markdown. */
-export function rewriteImageUrl(url: string): string {
-  return url.startsWith("/static/images/") ? IMAGE_PROXY_PREFIX + url.slice("/static/".length) : url;
-}
+/** Ảnh minh họa trong câu trả lời nằm ở chat bot (`/static/...`) — đổi sang đường của Face Beo (có kiểm quyền).
+ *  Hàm thuần nằm ở `src/lib/client/chatbot-text.ts` vì trang chat cũng cần khi nhận chữ theo luồng. */
+export { IMAGE_PROXY_PREFIX, rewriteImagePaths, rewriteImageUrl } from "./client/chatbot-text";
 
 /** Hỏi chat bot. Lỗi mạng / chat bot chết → thông báo tiếng Việt, không lộ địa chỉ nội bộ. */
 export async function askChatbot(body: ChatAsk): Promise<ChatReply> {
@@ -153,6 +157,29 @@ export async function askChatbot(body: ChatAsk): Promise<ChatReply> {
 
 /** Chỉ nhận đúng vài loại ảnh; chat bot trả về SVG/HTML thì coi như hỏng (tránh chạy mã lạ trong trình duyệt). */
 const IMAGE_TYPES = /^image\/(png|jpeg|jpg|webp|gif)$/i;
+
+/**
+ * Hỏi chat bot theo LUỒNG: trả về đúng thân phản hồi SSE của chat bot để route chuyển thẳng cho trình duyệt.
+ * Gemini viết một câu dài mất cả phút, nên chữ phải hiện dần thay vì chờ xong hết.
+ * Chat bot đời cũ chưa có đường này (404) → `null` để nơi gọi quay về cách hỏi một lần.
+ */
+export async function askChatbotStream(body: ChatAsk): Promise<ReadableStream<Uint8Array> | null> {
+  if (!chatbotConfigured()) throw new HttpError(503, "Chat bot chưa được cấu hình trên máy chủ — báo Quản trị.");
+  let res: Awaited<ReturnType<FetchLike>>;
+  try {
+    res = await fetchImpl(`${baseUrl()}/api/v1/chat/stream`, { method: "POST", headers: headers(true), body: JSON.stringify(body) });
+  } catch {
+    throw new HttpError(502, "Không gọi được Chat bot (máy chủ chat bot đang tắt?). Thử lại sau ít phút.");
+  }
+  if (res.status === 404 || res.status === 405) return null; // chat bot chưa hỗ trợ luồng
+  if (!res.ok) {
+    if (res.status === 429) throw new HttpError(429, "Chat bot đang bận, chờ một chút rồi hỏi lại nhé.");
+    if (res.status === 401 || res.status === 403) throw new HttpError(502, "Chat bot từ chối khóa truy cập — báo Quản trị kiểm tra cấu hình.");
+    if (res.status === 422) throw badRequest("Câu hỏi quá dài hoặc ảnh quá lớn — rút gọn rồi gửi lại.");
+    throw new HttpError(502, "Chat bot trả lời lỗi. Thử lại sau ít phút.");
+  }
+  return res.body ?? null;
+}
 
 /** Tải ảnh minh họa từ chat bot. Đường dẫn phải sạch (chỉ chữ / số / . _ - /), cấm "." và "..". */
 export async function fetchChatbotImage(path: string): Promise<{ body: ArrayBuffer; type: string }> {

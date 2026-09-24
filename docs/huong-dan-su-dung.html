@@ -107,7 +107,7 @@ footer{color:var(--muted);font-size:.85rem;text-align:center;padding:10px}
 <div class="layout">
 <nav class="toc" id="toc">
   <div class="brand">📘 Cẩm nang Face Beo</div>
-  <div class="sub">Hướng dẫn sử dụng · bản v1.17</div>
+  <div class="sub">Hướng dẫn sử dụng · bản v1.18</div>
   <button class="menu-mobile" onclick="document.getElementById('toc').classList.toggle('open')">☰ Mục lục</button>
   <ol>
     <li class="grp">Bắt đầu</li>
@@ -1007,8 +1007,10 @@ stateDiagram-v2
     <li>Mở <b>Chat bot</b> → gõ câu hỏi → Enter (xuống dòng: Shift + Enter).</li>
     <li>Chưa biết hỏi gì thì bấm một câu mẫu ở cột <b>Gợi ý theo chuyên khoa</b> (29 chuyên khoa theo tài liệu đã nạp).</li>
     <li>Cần cho xem hình (phim, vết thương, nhãn thuốc…): bấm biểu tượng máy ảnh, chọn tối đa <b>3 ảnh</b>, mỗi ảnh tối đa <b>10 MB</b> và cả lượt hỏi tối đa <b>12 MB</b>.</li>
+    <li>Câu trả lời <b>hiện dần từng dòng</b> ngay khi chat bot bắt đầu viết (chờ cả câu mới hiện thì tưởng máy treo — câu dài chat bot viết mất cả phút). Trong lúc chờ, chỗ trả lời hiện <b>ba chấm nhấp nháy</b>.</li>
     <li>Câu trả lời có thể kèm hình minh họa lấy từ chính tài liệu gốc.</li>
-    <li><b>Hỏi mới</b> để bắt đầu cuộc khác; các cuộc cũ nằm ở mục <b>Hội thoại đã hỏi</b>.</li>
+    <li>Câu trả lời dài quá thì bấm <b>Dừng</b> (chỗ nút Gửi) — phần đã hiện vẫn giữ nguyên.</li>
+    <li><b>Hỏi mới</b> để bắt đầu cuộc khác. Bấm dấu <b>☰</b> ngay cạnh tên trang để <b>mở / đóng bảng bên</b>: các cuộc đã hỏi (bấm để mở lại, bấm thùng rác để xóa từng cuộc) và gợi ý câu hỏi theo chuyên khoa.</li>
   </ol>
 
   <div class="callout"><b>Lịch sử nằm ở máy của bạn</b>
@@ -1017,7 +1019,7 @@ stateDiagram-v2
   </div>
 
   <div class="callout"><b>Giới hạn mỗi người</b>
-    <p><b>10 câu mỗi phút</b> và <b>100 câu mỗi ngày</b>. Góc trên trang hiện số câu đã hỏi trong ngày. Hết mức thì hôm sau hỏi tiếp; cần nhiều hơn thì báo Quản trị.</p>
+    <p><b>10 câu mỗi phút</b> và <b>100 câu mỗi ngày</b>. Góc trên trang hiện số câu đã hỏi trong ngày. Hết mức thì hôm sau hỏi tiếp; cần nhiều hơn thì báo Quản trị. Chat bot bận, chưa trả lời được chữ nào thì <b>không bị trừ</b> lượt; đã trả lời được một phần rồi mới hỏng thì vẫn tính một lượt.</p>
   </div>
 
   <h3>16.6.2 Cấp quyền dùng <span class="pill a">Quản trị</span><span class="pill h">Nhân sự</span></h3>

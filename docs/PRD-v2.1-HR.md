@@ -549,6 +549,13 @@ công được tính trực tiếp từ planner. Quản lý được cấp `org.
   100 câu/ngày** mỗi người. Lượt được **giữ chỗ trước khi hỏi** (`takeDailySlot`, hỏi hỏng thì trả lại) nên mở nhiều tab cùng
   lúc cũng không vượt mức ngày. Ảnh gửi kèm: ≤ 3 tấm, mỗi tấm ≤ 10 MB và cả lượt hỏi ≤ 12 MB. Lịch sử hội thoại nằm ở `localStorage` của máy người dùng (20 cuộc gần nhất), khóa **riêng theo mã nhân viên**
   (`facebeo.chatbot.v1.<id>`) và bị xóa khi Đăng xuất — máy/tablet dùng chung thì người sau không đọc được của người trước.
+- **Trả lời theo luồng (v1.18.0)**: `POST /api/me/chatbot/ask/stream` chuyển tiếp SSE của chat bot (`/api/v1/chat/stream`,
+  Gemini `generate_content_stream`) — sự kiện `sources` → nhiều `chunk` → `used` (một lần) → `done`, hỏng thì `error`.
+  Lý do: Gemini viết một câu dài mất **60–70 giây**, chờ đủ rồi mới hiện thì người dùng tưởng máy treo; theo luồng thì chữ
+  đầu ra sau vài giây. Chat bot đời cũ chưa có đường luồng (404) → tự quay về `POST /api/v1/chat` hỏi một lần.
+  Lượt hỏi giữ chỗ trước; hỏng **trước khi có chữ nào** thì hoàn lại, đã ra chữ rồi thì tính (chat bot đã tốn tiền gọi).
+  Hàm đổi đường ảnh tách sang `src/lib/client/chatbot-text.ts` vì trang chat phải đổi trên toàn văn bản đã nhận
+  (mẩu chữ có thể cắt ngang giữa một đường dẫn).
 - **Ảnh minh họa**: câu trả lời chứa `/static/images/...` được đổi sang `/api/me/chatbot/static/...` và lấy hộ qua Face Beo
   (kiểm quyền, chặn đường dẫn lạ, `private, max-age=600`). Trình hiện Markdown chỉ nhận ảnh có tiền tố đó.
 - **Triển khai**: một mạng docker cầu nối **riêng** `facebeo-medichat` (external, tạo tay một lần) chỉ có đúng hai container

@@ -208,6 +208,10 @@ Trong Face Beo, tài khoản được cấp quyền hỏi vẫn bình thường.
 **Lưu ý còn hở**: ảnh minh họa `https://medichat.../static/images/...` vẫn mở cho ai biết đúng tên tệp (trang quản trị của
 medichat cần đọc trực tiếp). Đó là hình vẽ minh họa quy trình, không có dữ liệu nhân viên; phần hỏi đáp mới là phần đã khóa.
 
+**Trả lời theo luồng (v1.18.0)**: Face Beo gọi `POST /api/v1/chat/stream` của medichat và chuyển tiếp SSE thẳng cho trình duyệt.
+Caddy trên VPS không đệm phản hồi nên chữ ra ngay; nếu sau này đưa chat bot ra sau một proxy khác, nhớ giữ `X-Accel-Buffering: no`
+và tắt đệm, không thì luồng mất tác dụng. Chat bot đời cũ chưa có đường này thì Face Beo tự quay về cách hỏi một lần.
+
 **Giới hạn lượt**: khi gọi kèm khóa, medichat bỏ qua bộ đếm theo IP của nó (cả phòng khám đi chung một container nên đếm theo
 IP sẽ thành hạn mức chung). Việc chặn lạm dụng do Face Beo lo: 10 câu/phút và 100 câu/ngày cho **từng nhân viên**.
 
