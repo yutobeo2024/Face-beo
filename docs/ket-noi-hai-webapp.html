@@ -1,0 +1,654 @@
+<!doctype html>
+<html lang="vi">
+<meta charset="utf-8">
+<title>Nối hai web app</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap&subset=vietnamese" rel="stylesheet">
+<style>
+:root{
+  --bg:#f7f8fa; --surface:#ffffff; --surface-2:#f1f4f8; --text:#1c2430; --muted:#5b6778; --line:#e2e7ee;
+  --brand:#0f766e; --brand-soft:#e6f4f2; --accent:#b45309; --accent-soft:#fdf3e6;
+  --ok:#15803d; --ok-soft:#e8f6ec; --warn:#b45309; --warn-soft:#fdf3e6; --bad:#b91c1c; --bad-soft:#fdecec;
+  --info:#1d4ed8; --info-soft:#eaf0fd; --code:#eef2f6;
+  --shadow:0 1px 2px rgba(16,24,40,.05),0 1px 3px rgba(16,24,40,.06);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1419; --surface:#161d25; --surface-2:#1c2530; --text:#e3e8ee; --muted:#9aa7b6; --line:#2a3542;
+    --brand:#2dd4bf; --brand-soft:#123330; --accent:#f59e0b; --accent-soft:#3a2a10;
+    --ok:#4ade80; --ok-soft:#10301c; --warn:#fbbf24; --warn-soft:#382a0c; --bad:#f87171; --bad-soft:#3a1616;
+    --info:#93b4ff; --info-soft:#17243f; --code:#1f2a36; --shadow:none;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1419; --surface:#161d25; --surface-2:#1c2530; --text:#e3e8ee; --muted:#9aa7b6; --line:#2a3542;
+  --brand:#2dd4bf; --brand-soft:#123330; --accent:#f59e0b; --accent-soft:#3a2a10;
+  --ok:#4ade80; --ok-soft:#10301c; --warn:#fbbf24; --warn-soft:#382a0c; --bad:#f87171; --bad-soft:#3a1616;
+  --info:#93b4ff; --info-soft:#17243f; --code:#1f2a36; --shadow:none;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:16px}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.65 "Be Vietnam Pro",system-ui,sans-serif;-webkit-text-size-adjust:100%}
+a{color:var(--brand)}
+code,kbd{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:.86em;background:var(--code);padding:.1em .35em;border-radius:4px}
+.layout{display:grid;grid-template-columns:280px minmax(0,1fr);max-width:1280px;margin:0 auto}
+nav.toc{position:sticky;top:0;height:100vh;overflow:auto;padding:24px 16px 40px;border-right:1px solid var(--line)}
+nav.toc .brand{font-weight:700;font-size:1.1rem;margin-bottom:4px}
+nav.toc .sub{color:var(--muted);font-size:.85rem;margin-bottom:18px}
+nav.toc ol{list-style:none;margin:0;padding:0}
+nav.toc li a{display:block;padding:5px 10px;border-radius:6px;text-decoration:none;color:var(--text);font-size:.92rem}
+nav.toc li a:hover{background:var(--surface-2)}
+nav.toc li a.active{background:var(--brand-soft);color:var(--brand);font-weight:600}
+nav.toc .grp{margin:14px 10px 4px;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+main{padding:32px 40px 80px;min-width:0}
+header.hero{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:28px 28px 22px;box-shadow:var(--shadow);margin-bottom:28px}
+header.hero h1{margin:0 0 6px;font-size:1.9rem;line-height:1.25}
+header.hero p{margin:6px 0;color:var(--muted)}
+.theme-btn{float:right;border:1px solid var(--line);background:var(--surface-2);color:var(--text);border-radius:8px;padding:6px 10px;font:inherit;font-size:.85rem;cursor:pointer}
+section{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:26px 28px;margin-bottom:24px;box-shadow:var(--shadow)}
+section>h2{margin:0 0 4px;font-size:1.45rem;line-height:1.3}
+section>h2 .num{color:var(--brand);margin-right:8px}
+.lead{color:var(--muted);margin:0 0 16px}
+h3{font-size:1.1rem;margin:26px 0 8px}
+h4{font-size:1rem;margin:18px 0 6px}
+table{width:100%;border-collapse:collapse;font-size:.92rem;margin:10px 0 16px}
+th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+th{background:var(--surface-2);font-weight:600}
+.tw{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.tw table{min-width:560px}
+.callout{border-left:4px solid var(--info);background:var(--info-soft);padding:12px 16px;border-radius:0 10px 10px 0;margin:14px 0}
+.callout.ok{border-color:var(--ok);background:var(--ok-soft)}
+.callout.warn{border-color:var(--warn);background:var(--warn-soft)}
+.callout.bad{border-color:var(--bad);background:var(--bad-soft)}
+.callout b:first-child{display:block;margin-bottom:2px}
+.callout p{margin:4px 0}
+.steps{counter-reset:s;list-style:none;padding:0;margin:10px 0 16px}
+.steps>li{position:relative;padding:4px 0 10px 44px}
+.steps>li::before{counter-increment:s;content:counter(s);position:absolute;left:0;top:2px;width:30px;height:30px;border-radius:50%;background:var(--brand);color:#fff;display:grid;place-items:center;font-weight:700;font-size:.9rem}
+:root[data-theme="dark"] .steps>li::before{color:#062a27}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .steps>li::before{color:#062a27}}
+.grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));margin:14px 0}
+.card{border:1px solid var(--line);border-radius:12px;padding:14px 16px;background:var(--surface-2)}
+.card h4{margin:0 0 6px}
+.card p,.card ul{margin:4px 0;font-size:.93rem}
+.card ul{padding-left:18px}
+.pill{display:inline-block;padding:1px 9px;border-radius:999px;font-size:.78rem;font-weight:600;background:var(--brand-soft);color:var(--brand);margin-right:4px}
+.pill.a{background:var(--bad-soft);color:var(--bad)}.pill.h{background:var(--accent-soft);color:var(--accent)}.pill.m{background:var(--info-soft);color:var(--info)}.pill.e{background:var(--ok-soft);color:var(--ok)}
+.diagram{border:1px solid var(--line);border-radius:12px;background:var(--surface);padding:14px;margin:14px 0;overflow-x:auto}
+.diagram .cap{font-size:.82rem;color:var(--muted);margin-top:6px}
+pre:not(.mermaid){background:var(--code);border:1px solid var(--line);border-radius:8px;padding:.75em 1em;overflow-x:auto;margin:.6em 0;font-size:.85rem}
+pre:not(.mermaid) code{background:none;padding:0}
+pre.mermaid{margin:0;background:transparent;text-align:center;font-family:inherit;white-space:pre}
+.ex{border:1px dashed var(--line);border-radius:12px;padding:14px 16px;margin:12px 0;background:var(--surface-2)}
+.ex .t{font-weight:700;color:var(--accent);font-size:.85rem;text-transform:uppercase;letter-spacing:.04em}
+details{border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin:8px 0;background:var(--surface-2)}
+details summary{cursor:pointer;font-weight:600}
+details[open] summary{margin-bottom:6px}
+.check li{list-style:none;position:relative;padding-left:26px;margin:6px 0}
+.check{padding-left:0}
+.check li::before{content:"☐";position:absolute;left:0;color:var(--brand)}
+.bug{border:1px solid var(--line);border-radius:12px;margin:14px 0;overflow:hidden}
+.bug .head{background:var(--surface-2);padding:10px 14px;font-weight:600;border-bottom:1px solid var(--line)}
+.bug .body{padding:12px 14px}
+.bug .body p{margin:6px 0}
+.bug .lab{display:inline-block;min-width:104px;font-weight:600;color:var(--muted)}
+.menu-mobile{display:none}
+footer{color:var(--muted);font-size:.85rem;text-align:center;padding:10px}
+@media (max-width:900px){
+  .layout{display:block}
+  nav.toc{position:static;height:auto;border-right:0;padding:16px}
+  nav.toc ol{display:none}
+  nav.toc.open ol{display:block}
+  .menu-mobile{display:inline-block;border:1px solid var(--line);background:var(--surface);color:var(--text);border-radius:8px;padding:6px 12px;font:inherit;font-size:.9rem;cursor:pointer}
+  main{padding:0 16px 60px}
+  section{padding:18px 16px}
+  header.hero{padding:20px 16px}
+  header.hero h1{font-size:1.5rem}
+  .bug .lab{display:block}
+}
+</style>
+
+<div class="layout">
+<nav class="toc" id="toc">
+  <div class="brand">🔌 Nối hai web app</div>
+  <div class="sub">Chat bot y khoa × Face Beo</div>
+  <button class="menu-mobile" onclick="document.getElementById('toc').classList.toggle('open')">☰ Mục lục</button>
+  <ol>
+    <li class="grp">Hiểu vấn đề</li>
+    <li><a href="#bai-toan">1. Bài toán và mục tiêu</a></li>
+    <li><a href="#quyet-dinh">2. Bốn quyết định gốc</a></li>
+    <li><a href="#tong-the">3. Bức tranh tổng thể</a></li>
+    <li class="grp">Cách làm</li>
+    <li><a href="#docker">4. Docker &amp; mạng, nói cho dễ hiểu</a></li>
+    <li><a href="#khoa">5. Khóa chung: ai được hỏi</a></li>
+    <li><a href="#phan-quyen">6. Ai trong công ty được dùng</a></li>
+    <li><a href="#rieng-tu">7. Đếm lượt &amp; quyền riêng tư</a></li>
+    <li><a href="#luong">8. Trả lời theo luồng</a></li>
+    <li><a href="#hanh-trinh">9. Hành trình một câu hỏi</a></li>
+    <li class="grp">Kinh nghiệm</li>
+    <li><a href="#su-co">10. Sổ tay 12 sự cố đã gặp</a></li>
+    <li><a href="#ap-dung">11. Áp dụng cho dự án khác</a></li>
+    <li><a href="#thuat-ngu">12. Thuật ngữ</a></li>
+  </ol>
+</nav>
+
+<main>
+<header class="hero">
+  <button class="theme-btn" id="themeBtn" type="button">🌓 Giao diện</button>
+  <h1>Nối hai web app lại với nhau</h1>
+  <p>Chuyện có thật: một <b>chat bot tra cứu y khoa</b> đang mở cho cả Internet, và một <b>app quản trị nhân sự</b> có sẵn tài khoản của ~100 nhân viên. Làm sao để chat bot chỉ phục vụ người của phòng khám, mà nhân viên vẫn dùng thoải mái như cũ?</p>
+  <p>Tài liệu này kể lại <b>toàn bộ cách làm</b>, kể cả những chỗ làm sai rồi phải sửa. Viết cho người <b>không chuyên kỹ thuật</b> đọc hiểu được và mang cách nghĩ đó sang dự án khác.</p>
+  <p><span class="pill">Ví dụ thật</span><span class="pill m">Có sơ đồ</span><span class="pill e">Có số đo</span><span class="pill a">Có cả lỗi</span></p>
+</header>
+
+<!-- 1 -->
+<section id="bai-toan">
+  <h2><span class="num">1.</span>Bài toán và mục tiêu</h2>
+  <p class="lead">Hai phần mềm do cùng một người sở hữu, chạy trên cùng một máy chủ, nhưng hoàn toàn không biết nhau.</p>
+
+  <div class="grid">
+    <div class="card"><h4>🤖 Chat bot y khoa (tên nội bộ: medichat)</h4>
+      <p>Hỏi đáp về quy trình kỹ thuật, phác đồ điều trị, sơ cứu. Nó đọc tài liệu Bộ Y tế đã nạp sẵn rồi nhờ AI (Gemini của Google) viết câu trả lời.</p>
+      <p><b>Vấn đề:</b> không có đăng nhập. Ai có đường link đều hỏi được, mỗi câu hỏi tiêu tiền của chủ phòng khám.</p></div>
+    <div class="card"><h4>🏥 Face Beo (app nhân sự)</h4>
+      <p>Chấm công khuôn mặt, xếp ca, đơn từ, tính công. Đã có sẵn: tài khoản từng nhân viên, vai trò, phòng ban, hệ thống phân quyền.</p>
+      <p><b>Cái đang thiếu:</b> chưa có gì liên quan tới tra cứu chuyên môn.</p></div>
+  </div>
+
+  <h3>Yêu cầu của chủ dự án, nguyên văn ý</h3>
+  <ul>
+    <li>Thanh menu của app nhân sự có thêm mục <b>Chat bot</b>.</li>
+    <li>Quản trị <b>chọn phòng ban / nhân viên nào</b> mới được dùng.</li>
+    <li>Nhân viên có gửi link ra ngoài thì người ngoài <b>cũng không hỏi được</b> — chỉ tài khoản Face Beo mới mở được.</li>
+    <li>Giao diện chat <b>nằm hẳn trong</b> app nhân sự, không phải nhảy sang trang khác.</li>
+  </ul>
+
+  <div class="callout"><b>Đọc yêu cầu thứ ba cho kỹ</b>
+    <p>"Không hỏi được" khác với "không thấy nút bấm". Giấu nút đi thì người biết chút kỹ thuật vẫn gọi thẳng vào máy chủ chat bot được. Muốn chặn thật thì phải chặn ở <b>máy chủ</b>, không phải ở giao diện. Đây là chỗ nhiều dự án làm hụt.</p>
+  </div>
+</section>
+
+<!-- 2 -->
+<section id="quyet-dinh">
+  <h2><span class="num">2.</span>Bốn quyết định gốc</h2>
+  <p class="lead">Trước khi viết dòng mã nào, có bốn ngã rẽ. Chọn sai một cái là sửa rất tốn.</p>
+
+  <div class="tw"><table>
+    <tr><th>Ngã rẽ</th><th>Hai lựa chọn</th><th>Chọn gì &amp; vì sao</th></tr>
+    <tr>
+      <td><b>Nhúng giao diện thế nào</b></td>
+      <td>(a) Nhúng khung cửa sổ trang cũ vào (iframe)<br>(b) Dựng lại màn hình chat bằng chính bộ giao diện của app nhân sự</td>
+      <td><b>(b)</b>. Nhúng khung thì nhanh nhưng trông như "hai app dán vào nhau": phông chữ khác, màu khác, trên điện thoại cuộn hai lớp rất khó chịu. Dựng lại tốn khoảng một ngày và <b>không phải viết lại phần thông minh</b> — phần đó vẫn nằm ở chat bot.</td>
+    </tr>
+    <tr>
+      <td><b>Chặn người ngoài ở đâu</b></td>
+      <td>(a) Chỉ giấu link<br>(b) Khóa hẳn cửa của chat bot, chỉ app nhân sự mới mở được</td>
+      <td><b>(b)</b>. Chat bot yêu cầu một "mật khẩu máy với máy"; ai gọi thẳng mà không có thì bị từ chối. Sau bước này, link cũ chia sẻ ra ngoài trở nên vô dụng — đúng yêu cầu.</td>
+    </tr>
+    <tr>
+      <td><b>Lịch sử trò chuyện để đâu</b></td>
+      <td>(a) Lưu trên máy chủ<br>(b) Chỉ lưu trong trình duyệt của người dùng</td>
+      <td><b>(b)</b>. Câu hỏi chuyên môn có thể vô tình kèm thông tin bệnh nhân. Không lưu thì không có gì để rò rỉ, không phải xin phép, không phải nghĩ chuyện xóa. Máy chủ <b>chỉ đếm số lượt</b> để chống lạm dụng.</td>
+    </tr>
+    <tr>
+      <td><b>Phân quyền kiểu nào</b></td>
+      <td>(a) Theo vai trò (bác sĩ / điều dưỡng…)<br>(b) Theo phòng ban + đặt riêng cho từng người</td>
+      <td><b>(b)</b>. Thực tế công ty không chia theo vai trò: "mở cho Khoa Khám bệnh, nhưng riêng anh A ở kho cũng cần" là chuyện bình thường. App đã có sẵn kiểu cấu hình y hệt cho tính năng "không chấm công", nên <b>bắt chước cái có sẵn</b> thay vì bịa kiểu mới.</td>
+    </tr>
+  </table></div>
+
+  <div class="callout ok"><b>Bài học chung</b>
+    <p>Khi thêm tính năng vào một hệ thống đã chạy, hãy tìm <b>một tính năng cũ giống nhất</b> rồi làm theo đúng cách đó. Người dùng đỡ phải học lại, người viết mã đỡ nghĩ, và những cái bẫy đã bị vấp một lần thì không vấp lại.</p>
+  </div>
+</section>
+
+<!-- 3 -->
+<section id="tong-the">
+  <h2><span class="num">3.</span>Bức tranh tổng thể</h2>
+  <p class="lead">Một câu hỏi đi qua bốn chặng. Nhân viên chỉ nhìn thấy chặng đầu.</p>
+
+  <div class="diagram">
+<pre class="mermaid">
+flowchart LR
+  NV["👩‍⚕️ Nhân viên<br/>(điện thoại / máy tính)"] -->|"Đăng nhập bằng mã NV"| FB["🏥 Face Beo<br/>face.ydsg.website"]
+  FB -->|"Kiểm: đăng nhập? có quyền?<br/>còn lượt hỏi?"| API["🔐 Cửa duy nhất<br/>/api/me/chatbot/ask/stream"]
+  API -->|"Gọi trong nội bộ máy chủ<br/>kèm khóa bí mật"| BOT["🤖 Chat bot medichat"]
+  BOT -->|"Tra tài liệu Bộ Y tế"| KHO[("📚 Kho tài liệu<br/>Qdrant")]
+  BOT -->|"Nhờ viết câu trả lời"| AI["☁️ Gemini (Google)"]
+  NGOAI["🌐 Người ngoài<br/>có link cũ"] -.->|"Bị từ chối (401)"| BOT
+</pre>
+    <div class="cap">Hình 1. Face Beo là cửa duy nhất. Đường nét đứt là đường đã bị khóa.</div>
+  </div>
+
+  <h3>Ba điều quan trọng trong hình này</h3>
+  <ol class="steps">
+    <li><b>Trình duyệt của nhân viên không bao giờ biết địa chỉ chat bot.</b> Mọi lượt hỏi gửi tới <code>face.ydsg.website</code>; chính máy chủ Face Beo mới là bên đi gặp chat bot. Mở tab Network của trình duyệt cũng không thấy tên máy chat bot đâu.</li>
+    <li><b>Khóa bí mật không bao giờ rời khỏi máy chủ.</b> Nó nằm trong tệp cấu hình của máy chủ, được gắn vào lời gọi ở chặng "máy nói chuyện với máy". Trình duyệt không nhận được, nên không ai sao chép được.</li>
+    <li><b>Chat bot không cần biết gì về nhân sự.</b> Nó không biết ai đang hỏi, không biết phòng ban, không biết hạn mức. Toàn bộ luật đó nằm ở Face Beo. Hai bên chỉ thỏa thuận đúng một việc: "gửi kèm khóa đúng thì tôi trả lời".</li>
+  </ol>
+</section>
+
+<!-- 4 -->
+<section id="docker">
+  <h2><span class="num">4.</span>Docker &amp; mạng, nói cho dễ hiểu</h2>
+  <p class="lead">Phần này giải thích những chữ nghe rất kỹ thuật bằng hình ảnh đời thường, vì nó là chỗ suýt tạo ra một lỗ hổng.</p>
+
+  <div class="grid">
+    <div class="card"><h4>Container là gì</h4><p>Hình dung <b>một cái hộp kín</b> chứa sẵn phần mềm và mọi thứ nó cần để chạy. Trên cùng một máy chủ có thể đặt nhiều hộp, hộp nọ không thấy ruột hộp kia. Máy chủ của phòng khám đang có khoảng 20 hộp cho 5 dự án khác nhau.</p></div>
+    <div class="card"><h4>Mạng docker là gì</h4><p>Là <b>hành lang nối các hộp</b>. Hai hộp cùng hành lang thì gọi nhau bằng tên, như gọi nội bộ trong công ty. Hộp khác hành lang thì không gọi được — coi như ở tòa nhà khác.</p></div>
+    <div class="card"><h4>Vì sao không đi qua Internet</h4><p>Hai app nằm cùng máy chủ. Cho chúng nói chuyện qua hành lang nội bộ thì <b>nhanh hơn, không lộ ra ngoài</b>, và không tốn một vòng qua Cloudflare.</p></div>
+  </div>
+
+  <h3>Cái bẫy: "cho chung hành lang cho tiện"</h3>
+  <p>Cách làm đầu tiên là cho hộp Face Beo bước vào <b>hành lang sẵn có của chat bot</b>. Chạy được ngay. Nhưng hành lang đó còn có một hộ khác: <b>cloudflared</b> của chat bot — cái hộp chuyên mở đường từ Internet vào.</p>
+
+  <div class="diagram">
+<pre class="mermaid">
+flowchart TB
+  subgraph SAI["❌ Cách làm đầu: chung hành lang của chat bot"]
+    F1["Face Beo"] --- B1["Chat bot"]
+    F1 --- C1["cloudflared của chat bot<br/>(mở cửa ra Internet)"]
+    B1 --- C1
+  end
+  subgraph DUNG["✅ Cách làm sau: hành lang riêng, đúng 2 hộ"]
+    F2["Face Beo"] --- B2["Chat bot"]
+  end
+</pre>
+    <div class="cap">Hình 2. Chung hành lang thì cửa ra Internet của hàng xóm cũng chạm được vào app nhân sự.</div>
+  </div>
+
+  <p>Hậu quả: Face Beo được bảo vệ bằng hai lớp (chỉ cho truy cập <b>từ Việt Nam</b>, và tự chặn IP dò mật khẩu). Nhưng cửa ra Internet của chat bot lại đứng <b>bên trong</b> hành lang, nên về lý thuyết có một đường vòng chạm thẳng vào app nhân sự, <b>đi vòng qua cả hai lớp bảo vệ</b>.</p>
+
+  <p><b>Cách sửa:</b> làm một hành lang riêng chỉ có đúng hai hộ — app nhân sự và chat bot. Tạo một lần trên máy chủ:</p>
+  <pre><code>docker network create facebeo-medichat</code></pre>
+  <p>rồi khai báo ở cả hai dự án là "dùng hành lang tên này". Kiểm tra bằng một lệnh, phải thấy đúng hai cái tên:</p>
+  <pre><code>docker network inspect facebeo-medichat -f '{{range .Containers}}{{.Name}} {{end}}'
+# → facebeo-app-1 medichat-backend-1</code></pre>
+
+  <div class="callout warn"><b>Bài học</b>
+    <p>Khi nối hai hệ thống, hãy hỏi: <b>"nối như thế này thì ai nữa được hưởng ké?"</b> Mở đường cho một người quen mà vô tình mở luôn cho cả xóm là lỗi rất hay gặp và rất khó thấy, vì mọi thứ vẫn chạy đúng.</p>
+  </div>
+</section>
+
+<!-- 5 -->
+<section id="khoa">
+  <h2><span class="num">5.</span>Khóa chung: ai được hỏi</h2>
+  <p class="lead">Một chuỗi ký tự ngẫu nhiên dài, hai bên cùng biết. Không có nó thì chat bot không trả lời.</p>
+
+  <ol class="steps">
+    <li><b>Sinh khóa</b> ngay trên máy chủ, không gõ tay, không gửi qua chat: <code>openssl rand -hex 32</code> (64 ký tự ngẫu nhiên).</li>
+    <li><b>Dán vào hai tệp cấu hình</b>: bên Face Beo tên biến là <code>CHATBOT_API_KEY</code>, bên chat bot là <code>CHAT_API_KEY</code>. Hai giá trị phải giống hệt nhau.</li>
+    <li><b>Chat bot kiểm tra ở mọi lượt hỏi</b>: thiếu khóa hoặc sai khóa → từ chối ngay (mã lỗi 401), không tiêu một đồng tiền AI nào.</li>
+    <li><b>Kiểm chứng</b>: gọi thẳng vào chat bot từ Internet phải nhận 401; hỏi qua Face Beo vẫn bình thường.</li>
+  </ol>
+
+  <div class="ex"><div class="t">Thử thật sau khi triển khai</div>
+    <pre><code>curl -X POST https://medichat.../api/v1/chat -d '{"message":"test"}'
+→ 401  (đúng như mong muốn)</code></pre>
+    <p>Từ giây phút này, nhân viên có gửi link chat bot cho người thân thì người đó mở lên cũng không hỏi được câu nào.</p>
+  </div>
+
+  <h3>Ba chi tiết nhỏ nhưng quan trọng</h3>
+  <div class="tw"><table>
+    <tr><th>Chi tiết</th><th>Vì sao cần</th></tr>
+    <tr><td><b>So sánh khóa theo kiểu chống dò</b> (so hết toàn bộ chuỗi, không dừng sớm khi gặp ký tự sai)</td><td>Cách so thông thường dừng ngay ký tự đầu tiên khác nhau. Kẻ kiên nhẫn đo thời gian trả lời có thể dò dần từng ký tự. Dùng hàm so sánh chuyên dụng thì thời gian luôn như nhau.</td></tr>
+    <tr><td><b>Để trống khóa thì in cảnh báo lúc khởi động</b></td><td>Nếu ai đó dựng lại máy chủ mà quên điền khóa, chat bot sẽ mở toang như xưa <b>mà không ai biết</b>. Một dòng cảnh báo trong nhật ký giúp phát hiện ngay.</td></tr>
+    <tr><td><b>Khóa không nằm trong mã nguồn</b></td><td>Mã nguồn nằm trên GitHub. Khóa chỉ nằm trong tệp cấu hình trên máy chủ, không bao giờ được đưa lên kho mã.</td></tr>
+  </table></div>
+
+  <div class="callout"><b>Ảnh minh họa thì sao?</b>
+    <p>Câu trả lời đôi khi kèm hình vẽ quy trình. Ảnh nằm ở máy chủ chat bot, nên Face Beo <b>lấy hộ</b>: trình duyệt xin ảnh từ Face Beo, Face Beo kiểm tra người đó có quyền không rồi mới đi lấy về. Nhờ vậy trình duyệt vẫn không biết địa chỉ chat bot. Face Beo cũng chỉ nhận đúng vài loại ảnh (png, jpg, webp, gif) — nếu máy kia trả về một tệp lạ, coi như lỗi.</p>
+  </div>
+</section>
+
+<!-- 6 -->
+<section id="phan-quyen">
+  <h2><span class="num">6.</span>Ai trong công ty được dùng</h2>
+  <p class="lead">Hai mức: bật cho cả phòng, và đặt riêng cho từng người khi cần khác phòng.</p>
+
+  <div class="diagram">
+<pre class="mermaid">
+flowchart TD
+  A["Nhân viên X mở mục Chat bot"] --> B{"Hồ sơ của X có<br/>đặt riêng không?"}
+  B -- "Có: được dùng" --> R1["✅ Dùng được<br/>(dù phòng đang tắt)"]
+  B -- "Có: không được dùng" --> R2["⛔ Không được<br/>(dù phòng đang bật)"]
+  B -- "Không đặt gì" --> C{"Phòng của X<br/>có được bật?"}
+  C -- Có --> R3["✅ Dùng được"]
+  C -- Không --> R4["⛔ Không được"]
+</pre>
+    <div class="cap">Hình 3. Cấu hình của từng người luôn thắng cấu hình của phòng.</div>
+  </div>
+
+  <div class="ex"><div class="t">Ví dụ</div>
+    <p>Bật cho phòng <b>Khoa Khám bệnh</b> → 12 bác sĩ dùng được ngay. Anh <b>Tâm</b> ở phòng Kế toán cần tra quy trình để làm hồ sơ thanh toán → mở hồ sơ anh Tâm, chọn <i>Được dùng</i>. Chị <b>Lan</b> ở Khoa Khám bệnh nghỉ thai sản, muốn tạm ngừng → chọn <i>Không được dùng</i>, khỏi phải tắt cả phòng.</p>
+  </div>
+
+  <h3>Ai có quyền cấp quyền</h3>
+  <p>Hệ thống có sẵn bảng phân quyền theo vai trò, nên chỉ cần thêm một dòng mới: <b>"Cấp quyền dùng Chat bot"</b>. Mặc định Nhân sự và Quản trị có. Mỗi lần ai đó bật/tắt, hệ thống <b>ghi nhật ký</b> và <b>báo vào nhóm Zalo minh bạch</b> — kể cả khi người đó tự bật cho chính mình.</p>
+
+  <div class="callout warn"><b>Cái bẫy kỹ thuật đã gặp</b>
+    <p>Hệ thống có cơ chế "chỉ nạp bảng quyền mặc định một lần, cho máy mới". Nghĩa là thêm quyền mới vào mã nguồn thì <b>máy đang chạy sẽ không tự có</b> — Nhân sự sẽ không thấy ô tích đâu cả. Cách xử lý: viết luôn một câu lệnh cập nhật cơ sở dữ liệu kèm theo bản phát hành, để khi cập nhật thì dòng quyền mới được thêm vào. Kiểu bẫy này chỉ lộ ra khi thử trên <b>máy thật đã có dữ liệu</b>, không lộ khi thử trên máy trống.</p>
+  </div>
+</section>
+
+<!-- 7 -->
+<section id="rieng-tu">
+  <h2><span class="num">7.</span>Đếm lượt &amp; quyền riêng tư</h2>
+
+  <h3>Vì sao phải đếm</h3>
+  <p>Mỗi câu hỏi tốn tiền gọi AI. Không có giới hạn thì một người mở nghịch vài trăm câu là hết tiền của cả tháng. Đặt hai mức: <b>10 câu mỗi phút</b> và <b>100 câu mỗi ngày</b> cho <b>từng người</b>.</p>
+
+  <h3>Chi tiết tinh tế: giữ chỗ trước, hoàn lại nếu hỏng</h3>
+  <p>Cách làm ngây thơ là: <i>đếm xem đã dùng mấy câu → nếu còn thì hỏi → hỏi xong mới cộng thêm một</i>. Nghe rất hợp lý, nhưng nếu người dùng mở 5 tab và bấm gửi cùng lúc, cả 5 tab đều đọc thấy "còn chỗ" rồi cùng hỏi → vượt hạn mức.</p>
+  <p>Cách đúng: <b>cộng trước rồi mới hỏi</b>; nếu chat bot hỏng và chưa trả được chữ nào thì <b>trả lại lượt</b>. Đo thử đúng tình huống 5 tab cùng lúc ở mức 99/100: chỉ một tab lọt, bốn tab nhận thông báo hết mức, tổng dừng đúng ở 100.</p>
+
+  <div class="callout"><b>Còn một cái bẫy nữa: nửa đêm</b>
+    <p>Câu hỏi bắt đầu lúc 23:59:50, chat bot hỏng lúc 00:00:05. Nếu lúc trả lại lượt mới đi hỏi "hôm nay là ngày nào" thì sẽ trừ nhầm vào hạn mức của <b>ngày mới</b>. Cách sửa: <b>ghi nhớ ngày ngay lúc giữ chỗ</b>, trả lại đúng ngày đó.</p>
+  </div>
+
+  <h3>Máy chủ lưu gì, không lưu gì</h3>
+  <div class="tw"><table>
+    <tr><th></th><th>Có lưu</th><th>Không lưu</th></tr>
+    <tr><td><b>Máy chủ</b></td><td>Số lượt hỏi mỗi người mỗi ngày (chỉ con số)</td><td>Câu hỏi, câu trả lời, ảnh gửi kèm</td></tr>
+    <tr><td><b>Trình duyệt của nhân viên</b></td><td>20 cuộc trò chuyện gần nhất, <b>riêng theo từng tài khoản</b></td><td>—</td></tr>
+  </table></div>
+  <p>Có hẳn một bài kiểm thử tự động làm việc này: hỏi một câu chứa chuỗi bí mật, sau đó <b>quét toàn bộ các bảng dữ liệu</b> xem có bảng nào chứa chuỗi đó không. Nếu sau này ai lỡ tay thêm chỗ lưu nội dung, bài kiểm thử sẽ đỏ ngay.</p>
+
+  <div class="callout bad"><b>Lỗi đã gặp: máy dùng chung</b>
+    <p>Bản đầu lưu lịch sử vào <b>một chỗ chung</b> của trình duyệt. Trên tablet ở quầy tiếp nhận, người sau đăng nhập vào là thấy hội thoại của người trước. Cách sửa: lưu <b>riêng theo mã nhân viên</b>, và <b>xóa sạch khi bấm Đăng xuất</b>. Bài học: hễ có chỗ lưu trên máy dùng chung, luôn hỏi "ai là người tiếp theo ngồi vào máy này?".</p>
+  </div>
+</section>
+
+<!-- 8 -->
+<section id="luong">
+  <h2><span class="num">8.</span>Trả lời theo luồng (chữ chạy dần)</h2>
+  <p class="lead">Đây là thay đổi làm người dùng hài lòng nhất, và nó bắt đầu từ một con số trong nhật ký máy chủ.</p>
+
+  <p>Chủ dự án phản ánh: "chậm hơn bản gốc, không có dấu ba chấm, chữ hiện ra một cục". Mở nhật ký máy chủ ra xem:</p>
+  <pre><code>[TIMING] intent 0.00s | retrieve 1.00s | expand 0.02s | generate 70.45s | tổng 71.48s</code></pre>
+  <p>Đọc ra: tra tài liệu chỉ mất <b>1 giây</b>, còn AI viết câu trả lời mất <b>70 giây</b>. Bản chat bot gốc cũng chờ đúng 70 giây đó — nó chỉ <i>trông</i> nhanh hơn vì có chấm nhấp nháy và hiệu ứng chữ chạy sau khi đã nhận đủ.</p>
+
+  <div class="callout ok"><b>Đừng bắt chước hiệu ứng, hãy sửa cái thật</b>
+    <p>Có thể sao chép y hệt hiệu ứng "gõ chữ" cho giống bản gốc — người dùng vẫn chờ 70 giây. Nhưng AI có chế độ <b>vừa viết vừa gửi</b>. Dùng chế độ đó thì chữ đầu tiên xuất hiện sau ít giây, người đọc bắt đầu đọc trong lúc phần sau vẫn đang được viết. Chờ vẫn là chờ, nhưng cảm giác khác hẳn — và đây là cải thiện thật, không phải đánh lừa.</p>
+  </div>
+
+  <h3>Cơ chế, nói đơn giản</h3>
+  <p>Thay vì "gửi câu hỏi → im lặng → nhận trọn câu trả lời", hai máy chủ giữ một đường dây mở và chat bot <b>đẩy từng mẩu chữ</b> qua đó. Mỗi mẩu kèm một nhãn cho biết đó là gì:</p>
+  <div class="tw"><table>
+    <tr><th>Nhãn</th><th>Nghĩa</th><th>Trang chat làm gì</th></tr>
+    <tr><td><code>sources</code></td><td>Danh sách tài liệu vừa tra được</td><td>Ghi nhớ để hiện nguồn</td></tr>
+    <tr><td><code>used</code></td><td>Đã dùng bao nhiêu câu hôm nay</td><td>Cập nhật ô "12/100 câu"</td></tr>
+    <tr><td><code>chunk</code></td><td>Một mẩu chữ của câu trả lời</td><td>Nối vào bong bóng chat, hiện ngay</td></tr>
+    <tr><td><code>done</code></td><td>Xong</td><td>Tắt ba chấm nhấp nháy</td></tr>
+    <tr><td><code>error</code></td><td>Hỏng</td><td>Hiện lời báo tiếng Việt, giữ nguyên phần đã nhận</td></tr>
+  </table></div>
+
+  <p>Ngoài ra cứ 15 giây im lặng thì Face Beo gửi một "nhịp thở" vô hình qua đường dây. Lý do: nhiều lớp mạng trung gian tự cắt kết nối nếu không thấy dữ liệu gì trong một thời gian — mà AI có thể im tới cả phút trước khi nhả chữ đầu.</p>
+
+  <div class="callout warn"><b>Một dòng cấu hình dễ quên</b>
+    <p>Các lớp trung gian (proxy) hay <b>gom dữ liệu lại cho đủ một gói rồi mới chuyển</b>. Nếu vậy thì mọi công sức stream bằng không: chữ vẫn đến một cục. Phải nói rõ với chúng "đừng gom" bằng một dòng tiêu đề (<code>X-Accel-Buffering: no</code>) và không nén lại dọc đường.</p>
+  </div>
+</section>
+
+<!-- 9 -->
+<section id="hanh-trinh">
+  <h2><span class="num">9.</span>Hành trình một câu hỏi</h2>
+  <p class="lead">Ghép tất cả lại: điều gì xảy ra từ lúc bấm Gửi tới lúc chữ hiện ra.</p>
+
+  <div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant N as 👩‍⚕️ Nhân viên
+  participant F as 🏥 Face Beo
+  participant B as 🤖 Chat bot
+  participant G as ☁️ Gemini
+  N->>F: Gửi câu hỏi
+  F->>F: Đúng người đang đăng nhập?
+  F->>F: Có quyền dùng chat bot?
+  F->>F: Chưa quá 10 câu/phút?
+  F->>F: Giữ chỗ 1 lượt trong ngày
+  F->>B: Chuyển câu hỏi + khóa bí mật
+  B->>B: Tra tài liệu (khoảng 1 giây)
+  B-->>F: Danh sách nguồn
+  F-->>N: Nguồn + số lượt đã dùng
+  B->>G: Nhờ viết câu trả lời
+  G-->>B: …mẩu chữ…
+  B-->>F: …mẩu chữ…
+  F-->>N: …chữ hiện dần trên màn hình…
+  G-->>B: Hết
+  B-->>F: Xong
+  F-->>N: Xong (tắt ba chấm)
+</pre>
+    <div class="cap">Hình 4. Bốn bước kiểm tra đầu tiên đều ở phía Face Beo, trước khi tốn một đồng nào cho AI.</div>
+  </div>
+
+  <h3>Nếu hỏng ở giữa thì sao</h3>
+  <div class="tw"><table>
+    <tr><th>Hỏng ở đâu</th><th>Người dùng thấy gì</th><th>Có bị trừ lượt không</th></tr>
+    <tr><td>Chưa đăng nhập / không có quyền</td><td>Không thấy mục Chat bot; gọi thẳng thì bị từ chối</td><td>Không (chưa tính gì)</td></tr>
+    <tr><td>Hỏi quá nhanh</td><td>"Bạn hỏi hơi nhanh — chờ N giây"</td><td>Không</td></tr>
+    <tr><td>Chat bot tắt / AI quá tải, chưa ra chữ nào</td><td>"Chat bot trả lời lỗi. Thử lại sau ít phút."</td><td><b>Không</b> — lượt được hoàn</td></tr>
+    <tr><td>Đứt giữa chừng khi đã hiện được một phần</td><td>Giữ nguyên phần đã hiện + lời báo lỗi ở cuối</td><td>Có (AI đã tốn tiền)</td></tr>
+    <tr><td>Người dùng bấm Dừng</td><td>Dừng ngay, giữ phần đã hiện</td><td>Có nếu đã ra chữ</td></tr>
+  </table></div>
+</section>
+
+<!-- 10 -->
+<section id="su-co">
+  <h2><span class="num">10.</span>Sổ tay 12 sự cố đã gặp</h2>
+  <p class="lead">Phần giá trị nhất của tài liệu. Mỗi mục: triệu chứng → nguyên nhân → cách sửa → bài học mang đi được.</p>
+
+  <div class="bug">
+    <div class="head">① Nối hai app bằng cách cho chung "hành lang" mạng</div>
+    <div class="body">
+      <p><span class="lab">Triệu chứng</span> Không có. Mọi thứ chạy đúng — đó mới là chỗ nguy hiểm.</p>
+      <p><span class="lab">Nguyên nhân</span> Hành lang đó còn chứa cửa ra Internet của dự án kia, nên app nhân sự bị lộ ra một đường vòng, không qua hai lớp bảo vệ.</p>
+      <p><span class="lab">Cách sửa</span> Tạo hành lang riêng đúng hai hộ, kiểm tra bằng lệnh liệt kê thành viên.</p>
+      <p><span class="lab">Bài học</span> Mỗi lần mở kết nối, hãy liệt kê <b>ai nữa</b> đang đứng trong phạm vi đó.</p>
+    </div>
+  </div>
+
+  <div class="bug">
+    <div class="head">② Hạn mức chống lạm dụng bỗng thành hạn mức chung cho cả công ty</div>
+    <div class="body">
+      <p><span class="lab">Triệu chứng</span> Chưa ai kêu, nhưng tính ra là sẽ kêu: cả phòng khám chỉ được 20 câu mỗi phút.</p>
+      <p><span class="lab">Nguyên nhân</span> Chat bot đếm theo <b>địa chỉ mạng của người gọi</b>. Trước đây mỗi người một địa chỉ. Nay mọi lượt hỏi đều do <b>máy chủ Face Beo</b> gọi hộ, nên chat bot chỉ thấy đúng một địa chỉ.</p>
+      <p><span class="lab">Cách sửa</span> Khi lời gọi có khóa nội bộ hợp lệ, chat bot bỏ cách đếm theo địa chỉ — vì phía trong đã đếm theo từng người rồi. Khách lạ vẫn bị đếm như cũ.</p>
+      <p><span class="lab">Bài học</span> Đặt một thứ ra sau "người đại diện" thì mọi quy tắc <b>tính theo người gọi</b> đều phải xem lại: giới hạn, nhật ký, chặn IP, thống kê.</p>
+    </div>
+  </div>
+
+  <div class="bug">
+    <div class="head">③ Chuyển tiếp luồng bằng cách "dò chữ" trong gói tin</div>
+    <div class="body">
+      <p><span class="lab">Triệu chứng</span> Thỉnh thoảng mất nguyên một mẩu chữ; có lúc câu trả lời đúng nhưng vẫn kèm dòng "⚠️ Chat bot trả lời lỗi"; có lúc hỏi mãi mà số câu trong ngày không tăng.</p>
+      <p><span class="lab">Nguyên nhân</span> Dữ liệu chạy trên mạng bị cắt thành gói theo kích thước, <b>không theo ý nghĩa</b>. Một thông điệp có thể bị cắt làm đôi giữa chừng. Mã cũ tìm chuỗi <code>event: chunk</code> trong từng gói và chèn thêm dữ liệu ngay sau gói đó — nên khi thông điệp bị cắt, phần chèn vào rơi vào giữa câu, làm hỏng cả hai.</p>
+      <p><span class="lab">Cách sửa</span> Gom dữ liệu vào một bộ đệm, chỉ xử lý những thông điệp <b>đã trọn vẹn</b> (nhận ra bằng dấu kết thúc), phần dở dang giữ lại chờ gói sau.</p>
+      <p><span class="lab">Bài học</span> Đây là lỗi kinh điển khi làm việc với dữ liệu chảy theo dòng: <b>ranh giới gói tin không phải ranh giới ý nghĩa</b>. Cũng đúng với đọc tệp lớn, đọc cổng COM, đọc log.</p>
+    </div>
+  </div>
+
+  <div class="bug">
+    <div class="head">④ Báo lỗi hai lần</div>
+    <div class="body">
+      <p><span class="lab">Triệu chứng</span> Chat bot hỏng một lần mà người dùng thấy hai dòng cảnh báo giống nhau.</p>
+      <p><span class="lab">Nguyên nhân</span> Có hai chỗ cùng lo việc báo lỗi: một chỗ khi nhận được thông điệp lỗi, một chỗ khi đường dây đóng mà chưa có chữ nào. Cả hai cùng chạy.</p>
+      <p><span class="lab">Cách sửa</span> Một cái cờ "đã báo rồi thì thôi".</p>
+      <p><span class="lab">Bài học</span> Lỗi này do <b>bài kiểm thử tự động</b> phát hiện chứ không phải mắt người. Đáng để viết kiểm thử cho cả đường hỏng, không chỉ đường chạy đúng.</p>
+    </div>
+  </div>
+
+  <div class="bug">
+    <div class="head">⑤ Lịch sử trò chuyện dùng chung trên máy dùng chung</div>
+    <div class="body">
+      <p><span class="lab">Triệu chứng</span> Trên tablet, người đăng nhập sau đọc được hội thoại của người trước.</p>
+      <p><span class="lab">Nguyên nhân</span> Chỗ lưu trong trình duyệt được đặt một cái tên cố định, không gắn với tài khoản.</p>
+      <p><span class="lab">Cách sửa</span> Tên chỗ lưu kèm mã nhân viên; bấm Đăng xuất thì xóa sạch mọi lịch sử chat trên máy đó.</p>
+      <p><span class="lab">Bài học</span> "Chỉ lưu ở máy người dùng" nghe có vẻ riêng tư, nhưng <b>máy có thể của chung</b>.</p>
+    </div>
+  </div>
+
+  <div class="bug">
+    <div class="head">⑥ Trả lại lượt nhầm sang ngày hôm sau</div>
+    <div class="body">
+      <p><span class="lab">Triệu chứng</span> Rất hiếm, khó thấy: hạn mức ngày mới bị hụt một câu.</p>
+      <p><span class="lab">Nguyên nhân</span> Lúc trả lại lượt mới hỏi "hôm nay là ngày nào" — nếu vừa qua nửa đêm thì đã sang ngày khác.</p>
+      <p><span class="lab">Cách sửa</span> Ghi nhớ ngày ngay lúc giữ chỗ, trả lại đúng ngày đó.</p>
+      <p><span class="lab">Bài học</span> Mọi việc "làm rồi hoàn tác" phải <b>ghi nhớ bối cảnh lúc làm</b>, không hỏi lại lúc hoàn tác. Đúng cả với số tiền, tỉ giá, giá ca, người phụ trách.</p>
+    </div>
+  </div>
+
+  <div class="bug">
+    <div class="head">⑦ Sửa mã Python: máy báo "cú pháp đúng" nhưng chương trình vẫn chết</div>
+    <div class="body">
+      <p><span class="lab">Triệu chứng</span> Kiểm tra cú pháp qua, nhưng khi chạy thật thì cả chat bot không khởi động nổi.</p>
+      <p><span class="lab">Nguyên nhân</span> Python phân biệt các khối lệnh bằng <b>độ thụt lề</b>. Khi tách một đoạn mã dài ra thành hàm riêng, phần thân bị lệch lề, câu <code>return</code> rơi ra ngoài hàm. Công cụ kiểm tra cú pháp nhanh không bắt được loại lỗi này.</p>
+      <p><span class="lab">Cách sửa</span> Chạy <b>bộ kiểm thử thật</b> của dự án (nó nạp chương trình lên và gọi thử) — lỗi lộ ra ngay.</p>
+      <p><span class="lab">Bài học</span> "Kiểm tra cú pháp" không bằng "chạy thử". Trước khi đưa lên máy chủ, luôn chạy bộ kiểm thử sẵn có của dự án, dù mình chỉ sửa một chỗ nhỏ.</p>
+    </div>
+  </div>
+
+  <div class="bug">
+    <div class="head">⑧ Bản dựng trên máy chủ hỏng vì tệp khóa phiên bản thư viện</div>
+    <div class="body">
+      <p><span class="lab">Triệu chứng</span> Máy cá nhân chạy tốt, đưa lên máy chủ thì dừng ngay bước cài thư viện với lỗi "danh sách thư viện không khớp".</p>
+      <p><span class="lab">Nguyên nhân</span> Máy cá nhân dùng bộ công cụ phiên bản mới hơn máy chủ, nên tệp khóa phiên bản do nó sinh ra thiếu vài dòng mà bản cũ đòi.</p>
+      <p><span class="lab">Cách sửa</span> Sinh lại tệp đó <b>bằng đúng phiên bản công cụ mà máy chủ dùng</b> (chạy trong một container giống hệt), rồi ghi cách làm vào tài liệu dự án.</p>
+      <p><span class="lab">Bài học</span> Máy lập trình và máy chủ nên dùng cùng phiên bản công cụ. Nếu không, hãy dựng thử trong môi trường giống máy chủ trước khi phát hành.</p>
+    </div>
+  </div>
+
+  <div class="bug">
+    <div class="head">⑨ Lệnh cập nhật máy chủ dừng im lặng, không in một chữ nào</div>
+    <div class="body">
+      <p><span class="lab">Triệu chứng</span> Chạy lệnh cập nhật, không có thông báo gì, máy chủ vẫn chạy bản cũ.</p>
+      <p><span class="lab">Nguyên nhân</span> Nhãn phiên bản đã bị sửa (do vá lỗi trước khi phát hành). Lệnh tải nhãn về từ chối ghi đè nhãn cũ, báo lỗi, và vì kịch bản được đặt chế độ "gặp lỗi là dừng", nó dừng ngay trước câu lệnh in thông tin.</p>
+      <p><span class="lab">Cách sửa</span> Cho phép cập nhật nhãn (<code>--force</code>) và ghi chú lý do trong kịch bản.</p>
+      <p><span class="lab">Bài học</span> Kịch bản triển khai nên <b>in ra nó đang làm gì</b> ngay từ dòng đầu. Im lặng là kiểu báo lỗi tệ nhất.</p>
+    </div>
+  </div>
+
+  <div class="bug">
+    <div class="head">⑩ Cấp quyền xong mà menu không hiện</div>
+    <div class="body">
+      <p><span class="lab">Triệu chứng</span> Đã tích ô cho phòng mình, kiểm tra dữ liệu thấy đúng, nhưng mục Chat bot vẫn không xuất hiện.</p>
+      <p><span class="lab">Nguyên nhân</span> Trình duyệt đã tải sẵn khung trang từ trước lúc tích ô và dùng lại bản đã tải.</p>
+      <p><span class="lab">Cách sửa</span> Tải lại trang (hoặc đăng xuất rồi vào lại).</p>
+      <p><span class="lab">Bài học</span> Khi báo cáo lỗi giao diện, câu hỏi đầu tiên luôn là: <b>"đã tải lại trang chưa?"</b>. Và khi làm tính năng đổi quyền, nên nói rõ trong tài liệu rằng thay đổi có hiệu lực ở lần tải trang kế tiếp.</p>
+    </div>
+  </div>
+
+  <div class="bug">
+    <div class="head">⑪ AI trả lời được một câu rồi báo lỗi liên tục</div>
+    <div class="body">
+      <p><span class="lab">Triệu chứng</span> Câu đầu ngon lành, câu sau "Chat bot trả lời lỗi".</p>
+      <p><span class="lab">Nguyên nhân</span> Đọc nhật ký thấy rõ ba thứ khác nhau: một khóa AI <b>hết tiền trả trước</b>, hai khóa còn lại gặp <b>model đang quá tải</b> (lỗi phía nhà cung cấp, không phải lỗi mình).</p>
+      <p><span class="lab">Cách sửa</span> Dựng hai lớp dự phòng: gặp quá tải thì <b>đổi sang khóa khác</b>; hết khóa thì <b>đổi sang model khác</b>. Ngay lần thử sau khi triển khai, nhật ký cho thấy nó chuyển hai lần rồi trả lời thành công trong 19 giây.</p>
+      <p><span class="lab">Bài học</span> Dịch vụ bên ngoài <b>sẽ</b> hỏng. Hãy hỏi trước: "nếu nhà cung cấp này chết 30 phút thì sao?" và chuẩn bị đường lui. Cũng nên đọc kỹ mã lỗi: hết tiền, hết lượt, quá tải là ba chuyện khác nhau, cách xử lý khác nhau.</p>
+    </div>
+  </div>
+
+  <div class="bug">
+    <div class="head">⑫ Ảnh lấy hộ có thể mang về thứ không phải ảnh</div>
+    <div class="body">
+      <p><span class="lab">Triệu chứng</span> Chưa xảy ra — do người rà soát mã phát hiện.</p>
+      <p><span class="lab">Nguyên nhân</span> Face Beo lấy ảnh từ chat bot rồi chuyển thẳng cho trình duyệt, kèm nguyên nhãn "loại tệp" do bên kia khai báo. Nếu bên kia (hoặc ai đó chen vào giữa) trả về một tệp chứa mã, trình duyệt có thể chạy nó trong ngữ cảnh của Face Beo.</p>
+      <p><span class="lab">Cách sửa</span> Chỉ chấp nhận đúng bốn loại ảnh; khác đi thì coi như lỗi.</p>
+      <p><span class="lab">Bài học</span> Dữ liệu lấy từ hệ thống khác, dù là "hệ thống nhà mình", vẫn phải kiểm tra trước khi đưa cho người dùng.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 11 -->
+<section id="ap-dung">
+  <h2><span class="num">11.</span>Áp dụng cho dự án khác</h2>
+  <p class="lead">Rút gọn thành một quy trình bảy bước và một danh sách kiểm tra.</p>
+
+  <h3>Bảy bước nối hệ thống A vào hệ thống B</h3>
+  <ol class="steps">
+    <li><b>Viết ra một câu</b> ai được dùng cái gì, và "không được dùng" nghĩa là gì. Ví dụ: "chỉ tài khoản đang làm việc, được cấp quyền, mới hỏi được; người ngoài gọi thẳng phải bị từ chối".</li>
+    <li><b>Chọn một cửa duy nhất.</b> Mọi lối khác phải đóng. Nếu còn một lối phụ "cho tiện" thì coi như chưa khóa.</li>
+    <li><b>Đặt khóa giữa hai máy</b>, sinh ngẫu nhiên, để trong tệp cấu hình, không đưa vào mã nguồn, không gửi qua tin nhắn.</li>
+    <li><b>Cho hai bên gặp nhau ở đường nội bộ</b> hẹp nhất có thể — chỉ đúng hai thành viên.</li>
+    <li><b>Đặt hạn mức</b> theo từng người dùng thật, không theo địa chỉ máy, vì sau khi nối thì mọi người chung một địa chỉ.</li>
+    <li><b>Quyết định dữ liệu nào không lưu</b> — và viết một bài kiểm thử tự động canh chừng điều đó.</li>
+    <li><b>Thử từ ngoài vào</b>: mở link cũ, gọi thẳng API, đăng nhập bằng tài khoản không có quyền. Nếu chưa thử được kiểu "kẻ xấu" thì chưa xong.</li>
+  </ol>
+
+  <h3>Danh sách kiểm tra trước khi phát hành</h3>
+  <ul class="check">
+    <li>Gọi thẳng vào hệ thống B từ Internet → bị từ chối.</li>
+    <li>Mở tab Network của trình duyệt → không thấy địa chỉ hệ thống B, không thấy khóa.</li>
+    <li>Liệt kê thành viên của đường nội bộ → đúng những cái tên mong đợi, không dư.</li>
+    <li>Tài khoản chưa được cấp quyền → không thấy menu <b>và</b> gọi thẳng cũng bị từ chối.</li>
+    <li>Vượt hạn mức → thông báo tiếng Việt dễ hiểu, không phải lỗi kỹ thuật.</li>
+    <li>Tắt hệ thống B → hệ thống A vẫn chạy, chỉ tính năng đó báo lỗi lịch sự.</li>
+    <li>Hỏi một câu chứa chuỗi bí mật → không bảng dữ liệu nào chứa chuỗi đó.</li>
+    <li>Chạy toàn bộ bộ kiểm thử của <b>cả hai</b> dự án, không chỉ dự án mình vừa sửa.</li>
+    <li>Dựng thử trong môi trường giống máy chủ trước khi phát hành.</li>
+    <li>Có đường lui khi dịch vụ bên ngoài hỏng (đổi khóa, đổi nhà cung cấp, báo lỗi tử tế).</li>
+  </ul>
+
+  <div class="callout ok"><b>Mẹo cuối: để máy tự soát</b>
+    <p>Sau khi làm xong, dự án này cho <b>hai người soát độc lập</b> (một người rà mã, một người chuyên viết kiểm thử phá hoại) cùng xem lại. Họ tìm ra ba lỗi thật mà người viết không thấy, trong đó có lỗi số ③ ở trên — lỗi chỉ xảy ra khi gói tin bị cắt đúng chỗ hiểm. Việc soát chéo đáng giá hơn nhiều so với thời gian bỏ ra.</p>
+  </div>
+</section>
+
+<!-- 12 -->
+<section id="thuat-ngu">
+  <h2><span class="num">12.</span>Thuật ngữ</h2>
+  <div class="tw"><table>
+    <tr><th>Từ</th><th>Nghĩa đời thường</th></tr>
+    <tr><td>API</td><td>Cửa cho <b>máy</b> gọi máy, thay vì cho người bấm nút. Ví dụ: "gửi câu hỏi này, trả tôi câu trả lời".</td></tr>
+    <tr><td>Container (hộp)</td><td>Một gói kín chứa phần mềm và mọi thứ nó cần, chạy độc lập trên máy chủ.</td></tr>
+    <tr><td>Mạng docker (hành lang)</td><td>Đường nối giữa các hộp trên cùng máy chủ. Cùng hành lang thì gọi nhau được.</td></tr>
+    <tr><td>Proxy (bên trung gian)</td><td>Bên đứng giữa nhận hộ rồi chuyển tiếp. Ở đây Face Beo là bên trung gian để giấu chat bot và kiểm tra quyền.</td></tr>
+    <tr><td>Stream (luồng)</td><td>Gửi dần từng phần thay vì chờ xong hết mới gửi — như xem phim trực tuyến, không cần tải xong cả phim.</td></tr>
+    <tr><td>Token / khóa</td><td>Chuỗi ký tự bí mật dùng làm "mật khẩu giữa hai máy".</td></tr>
+    <tr><td>localStorage</td><td>Chỗ nhớ nhỏ của trình duyệt trên chính máy người dùng. Xóa dữ liệu trình duyệt là mất.</td></tr>
+    <tr><td>Rate limit (hạn mức)</td><td>Giới hạn số lần được làm trong một khoảng thời gian, để chống lạm dụng.</td></tr>
+    <tr><td>Nhật ký (log)</td><td>Sổ ghi việc máy chủ đã làm. Khi có sự cố, đây là nơi đầu tiên cần đọc.</td></tr>
+    <tr><td>Kiểm thử tự động</td><td>Những đoạn mã chạy thử phần mềm và báo đỏ khi có gì hỏng — như bộ cảm biến báo cháy cho mã nguồn.</td></tr>
+  </table></div>
+
+  <div class="callout"><b>Muốn xem mã nguồn thật</b>
+    <p>Phía Face Beo: <code>src/lib/chatbot.ts</code> (luật dùng chung), <code>src/app/api/me/chatbot/</code> (các cửa), <code>src/app/me/chatbot/</code> (màn hình chat). Kiểm thử: <code>tests/integration/chatbot*.test.ts</code>. Triển khai: <code>docs/DEPLOY-VPS.md</code> mục "Chat bot tra cứu y khoa". Phía chat bot: <code>backend/main.py</code>, kiểm thử ở <code>backend/tests/test_security.py</code>.</p>
+  </div>
+</section>
+
+<footer>Face Beo × medichat · Nối hai web app · cập nhật 25/09/2026 (Face Beo v1.18.0)</footer>
+</main>
+</div>
+
+<script>
+(function(){
+  var root=document.documentElement;
+  try{var t=localStorage.getItem("fb-theme");if(t)root.setAttribute("data-theme",t);}catch(e){}
+  document.getElementById("themeBtn").addEventListener("click",function(){
+    var dark=root.getAttribute("data-theme")==="dark"||(!root.getAttribute("data-theme")&&matchMedia("(prefers-color-scheme: dark)").matches);
+    var next=dark?"light":"dark";root.setAttribute("data-theme",next);
+    try{localStorage.setItem("fb-theme",next);}catch(e){}
+  });
+  var links=[].slice.call(document.querySelectorAll("nav.toc a"));
+  var map={};links.forEach(function(a){map[a.getAttribute("href").slice(1)]=a;});
+  if("IntersectionObserver" in window){
+    var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){links.forEach(function(a){a.classList.remove("active")});var a=map[e.target.id];if(a)a.classList.add("active");}});},{rootMargin:"-10% 0px -80% 0px"});
+    document.querySelectorAll("main section").forEach(function(s){io.observe(s)});
+  }
+  links.forEach(function(a){a.addEventListener("click",function(){document.getElementById("toc").classList.remove("open")})});
+  setTimeout(function(){
+    var pending=[].slice.call(document.querySelectorAll("pre.mermaid")).filter(function(p){return !p.querySelector("svg")&&!p.getAttribute("data-processed")});
+    if(!pending.length||window.__fbMermaid)return;window.__fbMermaid=1;
+    var s=document.createElement("script");s.src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js";
+    s.onload=function(){
+      var dark=root.getAttribute("data-theme")==="dark"||(!root.getAttribute("data-theme")&&matchMedia("(prefers-color-scheme: dark)").matches);
+      mermaid.initialize({startOnLoad:false,theme:dark?"dark":"default",fontFamily:"Be Vietnam Pro, sans-serif",securityLevel:"strict"});
+      mermaid.run({nodes:pending});
+    };
+    document.head.appendChild(s);
+  },700);
+})();
+</script>
+</html>

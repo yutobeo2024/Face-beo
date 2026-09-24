@@ -205,6 +205,13 @@ Khi mất mạng, kiosk lưu embedding, điểm liveness, snapshot và `captured
 
 Mở `/kiosk/benchmark` trên tablet thật và bấm **Bắt đầu 50 lượt**. Trang hiển thị p50, p95 và max. Mục tiêu p95 ≤ 1,5 giây.
 
+## Chat bot tra cứu y khoa
+
+Face Beo là cửa duy nhất vào chat bot medichat (cùng VPS): trình duyệt không thấy địa chỉ lẫn khóa của chat bot, quyền dùng
+cấp theo phòng ban / từng người, câu trả lời về theo luồng (chữ hiện dần). Cách nối hai ứng dụng — logic, mạng docker, khóa
+chung, luồng SSE, cùng **12 sự cố đã gặp và cách xử lý**, viết cho người không chuyên đọc hiểu được:
+[`docs/ket-noi-hai-webapp.html`](docs/ket-noi-hai-webapp.html). Triển khai: `docs/DEPLOY-VPS.md` mục "Chat bot tra cứu y khoa".
+
 ## Cấu hình Zalo OA
 
 Tài liệu đầy đủ (sơ đồ cho người không kỹ thuật, 14 loại tin, nhiều nhóm theo loại tin, job nền, cài đặt, xử lý sự cố, tham chiếu mã/API, link tài liệu Zalo):
