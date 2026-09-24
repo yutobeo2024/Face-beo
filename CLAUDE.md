@@ -7,7 +7,7 @@
   MiniFASNetV2 phía server), đơn từ, tính công/chốt công tháng, xuất Excel, thông báo Zalo OA (nhiều nhóm theo loại tin: minh bạch / chấm công / đơn từ + tin riêng).
 - Stack: Next.js 15 App Router, Prisma 6 (SQLite WAL), zod 4, luxon, exceljs, node-cron, jose JWT (HS256, 7 ngày, `sessionVersion`),
   vitest 4 (test tích hợp gọi thẳng route handler, DB `data/test.db`).
-- Phiên bản hiện tại: **v1.16.0** (tag GitHub `v1.16.0`, repo `yutobeo2024/Face-beo`). Phiên bản ghi trong prose (README, PRD,
+- Phiên bản hiện tại: **v1.17.0** (tag GitHub `v1.17.0`, repo `yutobeo2024/Face-beo`). Phiên bản ghi trong prose (README, PRD,
   OPEN-DECISIONS), không có CHANGELOG; `package.json` version không dùng để đánh số.
 
 ## Lệnh
@@ -66,6 +66,11 @@ chạy cron / khóa Zalo thật song song với VPS (refresh token Zalo dùng m�
   `data/photos/<id>/`, ≤ 2 MB sau cắt, sharp chuẩn hóa 600×800. Sửa = chính chủ / `employees.manage` (HR/ADMIN khác chỉ ADMIN). Nghỉ việc → `clearProfilePhoto`.
 - Không chấm công (v1.12.0, `src/lib/attendance-scope.ts`): truy vấn nhân viên cho chấm công / cảnh báo / báo cáo / xếp ca / chốt công phải ghép
   `TRACKED_WHERE` (AND). Chỉ ADMIN đổi `attendanceExempt` (phòng / người).
+- Chat bot (v1.17.0, `src/lib/chatbot.ts`): Face Beo là cửa DUY NHẤT — gọi chat bot qua mạng docker kèm `X-Chat-Key`, KHÔNG để lộ
+  địa chỉ/khóa ra trình duyệt, KHÔNG lưu nội dung hỏi đáp (chỉ đếm lượt ở `ChatbotUsage`). Quyền dùng: `Department.chatbotEnabled` +
+  `Employee.chatbotEnabled` (null = theo phòng); cấp phát cần `chatbot.grant`. Ảnh chỉ qua `/api/me/chatbot/static/` (chỉ nhận
+  `image/png|jpeg|webp|gif`). Mạng docker nối hai app là mạng CẦU NỐI RIÊNG `facebeo-medichat` — đừng cho `facebeo-app` vào thẳng
+  `medichat_default` (cloudflared của medichat sẽ đi vòng qua mặt Caddy). Giới hạn lượt giữ chỗ trước khi hỏi (`takeDailySlot`).
 - Độ trễ (v1.16.0): `useApi` có kho nhớ theo URL (hiện dữ liệu cũ rồi làm mới ngầm) — sau mỗi lần GHI cứ để `api()` tự gọi `clearApiCache()`,
   đừng fetch vòng ngoài. Ảnh đại diện `private, max-age=600` (URL có `?v=`). Phía trình duyệt KHÔNG dùng luxon (`src/lib/client/format.ts`
   tự tính theo UTC+7, có test đối chiếu). Chạy sau Caddy nên KHÔNG đặt `CLIENT_IP_HEADER` (IP thật ở `X-Forwarded-For`).

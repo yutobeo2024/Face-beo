@@ -162,6 +162,61 @@ chung một IP khi giới hạn tần suất đăng nhập.
 `/api/zalo/webhook*` (máy chủ Zalo gọi, đã kiểm chữ ký) và `/.well-known/*` (xác thực chứng chỉ). Script tự dừng nếu tải được dưới
 300 dải (nghi lỗi mạng) để không khóa nhầm cả phòng khám.
 
+## Chat bot tra cứu y khoa (v1.17.0)
+
+Chat bot (dự án **medichat**, `~/medichat` trên cùng VPS) trước đây công khai không đăng nhập. Từ v1.17.0 chỉ Face Beo gọi được:
+
+```
+Điện thoại ──> Face Beo (/me/chatbot) ──> /api/me/chatbot/ask (kiểm đăng nhập + quyền + giới hạn)
+                                              └──> http://backend:8089/api/v1/chat  (mạng docker, kèm X-Chat-Key)
+```
+
+**Cài một lần:**
+
+```bash
+# 1) Sinh khóa chung cho hai bên (giữ kín, không commit)
+KEY=$(openssl rand -hex 32)
+
+# 2) Face Beo biết khóa
+grep -q '^CHATBOT_API_KEY=' /opt/facebeo/.env || echo "CHATBOT_API_KEY=$KEY" >> /opt/facebeo/.env
+
+# 3) Chat bot bắt buộc khóa (thiếu biến này = vẫn mở cho mọi người như trước; lúc khởi động backend sẽ in cảnh báo)
+grep -q '^CHAT_API_KEY=' ~/medichat/backend/.env || echo "CHAT_API_KEY=$KEY" >> ~/medichat/backend/.env
+
+# 4) Mạng cầu nối RIÊNG chỉ có hai container: facebeo-app và medichat-backend.
+#    (Không cho Face Beo vào thẳng medichat_default: làm vậy thì cloudflared của medichat cũng gọi được
+#     facebeo-app:3000, tức là một đường vòng qua mặt Caddy — chặn ngoài Việt Nam + fail2ban.)
+docker network create facebeo-medichat 2>/dev/null || true
+cd ~/medichat && git pull && docker compose up -d --force-recreate backend
+
+# 5) Cập nhật Face Beo (compose của Face Beo cũng tham gia mạng cầu nối này)
+cd /opt/facebeo/src && sh deploy/update.sh v1.17.0
+```
+
+**Kiểm tra:**
+
+```bash
+# a) Hỏi thẳng chat bot từ ngoài → 401
+curl -s -X POST https://medichat.ydsgchatbot.io.vn/api/v1/chat -H 'content-type: application/json' -d '{"message":"test"}'
+
+# b) Mạng cầu nối đúng 2 container (facebeo-app, medichat-backend-1) — KHÔNG có cloudflared nào
+docker network inspect facebeo-medichat -f '{{range .Containers}}{{.Name}} {{end}}'
+```
+
+Trong Face Beo, tài khoản được cấp quyền hỏi vẫn bình thường.
+
+**Lưu ý còn hở**: ảnh minh họa `https://medichat.../static/images/...` vẫn mở cho ai biết đúng tên tệp (trang quản trị của
+medichat cần đọc trực tiếp). Đó là hình vẽ minh họa quy trình, không có dữ liệu nhân viên; phần hỏi đáp mới là phần đã khóa.
+
+**Giới hạn lượt**: khi gọi kèm khóa, medichat bỏ qua bộ đếm theo IP của nó (cả phòng khám đi chung một container nên đếm theo
+IP sẽ thành hạn mức chung). Việc chặn lạm dụng do Face Beo lo: 10 câu/phút và 100 câu/ngày cho **từng nhân viên**.
+
+**Đổi khóa về sau**: sinh khóa mới, sửa cả hai file `.env`, dựng lại `medichat-backend` và `facebeo-app`. Quên một bên thì
+Face Beo báo "Chat bot từ chối khóa truy cập" (502) — không mất dữ liệu.
+
+**Cấp quyền dùng**: mặc định không ai dùng được. Cấu hình → Tổ chức → tích "Được dùng Chat bot" cho phòng, hoặc mở hồ sơ từng
+nhân viên. Quyền cấp phát là `chatbot.grant` (Nhân sự + Quản trị có sẵn; migration đã chèn dòng cho Nhân sự).
+
 ## Theo dõi
 
 ```bash

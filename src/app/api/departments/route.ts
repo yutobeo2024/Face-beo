@@ -11,7 +11,7 @@ export const GET = handle(async (req) => {
   const rows = await prisma.department.findMany({
     where: s === null ? {} : u.role === "MANAGER" ? { id: { in: s } } : { id: u.departmentId },
     orderBy: { id: "asc" },
-    select: { id: true, name: true, managerId: true, approvalMode: true, attendanceExempt: true, manager: { select: { name: true, code: true } }, _count: { select: { employees: { where: { active: true } } } } },
+    select: { id: true, name: true, managerId: true, approvalMode: true, attendanceExempt: true, chatbotEnabled: true, manager: { select: { name: true, code: true } }, _count: { select: { employees: { where: { active: true } } } } },
   });
   // totalEmployeeCount tính cả người đã nghỉ việc (hồ sơ vẫn ghi phòng) — UI dùng để biết phòng có xóa được không.
   const totals = await prisma.employee.groupBy({ by: ["departmentId"], where: { departmentId: { in: rows.map((r) => r.id) } }, _count: { _all: true } });

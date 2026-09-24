@@ -107,7 +107,7 @@ footer{color:var(--muted);font-size:.85rem;text-align:center;padding:10px}
 <div class="layout">
 <nav class="toc" id="toc">
   <div class="brand">📘 Cẩm nang Face Beo</div>
-  <div class="sub">Hướng dẫn sử dụng · bản v1.16</div>
+  <div class="sub">Hướng dẫn sử dụng · bản v1.17</div>
   <button class="menu-mobile" onclick="document.getElementById('toc').classList.toggle('open')">☰ Mục lục</button>
   <ol>
     <li class="grp">Bắt đầu</li>
@@ -133,6 +133,7 @@ footer{color:var(--muted);font-size:.85rem;text-align:center;padding:10px}
     <li><a href="#zalo">15. Zalo &amp; thông báo</a></li>
     <li><a href="#nhan-vien-tu-phuc-vu">16. Trang cá nhân nhân viên</a></li>
     <li><a href="#cai-app">16.5 Cài Face Beo thành app</a></li>
+    <li><a href="#chat-bot">16.6 Chat bot tra cứu y khoa</a></li>
     <li><a href="#lich-thang">17. Lịch làm việc hằng tháng</a></li>
     <li><a href="#hoi-dap">18. Hỏi đáp &amp; xử lý sự cố</a></li>
   </ol>
@@ -992,6 +993,47 @@ stateDiagram-v2
   </div>
 </section>
 
+<!-- 16.6 -->
+<section id="chat-bot">
+  <h2><span class="num">16.6</span>Chat bot tra cứu y khoa</h2>
+  <p class="lead"><span class="pill e">Nhân viên được cấp</span><span class="pill a">Quản trị cấp quyền</span> Hỏi đáp về <b>quy trình kỹ thuật, phác đồ điều trị, sơ cứu</b> dựa trên tài liệu Bộ Y tế đã nạp sẵn. Mục <b>Chat bot</b> nằm ở menu bên trái (điện thoại: bấm ☰ rồi chọn).</p>
+
+  <div class="callout warn"><b>Câu trả lời do AI tổng hợp</b>
+    <p>Chat bot đọc tài liệu đã nạp rồi tóm tắt lại — có thể thiếu hoặc hiểu sai ngữ cảnh. <b>Luôn đối chiếu tài liệu gốc trước khi áp dụng cho người bệnh.</b> Không nhập tên, số điện thoại, CCCD hay thông tin nhận dạng của bệnh nhân vào ô hỏi.</p>
+  </div>
+
+  <h3>16.6.1 Cách dùng</h3>
+  <ol class="steps">
+    <li>Mở <b>Chat bot</b> → gõ câu hỏi → Enter (xuống dòng: Shift + Enter).</li>
+    <li>Chưa biết hỏi gì thì bấm một câu mẫu ở cột <b>Gợi ý theo chuyên khoa</b> (29 chuyên khoa theo tài liệu đã nạp).</li>
+    <li>Cần cho xem hình (phim, vết thương, nhãn thuốc…): bấm biểu tượng máy ảnh, chọn tối đa <b>3 ảnh</b>, mỗi ảnh tối đa <b>10 MB</b> và cả lượt hỏi tối đa <b>12 MB</b>.</li>
+    <li>Câu trả lời có thể kèm hình minh họa lấy từ chính tài liệu gốc.</li>
+    <li><b>Hỏi mới</b> để bắt đầu cuộc khác; các cuộc cũ nằm ở mục <b>Hội thoại đã hỏi</b>.</li>
+  </ol>
+
+  <div class="callout"><b>Lịch sử nằm ở máy của bạn</b>
+    <p>20 cuộc gần nhất lưu <b>trong trình duyệt của chính máy đó</b> — đổi máy hoặc xóa dữ liệu trình duyệt là mất. Máy chủ <b>không lưu</b> câu hỏi và câu trả lời, chỉ đếm số lượt để chống lạm dụng. Muốn xóa sạch: mục Hội thoại đã hỏi → <b>Xóa</b>.</p>
+  </div>
+
+  <div class="callout"><b>Giới hạn mỗi người</b>
+    <p><b>10 câu mỗi phút</b> và <b>100 câu mỗi ngày</b>. Góc trên trang hiện số câu đã hỏi trong ngày. Hết mức thì hôm sau hỏi tiếp; cần nhiều hơn thì báo Quản trị.</p>
+  </div>
+
+  <h3>16.6.2 Cấp quyền dùng <span class="pill a">Quản trị</span><span class="pill h">Nhân sự</span></h3>
+  <p>Mặc định <b>không ai</b> dùng được — phải cấp:</p>
+  <ul>
+    <li><b>Cả phòng</b>: Cấu hình → tab <b>Tổ chức</b> → tích <b>Được dùng Chat bot</b> ở phòng đó (cần quyền Tổ chức, mặc định là Quản trị).</li>
+    <li><b>Từng người</b>: Nhân viên → <b>Sửa</b> → ô <b>Chat bot tra cứu</b>: <i>Theo phòng ban</i> / <i>Được dùng</i> / <i>Không được dùng</i>. Đặt ở đây <b>thắng</b> cấu hình của phòng — dùng để cấp thêm cho một người ở phòng chưa mở, hoặc cấm riêng một người.</li>
+    <li>Ai không được cấp thì <b>không thấy</b> mục Chat bot và gọi thẳng vào cũng bị từ chối.</li>
+    <li>Mỗi lần cấp / thu hồi đều ghi nhật ký và báo vào nhóm Zalo minh bạch.</li>
+    <li>Quyền <b>"Cấp quyền dùng Chat bot"</b> nằm trong Phân quyền (nhóm Chat bot) — mặc định Nhân sự và Quản trị có.</li>
+  </ul>
+
+  <div class="callout ok"><b>Chia sẻ link ra ngoài không dùng được</b>
+    <p><b>Hỏi đáp</b> chỉ nhận câu đi qua Face Beo: người ngoài mở địa chỉ cũ của chat bot và bấm gửi sẽ bị từ chối, nên không lo nhân viên gửi link cho người ngoài tra cứu. (Riêng <i>hình minh họa</i> của chat bot vẫn mở cho ai biết đúng đường dẫn tệp — đó chỉ là hình vẽ quy trình trong tài liệu Bộ Y tế, không có dữ liệu nhân viên hay bệnh nhân.)</p>
+  </div>
+</section>
+
 <!-- 17 -->
 <section id="lich-thang">
   <h2><span class="num">17.</span>Lịch làm việc hằng tháng (ai làm gì, khi nào)</h2>
@@ -1028,7 +1070,7 @@ stateDiagram-v2
   <details><summary>Đăng xuất trên điện thoại thì máy tính cũng bị thoát?</summary><p>Đúng, có chủ đích: đăng xuất ở bất kỳ đâu sẽ thoát tài khoản trên mọi thiết bị (kể cả phiên lỡ để lại ở máy dùng chung). Đăng nhập lại là được. Đổi mật khẩu cũng vậy.</p></details>
 </section>
 
-<footer>Face Beo · Cẩm nang sử dụng · cập nhật 24/09/2026 (phiên bản ứng dụng v1.16.0 · https://face.ydsg.website)</footer>
+<footer>Face Beo · Cẩm nang sử dụng · cập nhật 24/09/2026 (phiên bản ứng dụng v1.17.0 · https://face.ydsg.website)</footer>
 </main>
 </div>
 

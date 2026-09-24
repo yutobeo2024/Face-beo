@@ -17,6 +17,8 @@ model Department {
   approvalMode String @default("MANAGER_OR_HR")
   // v1.12.0: cả phòng không chấm công giờ giấc (vd. Ban Giám đốc) — không cảnh báo / Zalo, ẩn khỏi chấm công, báo cáo, xếp ca
   attendanceExempt Boolean @default(false)
+  // v1.17.0: cả phòng được dùng Chat bot tra cứu y khoa (từng người có thể đặt khác ở Employee.chatbotEnabled)
+  chatbotEnabled Boolean @default(false)
 }
 
 // Danh mục chức danh / chuyên khoa (v1.7.0): thuộc tính của nhân viên, không ảnh hưởng phân quyền.
@@ -48,6 +50,8 @@ model Employee {
   // v1.10.0: ảnh đại diện = 1 ảnh nhìn thẳng đã cắt khuôn mặt lúc enroll (data/avatars/<id>/<key>); xóa cùng mẫu khuôn mặt.
   // v1.12.0: null = theo phòng; true = không chấm công; false = vẫn chấm công dù phòng không chấm công
   attendanceExempt   Boolean?
+  // v1.17.0: null = theo phòng; true = được dùng Chat bot dù phòng tắt; false = cấm dù phòng bật
+  chatbotEnabled     Boolean?
   faceAvatarKey      String?
   faceAvatarAt       DateTime?
   // v1.13.0: ảnh đại diện tự chọn (không dùng nhận diện), 600×800 JPEG ở data/photos/<id>/<key>; ưu tiên hơn ảnh khuôn mặt. Xóa khi nghỉ việc.
@@ -251,6 +255,18 @@ model AuditLog {
 
   // v1.16.0: Tổng quan đếm/tra theo action + thời gian; bảng này lớn nhanh nhất nên không có chỉ mục là quét toàn bảng.
   @@index([action, createdAt])
+}
+
+// v1.17.0 — Đếm số lượt hỏi Chat bot mỗi người mỗi ngày: để chặn lạm dụng (khóa Gemini trả phí) và xem thống kê.
+// CỐ Ý không lưu câu hỏi / câu trả lời: nội dung chỉ nằm trên máy người dùng.
+model ChatbotUsage {
+  employeeId Int
+  day        String // "YYYY-MM-DD" giờ VN
+  count      Int      @default(0)
+  updatedAt  DateTime @updatedAt
+
+  @@id([employeeId, day])
+  @@index([day])
 }
 
 model AppSetting {

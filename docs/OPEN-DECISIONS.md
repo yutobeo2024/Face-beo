@@ -22,6 +22,11 @@ Ghi lại những điểm đã phát hiện trong quá trình làm và test, c�
   tạo lại OA Secret Key webhook (nếu Zalo cho), dán lại vào `/opt/facebeo/.env`, `up -d --force-recreate`.
 - **Trạng thái:** chờ chủ dự án thao tác.
 
+## Đã chốt v1.17.0 (24/09/2026)
+
+- **Chat bot tra cứu y khoa nhúng trong Face Beo**: dựng lại giao diện trong Face Beo (không iframe), khóa đường gọi công khai của
+  chat bot, lịch sử chỉ lưu trên máy người dùng, cấp quyền theo phòng + từng người. Xem PRD v2.1 mục 31.
+
 ## Đã chốt v1.16.0 (24/09/2026)
 
 - **Đi thẳng tới VPS thay vì vòng qua Cloudflare** (nhanh khoảng 10 lần), giữ đường hầm làm dự phòng; chặn truy cập ngoài Việt Nam + fail2ban.

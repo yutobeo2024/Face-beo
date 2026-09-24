@@ -5,7 +5,7 @@ import { Select } from "./ui";
 type Dept = { id: number; name: string };
 
 export function useDepartments() {
-  return useApi<{ departments: (Dept & { managerId: number | null; approvalMode?: string; attendanceExempt?: boolean; manager: { name: string; code: string } | null; employeeCount: number; totalEmployeeCount: number })[] }>("/api/departments");
+  return useApi<{ departments: (Dept & { managerId: number | null; approvalMode?: string; attendanceExempt?: boolean; chatbotEnabled?: boolean; manager: { name: string; code: string } | null; employeeCount: number; totalEmployeeCount: number })[] }>("/api/departments");
 }
 
 export function DeptSelect({ value, onChange, className, allLabel = "Tất cả phòng ban" }: { value: string; onChange: (v: string) => void; className?: string; allLabel?: string }) {

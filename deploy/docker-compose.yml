@@ -14,12 +14,21 @@ services:
       # v1.16.0: chạy sau Caddy trên chính máy này → IP thật nằm ở X-Forwarded-For do Caddy ghi (TRUSTED_PROXY_HOPS=1 mặc định).
       # Nếu quay lại chạy CHỈ qua Cloudflare Tunnel thì đặt lại CLIENT_IP_HEADER: "cf-connecting-ip".
       NODE_OPTIONS: "--max-old-space-size=1024"
+      # v1.17.0 — Chat bot tra cứu y khoa (dự án medichat chạy cùng VPS). Gọi trong mạng docker, KHÔNG qua Internet.
+      # CHATBOT_API_KEY đặt trong /opt/facebeo/.env và phải khớp CHAT_API_KEY của medichat.
+      CHATBOT_API_URL: "http://backend:8089"
     volumes:
       - /opt/facebeo/data:/app/data
       - /opt/facebeo/models:/app/models
     # Chỉ mở ra loopback của VPS cho Caddy gọi — không ra Internet (tường lửa vẫn chỉ mở 80/443).
     ports:
       - "127.0.0.1:3100:3000"
+    # Mạng riêng của Face Beo + một mạng RIÊNG chỉ có đúng hai container (app này và backend chat bot).
+    # KHÔNG vào thẳng mạng medichat_default: làm vậy thì cloudflared của medichat cũng gọi được facebeo-app:3000,
+    # tức là có đường vòng qua mặt Caddy (chặn ngoài Việt Nam + fail2ban).
+    networks:
+      - default
+      - chatbot
     mem_limit: 1500m
     restart: unless-stopped
     healthcheck:
@@ -61,3 +70,10 @@ services:
     logging:
       driver: json-file
       options: { max-size: "5m", max-file: "3" }
+
+# Mạng cầu nối riêng giữa Face Beo và backend chat bot. Tạo một lần trên VPS (xem docs/DEPLOY-VPS.md):
+#   docker network create facebeo-medichat
+networks:
+  chatbot:
+    external: true
+    name: facebeo-medichat

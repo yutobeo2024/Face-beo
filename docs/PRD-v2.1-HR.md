@@ -528,3 +528,29 @@ công được tính trực tiếp từ planner. Quản lý được cấp `org.
   ~21 KB nén; bỏ `backdrop-blur` ở thanh dính và tiêu đề bảng (mỗi khung hình cuộn phải vẽ lại vùng mờ).
 - **Máy chủ**: thêm chỉ mục `AuditLog(action, createdAt)`, `LeaveRequest(status, createdAt)`, `(type, status, executedAt)`,
   `Employee(active, departmentId, code)`, `(role, active)`; `PRAGMA synchronous=NORMAL` đi cùng WAL; giới hạn bộ nhớ Node 1 GB.
+
+## 31. Chat bot tra cứu y khoa trong Face Beo (v1.17.0, 24/09/2026)
+
+- **Bối cảnh**: chat bot RAG (dự án `medichat`, thư mục `D:\RAG VER2 GG`) chạy cùng VPS, trước đây **công khai không đăng nhập** —
+  ai có link cũng hỏi được và tiêu khóa Gemini trả phí.
+- **Cửa duy nhất là Face Beo**: trang `/me/chatbot` dựng lại giao diện chat bằng component của Face Beo; mọi lượt hỏi đi qua
+  `POST /api/me/chatbot/ask` → máy chủ Face Beo kiểm đăng nhập + quyền + giới hạn rồi gọi `http://backend:8089/api/v1/chat`
+  **trong mạng docker** kèm header `X-Chat-Key`. Trình duyệt không biết địa chỉ lẫn khóa của chat bot.
+- **Khóa đường công khai**: `backend/main.py` của medichat thêm `_require_chat_key` — có biến `CHAT_API_KEY` thì `/api/v1/chat`
+  bắt buộc header khớp, thiếu → 401 (thiếu biến thì in cảnh báo lúc khởi động). Trang `/admin` nạp tài liệu giữ nguyên.
+  Gọi kèm khóa hợp lệ thì medichat **bỏ bộ đếm theo IP** của nó, vì mọi nhân viên đi chung một container Face Beo nên đếm theo
+  IP sẽ biến thành hạn mức chung cho cả phòng khám; việc chặn lạm dụng do Face Beo lo theo từng người.
+  Ảnh `/static/images/...` của medichat vẫn công khai (trang quản trị của nó cần), nhưng chỉ là hình minh họa quy trình.
+- **Ai được dùng**: `Department.chatbotEnabled` (cả phòng) + `Employee.chatbotEnabled` (null = theo phòng, true/false = đặt riêng,
+  thắng cấu hình phòng) — cùng kiểu "không chấm công". Logic ở `src/lib/chatbot.ts` (`chatbotInfo`, `assertChatbotAllowed`).
+  Cấp phát cần năng lực mới **`chatbot.grant`** (mặc định HR + ADMIN; migration chèn sẵn dòng cho HR vì `ensureDefaultPermissions`
+  có chốt sentinel không tự nạp quyền mới). Ô của cả phòng nằm trong tab Tổ chức nên còn cần `org.manage`.
+- **Không lưu nội dung**: máy chủ chỉ đếm lượt (`ChatbotUsage { employeeId, day, count }`) để chặn lạm dụng — **10 câu/phút,
+  100 câu/ngày** mỗi người. Lượt được **giữ chỗ trước khi hỏi** (`takeDailySlot`, hỏi hỏng thì trả lại) nên mở nhiều tab cùng
+  lúc cũng không vượt mức ngày. Ảnh gửi kèm: ≤ 3 tấm, mỗi tấm ≤ 10 MB và cả lượt hỏi ≤ 12 MB. Lịch sử hội thoại nằm ở `localStorage` của máy người dùng (20 cuộc gần nhất).
+- **Ảnh minh họa**: câu trả lời chứa `/static/images/...` được đổi sang `/api/me/chatbot/static/...` và lấy hộ qua Face Beo
+  (kiểm quyền, chặn đường dẫn lạ, `private, max-age=600`). Trình hiện Markdown chỉ nhận ảnh có tiền tố đó.
+- **Triển khai**: một mạng docker cầu nối **riêng** `facebeo-medichat` (external, tạo tay một lần) chỉ có đúng hai container
+  `facebeo-app` và `medichat-backend`. Không cho Face Beo vào thẳng `medichat_default` vì như vậy `cloudflared` của medichat
+  cũng gọi được `facebeo-app:3000`, thành đường vòng qua mặt Caddy (chặn ngoài Việt Nam + fail2ban). Biến `CHATBOT_API_URL`,
+  `CHATBOT_API_KEY` trong `/opt/facebeo/.env` phải khớp `CHAT_API_KEY` của medichat.

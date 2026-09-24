@@ -56,6 +56,7 @@ export const GET = handle(async (req) => {
       departmentId: true,
       department: { select: { name: true, attendanceExempt: true } },
       attendanceExempt: true,
+      chatbotEnabled: true,
       defaultShiftId: true,
       defaultShift: { select: { name: true, startTime: true, endTime: true } },
       scheduleType: true,

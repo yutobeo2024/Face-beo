@@ -18,6 +18,7 @@ type Emp = {
   hasPhoto?: boolean;
   canEditPhoto?: boolean;
   attendanceExempt?: boolean | null;
+  chatbotEnabled?: boolean | null;
   attendance?: { exempt: boolean; source: "EMPLOYEE" | "DEPARTMENT" | null };
   phone?: string | null;
   nationalId?: string | null;
@@ -65,6 +66,7 @@ type Form = {
   jobTitleId: string;
   specialtyId: string;
   attendanceExempt?: "" | "true" | "false";
+  chatbotEnabled?: "" | "true" | "false";
 };
 type Pattern = { id: number; name: string } & Record<(typeof DAY_KEYS)[number], number | null>;
 const DAY_KEYS = ["monShiftId", "tueShiftId", "wedShiftId", "thuShiftId", "friShiftId", "satShiftId", "sunShiftId"] as const;
@@ -102,6 +104,7 @@ export default function EmployeesPage() {
   const manage = can("employees.manage");
   const enroll = can("faces.enroll");
   const privileged = can("roles.assignPrivileged");
+  const canGrantChatbot = can("chatbot.grant");
   // Chỉ Quản trị sửa được tài khoản Nhân sự / Quản trị (luật chống leo thang quyền, server cũng kiểm tra lại).
   const canEdit = (e: { id: number; role: string }) => manage && (privileged || !PRIVILEGED.includes(e.role) || e.id === me.id);
   const roleOptions = Object.entries(ROLE).filter(([v]) => privileged || !PRIVILEGED.includes(v));
@@ -165,6 +168,7 @@ export default function EmployeesPage() {
         specialtyId: form.specialtyId ? Number(form.specialtyId) : null,
         // Chế độ chấm công: chỉ Quản trị thấy / đổi (server cũng kiểm).
         ...(me.role === "ADMIN" && form.id && form.attendanceExempt !== undefined ? { attendanceExempt: form.attendanceExempt === "" ? null : form.attendanceExempt === "true" } : {}),
+        ...(canGrantChatbot && form.id && form.chatbotEnabled !== undefined ? { chatbotEnabled: form.chatbotEnabled === "" ? null : form.chatbotEnabled === "true" } : {}),
       };
       if (form.id) {
         await api(`/api/employees/${form.id}`, { method: "PATCH", body: { ...body, active: form.active } });
@@ -372,6 +376,7 @@ export default function EmployeesPage() {
                       jobTitleId: e.jobTitleId ? String(e.jobTitleId) : "",
                       specialtyId: e.specialtyId ? String(e.specialtyId) : "",
                       attendanceExempt: e.attendanceExempt === true ? "true" : e.attendanceExempt === false ? "false" : "",
+                      chatbotEnabled: e.chatbotEnabled === true ? "true" : e.chatbotEnabled === false ? "false" : "",
                     })
                   }
                 >
@@ -503,6 +508,17 @@ export default function EmployeesPage() {
                     <option value="">Theo phòng ban</option>
                     <option value="true">Không chấm công</option>
                     <option value="false">Vẫn chấm công (dù phòng không chấm công)</option>
+                  </Select>
+                )}
+              </Field>
+            )}
+            {canGrantChatbot && form.id && (
+              <Field label="Chat bot tra cứu" hint="Ai được dùng thì thấy mục Chat bot trong menu. Đặt ở đây thắng cấu hình của phòng ban.">
+                {(id) => (
+                  <Select id={id} value={form.chatbotEnabled ?? ""} onChange={(e) => setForm({ ...form, chatbotEnabled: e.target.value as Form["chatbotEnabled"] })}>
+                    <option value="">Theo phòng ban</option>
+                    <option value="true">Được dùng</option>
+                    <option value="false">Không được dùng (dù phòng được cấp)</option>
                   </Select>
                 )}
               </Field>

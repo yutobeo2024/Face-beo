@@ -16,6 +16,8 @@ const schema = z.object({
   approvalMode: z.enum(APPROVAL_MODES).optional(),
   // v1.12.0: cả phòng không chấm công (vd. Ban Giám đốc). Chỉ Quản trị.
   attendanceExempt: z.boolean().optional(),
+  // v1.17.0: cả phòng được dùng Chat bot. Cần quyền "chatbot.grant".
+  chatbotEnabled: z.boolean().optional(),
 });
 
 /** Đổi tên, gán quản lý, đổi cách duyệt đơn của phòng ban. Người được gán tự lên vai trò MANAGER nếu đang là EMPLOYEE. */
@@ -31,6 +33,9 @@ export const PATCH = handle<{ id: string }>(async (req, ctx) => {
   // (mặc định chỉ Quản trị có org.manage; Nhân sự đổi được nếu Quản trị cấp quyền "Tổ chức").
   if (body.approvalMode !== undefined && u.role !== "ADMIN" && u.role !== "HR") throw forbidden("Quản lý không được đổi cách duyệt đơn của phòng");
   if (body.attendanceExempt !== undefined && body.attendanceExempt !== d.attendanceExempt && u.role !== "ADMIN") throw forbidden("Chỉ Quản trị được đổi chế độ chấm công của phòng");
+  if (body.chatbotEnabled !== undefined && body.chatbotEnabled !== d.chatbotEnabled && !(await can(u, "chatbot.grant"))) {
+    throw forbidden("Bạn không có quyền cấp Chat bot cho phòng ban");
+  }
   let promoted: { id: number; code: string; name: string } | null = null;
   if (body.managerId) {
     const m = await prisma.employee.findUnique({ where: { id: body.managerId } });
@@ -62,6 +67,14 @@ export const PATCH = handle<{ id: string }>(async (req, ctx) => {
     await announce(u, `đã ${body.attendanceExempt ? "đặt KHÔNG CHẤM CÔNG cho" : "bật lại chấm công cho"} phòng ${d.name}`, {
       key: `dept-exempt:${id}:${Date.now()}`,
       detail: body.attendanceExempt ? "Không cảnh báo / Zalo trễ, vắng, quên chấm; ẩn khỏi chấm công, báo cáo, xếp ca" : undefined,
+    });
+  }
+  if (body.chatbotEnabled !== undefined && body.chatbotEnabled !== d.chatbotEnabled) {
+    await audit({ actorId: u.id, action: "CHATBOT_ACCESS", entity: "Department", entityId: id, detail: { chatbotEnabled: body.chatbotEnabled, name: d.name } });
+    await announce(u, `đã ${body.chatbotEnabled ? "CẤP" : "thu hồi"} quyền dùng Chat bot cho phòng ${d.name}`, {
+      key: `dept-chatbot:${id}:${Date.now()}`,
+      detail: "Từng nhân viên vẫn có thể được đặt riêng (cấp thêm hoặc cấm) trong hồ sơ nhân viên.",
+      always: true,
     });
   }
   if (body.approvalMode !== undefined && body.approvalMode !== d.approvalMode) {

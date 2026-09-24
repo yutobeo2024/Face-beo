@@ -14,7 +14,7 @@ import { employeeUpdateSchema } from "@/lib/validators";
 import { audit } from "@/lib/audit";
 import { invalidateFaceCache } from "@/lib/face-matcher";
 import { FACE_MODEL_VERSION } from "@/lib/roles";
-import { requirePerm } from "@/lib/permissions";
+import { can, requirePerm } from "@/lib/permissions";
 import { assertCanModify } from "@/lib/employee-guards";
 import { assertCatalogIds } from "@/lib/catalogs";
 import { PERSONAL_KEYS, assertUniqueEmployee, canSeePersonal, maskPersonal, redactPersonal } from "@/lib/employees";
@@ -42,6 +42,7 @@ export const GET = handle<{ id: string }>(async (req, ctx) => {
       defaultShiftId: true,
       zaloLinkedAt: true,
       biometricConsentAt: true,
+      chatbotEnabled: true,
       faceTemplates: { select: { modelVersion: true, createdAt: true } },
       faceAvatarKey: true,
       faceAvatarAt: true,
@@ -76,6 +77,9 @@ export const PATCH = handle<{ id: string }>(async (req, ctx) => {
   // Không chấm công = không bị cảnh báo trễ / vắng: chỉ Quản trị đặt được (người khác có thể tự "thoát" chấm công cho mình / phòng mình).
   if (body.attendanceExempt !== undefined && body.attendanceExempt !== e.attendanceExempt && u.role !== "ADMIN") {
     throw forbidden("Chỉ Quản trị được đổi chế độ chấm công của nhân viên");
+  }
+  if (body.chatbotEnabled !== undefined && body.chatbotEnabled !== e.chatbotEnabled && !(await can(u, "chatbot.grant"))) {
+    throw forbidden("Bạn không có quyền cấp Chat bot cho nhân viên");
   }
   const { resetPassword, unlinkZalo, ...fields } = body;
   // Không phải Nhân sự / Quản trị (vd. Quản lý được cấp quyền quản lý nhân viên): bỏ qua trường cá nhân của người khác — form của họ
@@ -162,6 +166,10 @@ export const PATCH = handle<{ id: string }>(async (req, ctx) => {
   if (fields.name && fields.name !== e.name) changes.push("đổi họ tên");
   if (fields.jobTitleId !== undefined && fields.jobTitleId !== e.jobTitleId) changes.push("đổi chức danh");
   if (fields.specialtyId !== undefined && fields.specialtyId !== e.specialtyId) changes.push("đổi chuyên khoa");
+  if (fields.chatbotEnabled !== undefined && fields.chatbotEnabled !== e.chatbotEnabled) {
+    changes.push(`Chat bot: ${fields.chatbotEnabled === true ? "ĐƯỢC DÙNG" : fields.chatbotEnabled === false ? "không được dùng" : "theo phòng"}`);
+    await audit({ actorId: u.id, action: "CHATBOT_ACCESS", entity: "Employee", entityId: id, detail: { chatbotEnabled: fields.chatbotEnabled, code: e.code } });
+  }
   if (fields.attendanceExempt !== undefined && fields.attendanceExempt !== e.attendanceExempt) {
     changes.push(`chấm công: ${fields.attendanceExempt === true ? "KHÔNG CHẤM CÔNG" : fields.attendanceExempt === false ? "vẫn chấm công" : "theo phòng"}`);
   }
@@ -173,9 +181,13 @@ export const PATCH = handle<{ id: string }>(async (req, ctx) => {
   if (resetPassword) changes.push("đặt lại mật khẩu");
   if (unlinkZalo) changes.push("hủy liên kết Zalo");
   // Sửa hồ sơ của chính mình (SĐT, hủy Zalo...) là thao tác ngang quyền nhân viên — không công khai vào nhóm.
-  const selfPersonal = id === u.id && !fields.role && fields.active === undefined && !fields.departmentId && fields.attendanceExempt === undefined;
+  // Nhưng tự cấp quyền cho mình (chấm công / chat bot) thì luôn phải lên nhóm minh bạch.
+  const selfPersonal =
+    id === u.id && !fields.role && fields.active === undefined && !fields.departmentId && fields.attendanceExempt === undefined && fields.chatbotEnabled === undefined;
   if (changes.length && !selfPersonal) {
-    await announce(u, `đã sửa hồ sơ ${e.code} — ${e.name}`, { key: onceKey("emp-update", id), detail: changes.join("; ") });
+    // always: cấp/thu quyền dùng chat bot là chuyện chi phí + dữ liệu, ai làm cũng phải hiện trên nhóm.
+    const chatbotChanged = fields.chatbotEnabled !== undefined && fields.chatbotEnabled !== e.chatbotEnabled;
+    await announce(u, `đã sửa hồ sơ ${e.code} — ${e.name}`, { key: onceKey("emp-update", id), detail: changes.join("; "), ...(chatbotChanged ? { always: true } : {}) });
   }
   return json({ ok: true, ...(tempPassword ? { tempPassword } : {}) });
 });

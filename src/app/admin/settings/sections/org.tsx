@@ -4,12 +4,13 @@ import { useState } from "react";
 import { api, useApi } from "@/lib/client/api";
 import { Button, Card, CardHeader, Field, IconButton, Modal, Select } from "@/components/ui";
 import { useDepartments } from "@/components/dept-select";
-import { useAdminUser } from "../../admin-nav";
+import { useAdminUser, useCan } from "../../admin-nav";
 import { APPROVAL_MODES, APPROVAL_MODE_LABEL } from "@/lib/roles";
 import type { ConfirmFn, RunFn, SectionProps } from "./shared";
 
 export function OrgSection({ busy, run, confirm }: SectionProps) {
   const me = useAdminUser();
+  const canGrantChatbot = useCan()("chatbot.grant");
   const depts = useDepartments();
   const emps = useApi<{ employees: { id: number; code: string; name: string; departmentId: number }[] }>("/api/employees?fields=basic");
   const [newDept, setNewDept] = useState("");
@@ -93,6 +94,24 @@ export function OrgSection({ busy, run, confirm }: SectionProps) {
                       }
                     />
                     Không chấm công (cả phòng — vd. Ban Giám đốc)
+                  </label>
+                )}
+                {canGrantChatbot && (
+                  <label className="flex items-center gap-2 text-xs text-slate-600" title="Cả phòng thấy mục Chat bot tra cứu y khoa; từng người vẫn đặt riêng được trong hồ sơ nhân viên">
+                    <input
+                      type="checkbox"
+                      className="size-4 accent-brand-700"
+                      checked={!!d.chatbotEnabled}
+                      disabled={busy}
+                      onChange={(e) =>
+                        run(
+                          () => api(`/api/departments/${d.id}`, { method: "PATCH", body: { chatbotEnabled: e.target.checked } }),
+                          e.target.checked ? "Cả phòng được dùng Chat bot" : "Đã thu hồi Chat bot của phòng",
+                          depts.reload,
+                        )
+                      }
+                    />
+                    Được dùng Chat bot tra cứu
                   </label>
                 )}
               </div>

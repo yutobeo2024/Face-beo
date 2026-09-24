@@ -76,6 +76,8 @@ export const employeeUpdateSchema = employeeCreateSchema
     unlinkZalo: z.boolean().optional(),
     // v1.12.0: null = theo phòng · true = không chấm công · false = vẫn chấm công. Chỉ Quản trị đổi được (kiểm ở route).
     attendanceExempt: z.boolean().nullable().optional(),
+    // v1.17.0: null = theo phòng · true = được dùng Chat bot · false = cấm. Cần quyền "chatbot.grant" (kiểm ở route).
+    chatbotEnabled: z.boolean().nullable().optional(),
   });
 
 // Chuỗi rỗng / null không được coi là 0 (tránh vô tình đặt hệ số 0 công khi xóa ô nhập).
