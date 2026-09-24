@@ -7,7 +7,7 @@
   MiniFASNetV2 phía server), đơn từ, tính công/chốt công tháng, xuất Excel, thông báo Zalo OA (nhiều nhóm theo loại tin: minh bạch / chấm công / đơn từ + tin riêng).
 - Stack: Next.js 15 App Router, Prisma 6 (SQLite WAL), zod 4, luxon, exceljs, node-cron, jose JWT (HS256, 7 ngày, `sessionVersion`),
   vitest 4 (test tích hợp gọi thẳng route handler, DB `data/test.db`).
-- Phiên bản hiện tại: **v1.15.0** (tag GitHub `v1.15.0`, repo `yutobeo2024/Face-beo`). Phiên bản ghi trong prose (README, PRD,
+- Phiên bản hiện tại: **v1.16.0** (tag GitHub `v1.16.0`, repo `yutobeo2024/Face-beo`). Phiên bản ghi trong prose (README, PRD,
   OPEN-DECISIONS), không có CHANGELOG; `package.json` version không dùng để đánh số.
 
 ## Lệnh
@@ -21,7 +21,8 @@ npm run db:seed                  # dữ liệu mẫu demo: XÓA SẠCH; tự d�
 npm run build && LIVENESS_SERVER=true npx next start -p 3000
 npm test | npm run lint | npm run typecheck
 ```
-Server production: **https://face.ydsg.website** trên VPS `root@103.142.27.210` (từ 21/09/2026) (Docker compose `facebeo` + Cloudflare Tunnel, xem `docs/DEPLOY-VPS.md`;
+Server production: **https://face.ydsg.website** trên VPS `root@103.142.27.210` (từ 21/09/2026). Từ v1.16.0 đi **thẳng** qua Caddy trên VPS
+(`deploy/caddy-face.conf`, app mở `127.0.0.1:3100`, chặn ngoài VN + fail2ban); Cloudflare Tunnel giữ làm dự phòng (xem `docs/DEPLOY-VPS.md`;
 cập nhật bằng `deploy/update.sh`). VPS chạy chung dự án khác — không đụng Caddy/ufw/container khác. Máy local chỉ để phát triển: **không**
 chạy cron / khóa Zalo thật song song với VPS (refresh token Zalo dùng một lần) — `.env` local đã tắt Zalo + `DISABLE_CRON=true`
 (bản đủ khóa cũ: `.env.pre-vps.bak`, không commit). Dữ liệu thật nằm ở VPS `/opt/facebeo/data`; test local vẫn dùng `data/test.db`.
@@ -65,6 +66,9 @@ chạy cron / khóa Zalo thật song song với VPS (refresh token Zalo dùng m�
   `data/photos/<id>/`, ≤ 2 MB sau cắt, sharp chuẩn hóa 600×800. Sửa = chính chủ / `employees.manage` (HR/ADMIN khác chỉ ADMIN). Nghỉ việc → `clearProfilePhoto`.
 - Không chấm công (v1.12.0, `src/lib/attendance-scope.ts`): truy vấn nhân viên cho chấm công / cảnh báo / báo cáo / xếp ca / chốt công phải ghép
   `TRACKED_WHERE` (AND). Chỉ ADMIN đổi `attendanceExempt` (phòng / người).
+- Độ trễ (v1.16.0): `useApi` có kho nhớ theo URL (hiện dữ liệu cũ rồi làm mới ngầm) — sau mỗi lần GHI cứ để `api()` tự gọi `clearApiCache()`,
+  đừng fetch vòng ngoài. Ảnh đại diện `private, max-age=600` (URL có `?v=`). Phía trình duyệt KHÔNG dùng luxon (`src/lib/client/format.ts`
+  tự tính theo UTC+7, có test đối chiếu). Chạy sau Caddy nên KHÔNG đặt `CLIENT_IP_HEADER` (IP thật ở `X-Forwarded-For`).
 - Trang Cấu hình (v1.15.0): khung tab ở `src/app/admin/settings/page.tsx`, từng mục ở `sections/` — thêm thẻ mới thì đặt vào đúng tab, mỗi thẻ
   chỉ PUT khóa của chính nó. Xóa nhóm Zalo = DELETE `/api/settings/zalo/groups/[groupId]` (báo vào nhóm rồi xóa; webhook có thể thêm lại nhóm
   với `categories: []`).

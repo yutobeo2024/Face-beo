@@ -4,7 +4,7 @@
  * Dùng chung cho trang Nhân sự (/admin/employees/[id]/credentials — sửa được) và trang cá nhân /me (chỉ đọc).
  */
 import { useState } from "react";
-import { api, useApi } from "@/lib/client/api";
+import { api, clearApiCache, useApi } from "@/lib/client/api";
 import { fmtDateTime, fmtDay, todayStr } from "@/lib/client/format";
 import { Badge, Button, Card, CardHeader, cx, ErrorBox, Field, IconButton, Loading, Modal, Select } from "@/components/ui";
 import { Icon } from "@/components/icons";
@@ -162,6 +162,7 @@ async function uploadFile(employeeId: number, credId: number, file: File) {
     credentials: "same-origin",
   });
   if (!res.ok) throw new Error(((await res.json().catch(() => ({}))) as { error?: string }).error ?? `Lỗi ${res.status}`);
+  clearApiCache(); // tải file bằng fetch thẳng → tự dọn kho nhớ để cảnh báo hồ sơ hành nghề cập nhật ngay
 }
 
 export function CredentialsPanel({ employeeId, readOnly }: { employeeId: number; readOnly?: boolean }) {

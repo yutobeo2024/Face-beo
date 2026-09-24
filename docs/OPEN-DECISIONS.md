@@ -22,6 +22,11 @@ Ghi lại những điểm đã phát hiện trong quá trình làm và test, c�
   tạo lại OA Secret Key webhook (nếu Zalo cho), dán lại vào `/opt/facebeo/.env`, `up -d --force-recreate`.
 - **Trạng thái:** chờ chủ dự án thao tác.
 
+## Đã chốt v1.16.0 (24/09/2026)
+
+- **Đi thẳng tới VPS thay vì vòng qua Cloudflare** (nhanh khoảng 10 lần), giữ đường hầm làm dự phòng; chặn truy cập ngoài Việt Nam + fail2ban.
+- **Ảnh đại diện được giữ 10 phút trên máy người dùng** — đổi lại là mất quyền xem thì ảnh còn hiện chậm nhất 10 phút. Xem PRD v2.1 mục 30.
+
 ## Đã chốt v1.15.0 (24/09/2026)
 
 - **Trang Cấu hình chia 5 tab** (Ca & lịch · Tổ chức · Chấm công · Zalo OA · Hành nghề), tab lưu trong địa chỉ.

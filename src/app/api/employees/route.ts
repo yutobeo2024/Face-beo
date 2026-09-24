@@ -19,21 +19,28 @@ const listQuery = z.object({
   specialtyId: optId,
   q: z.string().trim().max(50).optional(),
   includeInactive: z.enum(["0", "1"]).optional(),
+  // v1.16.0: "basic" = chỉ id / mã / tên / phòng cho các ô chọn — không trả dữ liệu cá nhân, không kéo ảnh, ca, mẫu tuần.
+  fields: z.enum(["basic"]).optional(),
 });
 
 export const GET = handle(async (req) => {
   const u = await requirePerm(req, ["employees.view", "employees.manage"]);
   const q = parseQuery(req, listQuery);
   const [manage, snaps, privileged] = await Promise.all([can(u, "employees.manage"), canViewSnapshots(u), can(u, "roles.assignPrivileged")]);
+  // Tìm theo SĐT chỉ cho người được xem SĐT; không tìm theo CCCD.
+  const where = {
+    ...employeeScopeWhere(u, q.departmentId),
+    ...(q.includeInactive === "1" && manage ? {} : { active: true }),
+    ...(q.q ? { OR: [{ name: { contains: q.q } }, { code: { contains: q.q } }, ...(canSeePersonal(u) ? [{ phone: { contains: q.q } }] : [])] } : {}),
+    ...(q.jobTitleId ? { jobTitleId: q.jobTitleId } : {}),
+    ...(q.specialtyId ? { specialtyId: q.specialtyId } : {}),
+  };
+  if (q.fields === "basic") {
+    const list = await prisma.employee.findMany({ where, orderBy: [{ departmentId: "asc" }, { code: "asc" }], select: { id: true, code: true, name: true, departmentId: true, active: true } });
+    return json({ employees: list });
+  }
   const rows = await prisma.employee.findMany({
-    where: {
-      ...employeeScopeWhere(u, q.departmentId),
-      ...(q.includeInactive === "1" && manage ? {} : { active: true }),
-      // Tìm theo SĐT chỉ cho người được xem SĐT; không tìm theo CCCD.
-      ...(q.q ? { OR: [{ name: { contains: q.q } }, { code: { contains: q.q } }, ...(canSeePersonal(u) ? [{ phone: { contains: q.q } }] : [])] } : {}),
-      ...(q.jobTitleId ? { jobTitleId: q.jobTitleId } : {}),
-      ...(q.specialtyId ? { specialtyId: q.specialtyId } : {}),
-    },
+    where,
     orderBy: [{ departmentId: "asc" }, { code: "asc" }],
     select: {
       id: true,

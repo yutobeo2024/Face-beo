@@ -1,8 +1,7 @@
 "use client";
 import { useState } from "react";
-import { DateTime } from "luxon";
 import { useApi } from "@/lib/client/api";
-import { fmtMinutes, todayStr, TZ, weekdayOf, WEEKDAY_SHORT } from "@/lib/client/format";
+import { addMonthsStr, fmtMinutes, todayStr, weekdayOf, WEEKDAY_SHORT } from "@/lib/client/format";
 import { Badge, Card, cx, ErrorBox, IconButton, Loading, PageHeader, StatCard } from "@/components/ui";
 import { DAY_STATUS, DayStatusBadge } from "@/components/status";
 
@@ -42,9 +41,9 @@ const DOT: Record<string, string> = {
 export default function MyAttendancePage() {
   const [month, setMonth] = useState(todayStr().slice(0, 7));
   const { data, error, loading, reload } = useApi<Month>(`/api/me/attendance?month=${month}`);
-  const shift = (n: number) => setMonth(DateTime.fromISO(`${month}-01`, { zone: TZ }).plus({ months: n }).toFormat("yyyy-LL"));
-  const first = DateTime.fromISO(`${month}-01`, { zone: TZ });
-  const lead = first.weekday - 1;
+  const shift = (n: number) => setMonth(addMonthsStr(month, n));
+  // Số ô trống trước ngày 1 để tháng bắt đầu đúng cột thứ Hai.
+  const lead = weekdayOf(`${month}-01`) - 1;
   const today = todayStr();
 
   return (
@@ -52,7 +51,7 @@ export default function MyAttendancePage() {
       <PageHeader title="Lịch sử công" />
       <Card className="mb-4 flex items-center justify-between p-2">
         <IconButton icon="chevronLeft" label="Tháng trước" onClick={() => shift(-1)} />
-        <p className="font-bold text-slate-800">Tháng {first.toFormat("LL/yyyy")}</p>
+        <p className="font-bold text-slate-800">Tháng {month.slice(5)}/{month.slice(0, 4)}</p>
         <IconButton icon="chevronRight" label="Tháng sau" onClick={() => shift(1)} disabled={month >= today.slice(0, 7)} />
       </Card>
       {error && <ErrorBox message={error} onRetry={reload} />}

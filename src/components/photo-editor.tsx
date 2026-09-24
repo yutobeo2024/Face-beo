@@ -5,6 +5,7 @@
  * xoay 90°) → gửi phần đã cắt (JPEG 600×800) lên /api/employees/[id]/photo. Ảnh không dùng để nhận diện khuôn mặt.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
+import { clearApiCache } from "@/lib/client/api";
 import { Button, Modal } from "@/components/ui";
 import { useToast } from "@/components/toast";
 
@@ -214,6 +215,7 @@ export function PhotoEditor({ employeeId, name, hasPhoto, onChanged, compact }: 
       const res = await fetch(`/api/employees/${employeeId}/photo`, { method: "PUT", headers: { "Content-Type": "image/jpeg" }, body: blob });
       const j = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(j.error ?? "Không lưu được ảnh");
+      clearApiCache(); // gọi fetch thẳng nên phải tự dọn kho nhớ (danh sách nhân viên, /me…)
       toast.success("Đã đổi ảnh đại diện");
       setImg(null);
       onChanged();
@@ -231,6 +233,7 @@ export function PhotoEditor({ employeeId, name, hasPhoto, onChanged, compact }: 
       const res = await fetch(`/api/employees/${employeeId}/photo`, { method: "DELETE" });
       const j = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(j.error ?? "Không xóa được ảnh");
+      clearApiCache();
       toast.success("Đã xóa ảnh tự chọn");
       onChanged();
     } catch (err) {

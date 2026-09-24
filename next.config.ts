@@ -4,6 +4,8 @@ import path from "node:path";
 const humanBrowser = path.join(process.cwd(), "node_modules", "@vladmandic", "human", "dist", "human.esm.js");
 
 const nextConfig: NextConfig = {
+  // v1.16.0: giữ kết quả trang động 30 giây ở phía trình duyệt — bấm Back hay quay lại tab vừa xem là hiện ngay.
+  experimental: { staleTimes: { dynamic: 30, static: 180 } },
   serverExternalPackages: ["@prisma/client", "node-cron", "exceljs", "onnxruntime-node", "sharp"],
   poweredByHeader: false,
   webpack(config) {

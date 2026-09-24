@@ -87,6 +87,10 @@ model Employee {
   license                PracticeLicense?
   credentials            Credential[]
   notifications      NotificationLog[]
+
+  // v1.16.0: mọi danh sách đều lọc active + phòng rồi sắp theo mã; notify tra người duyệt theo vai trò.
+  @@index([active, departmentId, code])
+  @@index([role, active])
 }
 
 model Shift {
@@ -204,6 +208,9 @@ model LeaveRequest {
   createdAt    DateTime  @default(now())
 
   @@index([employeeId, status])
+  // v1.16.0: danh sách đơn chờ (Tổng quan, trang Đơn từ) lọc theo trạng thái / loại rồi sắp theo thời gian.
+  @@index([status, createdAt])
+  @@index([type, status, executedAt])
 }
 
 model NotificationLog {
@@ -241,6 +248,9 @@ model AuditLog {
   entityId  String?
   detail    String?  // JSON
   createdAt DateTime @default(now())
+
+  // v1.16.0: Tổng quan đếm/tra theo action + thời gian; bảng này lớn nhanh nhất nên không có chỉ mục là quét toàn bảng.
+  @@index([action, createdAt])
 }
 
 model AppSetting {

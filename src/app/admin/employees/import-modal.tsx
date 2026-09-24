@@ -1,4 +1,5 @@
 "use client";
+import { clearApiCache } from "@/lib/client/api";
 import { useState } from "react";
 import { Badge, Button, Field, Modal, Select } from "@/components/ui";
 import { useToast } from "@/components/toast";
@@ -73,6 +74,7 @@ export function ImportModal({
         setPreview(data);
         setOnlyErrors(data.summary.errors > 0);
       } else {
+        clearApiCache(); // nhập Excel đổi cả trăm nhân viên — dọn kho nhớ để mọi màn hình lấy số liệu mới
         const bin = Uint8Array.from(atob(data.resultFile), (c) => c.charCodeAt(0));
         download(`KetQuaNhap_${new Date().toISOString().slice(0, 10)}.xlsx`, bin);
         setDone({ created: data.created, updated: data.updated });

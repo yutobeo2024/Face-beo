@@ -5,7 +5,7 @@
  * ẩn hẳn khi đã cài. iOS Safari không có hộp thoại cài → hướng dẫn 3 bước. Đăng ký service worker (chỉ khi kết nối an toàn).
  * Luồng quyết định nằm ở src/lib/pwa.ts (có test).
  */
-import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Button, Modal, cx } from "@/components/ui";
 import { Icon } from "@/components/icons";
@@ -117,14 +117,18 @@ export function InstallProvider({ children }: { children: React.ReactNode }) {
     setSnoozed(until);
   }, []);
 
-  const value: Ctx = {
-    installed,
-    platform,
-    canPrompt: !!deferred,
-    showBanner: !kiosk && shouldShowBanner({ installed, canPrompt: !!deferred, platform, snoozedUntil: snoozed, now: Date.now(), pathname }),
-    install,
-    snooze,
-  };
+  // Giá trị context bọc cả ứng dụng: phải ổn định, nếu không mỗi lần render lại kéo theo toàn bộ cây (v1.16.0).
+  const value: Ctx = useMemo(
+    () => ({
+      installed,
+      platform,
+      canPrompt: !!deferred,
+      showBanner: !kiosk && shouldShowBanner({ installed, canPrompt: !!deferred, platform, snoozedUntil: snoozed, now: Date.now(), pathname }),
+      install,
+      snooze,
+    }),
+    [installed, platform, deferred, kiosk, snoozed, pathname, install, snooze],
+  );
 
   return (
     <InstallCtx.Provider value={value}>

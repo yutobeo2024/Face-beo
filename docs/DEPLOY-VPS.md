@@ -1,4 +1,4 @@
-# Triển khai Face Beo lên VPS qua Cloudflare Tunnel
+# Triển khai Face Beo lên VPS (đi thẳng qua Caddy; Cloudflare Tunnel làm dự phòng)
 
 VPS hiện dùng: `root@103.142.27.210` — Ubuntu 24.04, 6 vCPU (AVX2), RAM 5,8 GB, Docker 29. VPS **chạy chung** với các dự án khác
 (medichat, zalo-hermess, qlcl, billbot — mỗi dự án một docker compose + container `cloudflared` riêng; cổng host 3000 đã có người dùng,
@@ -110,12 +110,54 @@ image cũ vẫn phục vụ; gián đoạn chỉ vài giây lúc đổi containe
   kiểm `integrity_check`, đếm bản ghi; **không tự ghi đè** — script in các lệnh thay dữ liệu đang chạy.
 - Khôi phục từ bản trên VPS: `fb down` → chép `backups/facebeo-YYYYMMDD.db` thành `data/facebeo.db` (xóa `-wal`/`-shm`) → `fb up -d`.
 
+## Đường truyền: đi thẳng (chính) và Cloudflare Tunnel (dự phòng) — v1.16.0
+
+Máy chủ đặt ở TP.HCM nhưng Cloudflare nối đường hầm qua Singapore, nên trước v1.16.0 **mỗi lượt gọi phải đi vòng Việt Nam →
+Singapore → Việt Nam**. Đo từ máy ở Việt Nam: qua đường hầm **300–420 ms** (có lần 5 giây khi đường hầm rớt và nối lại), đi thẳng
+tới VPS **31 ms**. Vì vậy đường chính chuyển sang đi thẳng, đường hầm giữ lại làm dự phòng.
+
+```
+Điện thoại ──HTTPS──> Caddy (VPS, cổng 443) ──> 127.0.0.1:3100 ──> container facebeo-app
+                └ dự phòng: Cloudflare Tunnel ──> facebeo-app:3000 (mạng docker)
+```
+
+**Cài một lần trên VPS** (chỉ thêm, không sửa phần của dự án khác — Caddyfile hiện chỉ có khối mẫu `:80`):
+
+```bash
+cd /opt/facebeo/src && git pull && docker compose -f deploy/docker-compose.yml -p facebeo --env-file /opt/facebeo/.env up -d
+cp deploy/caddy-face.conf /etc/caddy/face.caddy
+grep -q 'face.caddy' /etc/caddy/Caddyfile || echo 'import /etc/caddy/face.caddy' >> /etc/caddy/Caddyfile
+sh deploy/vn-ip-refresh.sh                       # tạo /etc/caddy/vn-ips.caddy (dải IP Việt Nam, APNIC)
+(crontab -l 2>/dev/null; echo '0 4 * * 1 sh /opt/facebeo/src/deploy/vn-ip-refresh.sh >/var/log/vn-ip-refresh.log 2>&1') | crontab -
+apt-get install -y fail2ban   # rồi làm theo hướng dẫn trong deploy/fail2ban-facebeo.conf
+caddy validate --config /etc/caddy/Caddyfile && systemctl reload caddy
+```
+
+**DNS (làm trên Cloudflare, sau khi Caddy chạy)**
+
+1. Thử trước: thêm `direct.ydsg.website` → **A** `103.142.27.210`, **tắt proxy** (đám mây xám). Mở thử, đăng nhập, quét kiosk.
+2. Chuyển chính thức: `face.ydsg.website` đổi từ **CNAME** (đường hầm) sang **A** `103.142.27.210`, **tắt proxy**, TTL 2 phút.
+   Caddy tự xin chứng chỉ Let's Encrypt trong vài giây ở lượt truy cập đầu.
+3. Muốn quay lui: trả `face.ydsg.website` về bản ghi CNAME đường hầm cũ (container `cloudflared` vẫn chạy). Không mất dữ liệu.
+
+**Bắt buộc đi kèm**: `deploy/docker-compose.yml` đã bỏ `CLIENT_IP_HEADER=cf-connecting-ip`. Khi đi thẳng, IP thật nằm ở
+`X-Forwarded-For` do Caddy ghi. Nếu quay về chạy **chỉ** qua đường hầm thì phải đặt lại biến đó, nếu không mọi người dùng bị tính
+chung một IP khi giới hạn tần suất đăng nhập.
+
+**Chặn truy cập ngoài Việt Nam**: `vn-ip-refresh.sh` sinh danh sách dải IP Việt Nam cho Caddy; ngoài dải → 403. Hai đường được chừa:
+`/api/zalo/webhook*` (máy chủ Zalo gọi, đã kiểm chữ ký) và `/.well-known/*` (xác thực chứng chỉ). Script tự dừng nếu tải được dưới
+300 dải (nghi lỗi mạng) để không khóa nhầm cả phòng khám.
+
 ## Theo dõi
 
 ```bash
 docker ps --filter name=facebeo          # trạng thái + healthcheck
 docker stats --no-stream facebeo-app-1   # RAM (giới hạn 1,5 GB)
 docker logs -f facebeo-app-1             # log ứng dụng, [cron], [api] lỗi
+tail -f /var/log/caddy/face.log          # lượt truy cập qua đường đi thẳng (JSON)
+fail2ban-client status facebeo-login     # IP đang bị chặn vì dò mật khẩu
+curl -o /dev/null -w '%{time_starttransfer}
+' https://face.ydsg.website/login   # đo độ trễ (mục tiêu < 0,08 giây)
 ```
 
 ## Quay lui

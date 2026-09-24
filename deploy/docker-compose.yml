@@ -1,4 +1,4 @@
-# Face Beo trên VPS: app + cloudflared (Cloudflare Tunnel). Không map cổng nào ra host — chỉ tunnel gọi được app.
+# Face Beo trên VPS: app + Caddy (đường chính, đi thẳng) + cloudflared (đường dự phòng). Cổng 3100 chỉ mở trên loopback.
 # Chạy từ /opt/facebeo/src:  docker compose -f deploy/docker-compose.yml -p facebeo up -d --build
 # Dữ liệu: /opt/facebeo/data (DB, snapshots, backups, credentials, avatars) · mô hình: /opt/facebeo/models · cấu hình: /opt/facebeo/.env
 # Sao lưu ngoài VPS: service backup → Cloudflare R2 (deploy/backup.sh, khôi phục: deploy/restore-offsite.sh)
@@ -11,10 +11,15 @@ services:
     env_file: /opt/facebeo/.env
     environment:
       DATABASE_URL: "file:../data/facebeo.db"
-      CLIENT_IP_HEADER: "cf-connecting-ip"
+      # v1.16.0: chạy sau Caddy trên chính máy này → IP thật nằm ở X-Forwarded-For do Caddy ghi (TRUSTED_PROXY_HOPS=1 mặc định).
+      # Nếu quay lại chạy CHỈ qua Cloudflare Tunnel thì đặt lại CLIENT_IP_HEADER: "cf-connecting-ip".
+      NODE_OPTIONS: "--max-old-space-size=1024"
     volumes:
       - /opt/facebeo/data:/app/data
       - /opt/facebeo/models:/app/models
+    # Chỉ mở ra loopback của VPS cho Caddy gọi — không ra Internet (tường lửa vẫn chỉ mở 80/443).
+    ports:
+      - "127.0.0.1:3100:3000"
     mem_limit: 1500m
     restart: unless-stopped
     healthcheck:

@@ -6,6 +6,8 @@ import { MAX_PHOTO_UPLOAD_BYTES, canEditProfilePhoto, canSeeProfilePhoto, clearP
 
 type P = { id: string };
 const TOO_BIG = "Ảnh quá lớn (tối đa 2 MB sau khi cắt)";
+// v1.16.0: URL kèm ?v=<mốc thời gian> nên đổi ảnh là đổi URL — giữ 10 phút ở máy người dùng, bớt ~100 lượt hỏi lại mỗi lần mở danh sách.
+const PHOTO_CACHE = "private, max-age=600";
 
 /** Đọc thân yêu cầu nhưng dừng ngay khi vượt giới hạn (không tin Content-Length, không đọc hết file lớn vào bộ nhớ). */
 async function readLimited(req: Request, limit: number): Promise<Uint8Array> {
@@ -46,14 +48,14 @@ export const GET = handle<P>(async (req, ctx) => {
   if (!canSeeProfilePhoto(u, e)) throw forbidden();
   if (!e.photoKey) throw notFound("Chưa có ảnh đại diện");
   const etag = `"${e.photoKey}"`;
-  if (req.headers.get("if-none-match") === etag) return new Response(null, { status: 304, headers: { ETag: etag, "Cache-Control": "private, no-cache" } });
+  if (req.headers.get("if-none-match") === etag) return new Response(null, { status: 304, headers: { ETag: etag, "Cache-Control": PHOTO_CACHE } });
   const buf = await readProfilePhoto(e.id, e.photoKey);
   if (!buf) {
     await clearStalePhoto(e.id, e.photoKey); // DB trỏ tới file đã mất: dọn để giao diện về ảnh khuôn mặt / chữ viết tắt
     throw notFound("Chưa có ảnh đại diện");
   }
   return new Response(new Uint8Array(buf), {
-    headers: { "Content-Type": "image/jpeg", "Cache-Control": "private, no-cache", ETag: etag, "X-Content-Type-Options": "nosniff" },
+    headers: { "Content-Type": "image/jpeg", "Cache-Control": PHOTO_CACHE, ETag: etag, "X-Content-Type-Options": "nosniff" },
   });
 });
 

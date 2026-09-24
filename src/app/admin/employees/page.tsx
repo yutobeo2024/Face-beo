@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useState } from "react";
-import { api, qs, useApi } from "@/lib/client/api";
+import { api, qs, useApi, useDebounced } from "@/lib/client/api";
 import { Avatar, Badge, Button, Card, cx, EmptyState, ErrorBox, Field, Loading, Modal, PageHeader, Select } from "@/components/ui";
 import { DeptSelect, useDepartments } from "@/components/dept-select";
 import { Icon } from "@/components/icons";
@@ -118,7 +118,11 @@ export default function EmployeesPage() {
   const [photoId, setPhotoId] = useState<number | null>(null);
   // Thông tin cá nhân (SĐT, CCCD, ngày sinh, giới tính, địa chỉ): chỉ Nhân sự / Quản trị, hoặc chính mình.
   const showPersonal = (id?: number) => me.role === "ADMIN" || me.role === "HR" || id === me.id;
-  const { data, error, loading, reload } = useApi<{ employees: Emp[] }>(`/api/employees${qs({ q, departmentId: dept, jobTitleId: jobTitle, specialtyId: specialty, includeInactive: inactive ? 1 : "" })}`);
+  // Gõ tới đâu gọi máy chủ tới đó thì 6 chữ = 6 lượt gọi; chờ 300 ms sau khi ngừng gõ mới hỏi.
+  const qDebounced = useDebounced(q);
+  const { data, error, loading, reload } = useApi<{ employees: Emp[] }>(
+    `/api/employees${qs({ q: qDebounced, departmentId: dept, jobTitleId: jobTitle, specialtyId: specialty, includeInactive: inactive ? 1 : "" })}`,
+  );
   const depts = useDepartments();
   const shifts = useApi<{ shifts: Shift[] }>("/api/shifts");
   const patterns = useApi<{ patterns: Pattern[] }>("/api/work-patterns");

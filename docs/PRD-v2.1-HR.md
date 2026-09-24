@@ -508,3 +508,23 @@ công được tính trực tiếp từ planner. Quản lý được cấp `org.
 - **Xóa nhóm Zalo**: `DELETE /api/settings/zalo/groups/[groupId]` (`settings.system`) → gửi `GROUP_EVENT` báo ngừng gửi vào chính nhóm đó →
   xóa `ZaloGroup` → nhật ký `ZALO_GROUP_ROUTING` (`deleted: true`) → `announce` nhóm minh bạch. `NotificationLog` cũ giữ nguyên.
   Webhook `create_group` vẫn upsert nên nhóm có thể **hiện lại với `categories: []`** (không nhận tin) — cố ý, để không mất dấu nhóm đang hoạt động.
+
+## 30. Giảm độ trễ khi dùng trên điện thoại (v1.16.0, 24/09/2026)
+
+- **Đo được trước khi sửa**: máy chủ ở TP.HCM nhưng Cloudflare nối đường hầm qua Singapore → mỗi lượt gọi 300–420 ms (có lần 5 s khi
+  đường hầm rớt), trong khi gọi thẳng VPS chỉ 31 ms và app tự dựng trang hết 78–124 ms. Máy chủ không phải nút thắt (tải 0,56 trên 6 nhân).
+- **Đường truyền**: đường chính đi thẳng qua Caddy trên VPS (`deploy/caddy-face.conf`, app mở ở `127.0.0.1:3100`), Cloudflare Tunnel giữ
+  làm dự phòng. Chặn truy cập ngoài Việt Nam bằng danh sách dải IP APNIC (`deploy/vn-ip-refresh.sh`, cron hằng tuần, chừa
+  `/api/zalo/webhook*`), chặn dò mật khẩu bằng fail2ban (`deploy/fail2ban-facebeo.conf`). **Bỏ `CLIENT_IP_HEADER=cf-connecting-ip`** —
+  đi thẳng thì IP thật nằm ở `X-Forwarded-For` do Caddy ghi.
+- **Bớt số lượt gọi**: `useApi` (`src/lib/client/api.ts`) có kho nhớ theo URL — hiện ngay dữ liệu lần trước rồi làm mới ngầm, gộp lời gọi
+  trùng URL, xóa kho sau mỗi lần ghi dữ liệu; ô tìm kiếm nhân viên chậm nhịp 300 ms; `/api/employees?fields=basic` cho các ô chọn
+  (id / mã / tên / phòng, không kèm dữ liệu cá nhân); `/me/zalo` hỏi 15 giây và ngừng khi đã liên kết.
+- **Hiện ngay khi chuyển trang**: thêm `loading.tsx` cho `/admin` và `/me` (có khung xương thì `Link` mới prefetch được) và
+  `experimental.staleTimes` 30 giây; tab trang Cấu hình đổi bằng `history.replaceState`, không gọi lại máy chủ.
+- **Ảnh đại diện**: `Cache-Control: private, max-age=600` thay cho `no-cache` — URL đã kèm `?v=<mốc thời gian>` nên đổi ảnh là đổi địa chỉ;
+  trước đây mở danh sách 100 người tốn 100 lượt hỏi lại + 300 truy vấn. Đổi lại: mất quyền xem thì ảnh còn hiện chậm nhất 10 phút.
+- **Nhẹ và mượt hơn**: bỏ luxon ở phía trình duyệt (`src/lib/client/format.ts` dùng Date + `Intl`, Việt Nam cố định UTC+7) — mỗi trang nhẹ
+  ~21 KB nén; bỏ `backdrop-blur` ở thanh dính và tiêu đề bảng (mỗi khung hình cuộn phải vẽ lại vùng mờ).
+- **Máy chủ**: thêm chỉ mục `AuditLog(action, createdAt)`, `LeaveRequest(status, createdAt)`, `(type, status, executedAt)`,
+  `Employee(active, departmentId, code)`, `(role, active)`; `PRAGMA synchronous=NORMAL` đi cùng WAL; giới hạn bộ nhớ Node 1 GB.

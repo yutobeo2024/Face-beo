@@ -91,7 +91,7 @@ function DayTable({ canManual, canDelete }: { canManual: boolean; canDelete: boo
   const [busy, setBusy] = useState(false);
   const [photo, setPhoto] = useState<string | null>(null);
   const { data, error, loading, reload } = useApi<{ rows: Row[] }>(`/api/attendance${qs({ from: date, to: date, departmentId: dept, flag })}`);
-  const emps = useApi<{ employees: { id: number; code: string; name: string }[] }>(canManual ? "/api/employees" : null);
+  const emps = useApi<{ employees: { id: number; code: string; name: string }[] }>(canManual ? "/api/employees?fields=basic" : null);
 
   async function saveManual() {
     if (!manual) return;

@@ -3,8 +3,8 @@
  * Trang Cấu hình (v1.15.0): chia theo tab để mỗi lần chỉ hiện vài thẻ, thay cho một trang cuộn dài.
  * Tab nằm trong địa chỉ (?tab=…) nên gửi link / F5 vẫn đúng chỗ; chỉ tab đang mở mới gọi API của nó.
  */
-import { Suspense, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Button, ErrorBox, Loading, Modal, PageHeader, Segmented } from "@/components/ui";
 import { useToast } from "@/components/toast";
 import { useCan } from "../admin-nav";
@@ -42,7 +42,6 @@ function SettingsTabs() {
   const can = useCan();
   const sys = can("settings.system");
   const org = can("org.manage");
-  const router = useRouter();
   const sp = useSearchParams();
   const toast = useToast();
   // Hộp xác nhận xóa dùng chung (không dùng window.confirm); server vẫn là chốt chặn cuối khi thứ cần xóa đang được dùng.
@@ -50,8 +49,17 @@ function SettingsTabs() {
   const [busy, setBusy] = useState(false);
 
   const tabs = TABS.filter((t) => (t.perm === "sys" ? sys : org));
-  const wanted = sp.get("tab") as TabKey | null;
-  const active = tabs.find((t) => t.key === wanted)?.key ?? tabs[0]?.key;
+  const fromUrl = sp.get("tab") as TabKey | null;
+  const [picked, setPicked] = useState<TabKey | null>(null);
+  // Địa chỉ đổi (bấm Back, hoặc bấm lại mục Cấu hình ở menu) thì bỏ lựa chọn cũ, đi theo địa chỉ.
+  useEffect(() => setPicked(null), [fromUrl]);
+  const active = tabs.find((t) => t.key === (picked ?? fromUrl))?.key ?? tabs[0]?.key;
+  // Đổi tab là việc của trình duyệt: chỉ sửa địa chỉ, KHÔNG gọi lại máy chủ (mỗi lượt gọi tốn ~0,3 giây trên 4G).
+  useEffect(() => {
+    if (active && typeof window !== "undefined" && sp.get("tab") !== active) {
+      window.history.replaceState(null, "", `/admin/settings?tab=${active}`);
+    }
+  }, [active, sp]);
 
   async function run(fn: () => Promise<unknown>, msg: string, after?: () => void) {
     setBusy(true);
@@ -74,7 +82,7 @@ function SettingsTabs() {
       <PageHeader
         title="Cấu hình"
         subtitle={SUBTITLE[active]}
-        actions={tabs.length > 1 ? <Segmented value={active} onChange={(v) => router.replace(`/admin/settings?tab=${v}`, { scroll: false })} options={tabs.map((t) => ({ value: t.key, label: t.label }))} /> : undefined}
+        actions={tabs.length > 1 ? <Segmented value={active} onChange={setPicked} options={tabs.map((t) => ({ value: t.key, label: t.label }))} /> : undefined}
       />
 
       {active === "lich" && <ScheduleSection {...props} />}

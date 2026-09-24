@@ -111,7 +111,7 @@ export function AppShell({ user, nav, extraLinks, children, brandSub }: { user: 
       </aside>
 
       {/* Top bar mobile */}
-      <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-slate-200/80 bg-white/90 px-2 backdrop-blur lg:hidden">
+      <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-slate-200/80 bg-white px-2 lg:hidden">
         <IconButton icon="menu" label="Mở menu" onClick={() => setOpen(true)} />
         <p className="min-w-0 flex-1 truncate text-[15px] font-semibold text-slate-800">{current?.label ?? "Face Beo"}</p>
         <Link href="/" aria-label="Trang chủ" className="mr-1">
@@ -149,7 +149,7 @@ export function AppShell({ user, nav, extraLinks, children, brandSub }: { user: 
 
       {/* Bottom nav mobile */}
       {mobileNav.length > 0 && (
-        <nav className="safe-bottom fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 backdrop-blur lg:hidden" aria-label="Điều hướng chính">
+        <nav className="safe-bottom fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white lg:hidden" aria-label="Điều hướng chính">
           <div className="mx-auto grid max-w-lg" style={{ gridTemplateColumns: `repeat(${mobileNav.length + (nav.length > mobileNav.length ? 1 : 0)}, minmax(0, 1fr))` }}>
             {mobileNav.map((n) => {
               const active = isActive(pathname, n);

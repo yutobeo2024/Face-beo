@@ -272,7 +272,16 @@ export function Avatar({ name, className, src, rect }: { name: string; className
   if (src && broken !== src) {
     return (
       // eslint-disable-next-line @next/next/no-img-element -- ảnh sau API có kiểm quyền, không qua next/image
-      <img src={src} alt={name} loading="lazy" onError={() => setBroken(src)} className={cx("inline-block shrink-0 bg-slate-100 object-cover", shape, className)} />
+      <img
+        src={src}
+        alt={name}
+        loading="lazy"
+        decoding="async"
+        width={rect ? 120 : 160}
+        height={rect ? 160 : 160}
+        onError={() => setBroken(src)}
+        className={cx("inline-block shrink-0 bg-slate-100 object-cover", rect && "h-auto", shape, className)}
+      />
     );
   }
   const parts = name.trim().split(/\s+/);

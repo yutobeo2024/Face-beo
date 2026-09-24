@@ -21,7 +21,10 @@ function useCountdown(until: string | null) {
 
 export default function ZaloPage() {
   const toast = useToast();
-  const { data, error, loading, reload, setData } = useApi<Status>("/api/me/zalo", { refreshMs: 5000 });
+  // Chờ nhân viên nhắn mã: hỏi lại mỗi 15 giây; liên kết xong thì thôi hỏi (trước đây hỏi mãi 5 giây/lần).
+  const [linked, setLinked] = useState(false);
+  const { data, error, loading, reload, setData } = useApi<Status>("/api/me/zalo", { refreshMs: linked ? 0 : 15000 });
+  useEffect(() => setLinked(!!data?.linked), [data?.linked]);
   const [busy, setBusy] = useState(false);
   const left = useCountdown(data?.code ? data.expiresAt : null);
 

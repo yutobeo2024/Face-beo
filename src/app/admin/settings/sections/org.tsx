@@ -11,7 +11,7 @@ import type { ConfirmFn, RunFn, SectionProps } from "./shared";
 export function OrgSection({ busy, run, confirm }: SectionProps) {
   const me = useAdminUser();
   const depts = useDepartments();
-  const emps = useApi<{ employees: { id: number; code: string; name: string; departmentId: number }[] }>("/api/employees");
+  const emps = useApi<{ employees: { id: number; code: string; name: string; departmentId: number }[] }>("/api/employees?fields=basic");
   const [newDept, setNewDept] = useState("");
   const [deptForm, setDeptForm] = useState<{ id: number; name: string } | null>(null);
 
