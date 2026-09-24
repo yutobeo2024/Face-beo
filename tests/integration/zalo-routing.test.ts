@@ -220,6 +220,40 @@ describe("API nhóm (Quản trị)", () => {
     expect((await groupRoute.PATCH(req(`/api/settings/zalo/groups/khong-co`, { method: "PATCH", cookie: A, body: {} }), ctx({ groupId: "khong-co" }))).status).toBe(404);
   });
 
+  it("DELETE nhóm: HR → 403, id lạ → 404; xóa xong ngừng nhận tin, có tin báo vào nhóm + nhật ký + tin minh bạch", async () => {
+    const gid = "rt-new";
+    await prisma.zaloGroup.upsert({
+      where: { groupId: gid },
+      create: { groupId: gid, name: "Nhóm sắp xóa", source: "MANUAL", categories: JSON.stringify(["CHAM_CONG"]) },
+      update: { name: "Nhóm sắp xóa", categories: JSON.stringify(["CHAM_CONG"]) },
+    });
+    await prisma.zaloGroup.updateMany({ where: { groupId: G_ADMIN }, data: { categories: JSON.stringify(["MINH_BACH"]) } });
+    expect(await groupsFor("CHAM_CONG", lan.departmentId)).toContain(gid);
+
+    const del = (groupId: string, cookie = A) => groupRoute.DELETE(req(`/api/settings/zalo/groups/${groupId}`, { method: "DELETE", cookie }), ctx({ groupId }));
+    expect((await del(gid, await sessionCookie(hr.id))).status).toBe(403);
+    expect((await del("khong-co-nhom-nay")).status).toBe(404);
+
+    const ok = await del(gid);
+    expect(ok.status, JSON.stringify(await ok.clone().json())).toBe(200);
+    expect(await prisma.zaloGroup.count({ where: { groupId: gid } })).toBe(0);
+    expect(await groupsFor("CHAM_CONG", lan.departmentId)).not.toContain(gid);
+    // Tin báo gửi vào chính nhóm bị xóa + tin minh bạch cho nhóm quản trị + nhật ký.
+    expect(await prisma.notificationLog.count({ where: { toGroupId: gid, dedupeKey: { startsWith: `grp:zalo-disconnect:${gid}:` } } })).toBe(1);
+    expect(await prisma.notificationLog.count({ where: { toGroupId: G_ADMIN, dedupeKey: { startsWith: `grp:zalo-delete:${gid}:` } } })).toBe(1);
+    expect(await prisma.auditLog.count({ where: { action: "ZALO_GROUP_ROUTING", entityId: gid, detail: { contains: '"deleted":true' } } })).toBeGreaterThan(0);
+  });
+
+  it("nhóm đã xóa mà nhắn lại cho OA (webhook) thì hiện lại nhưng KHÔNG nhận tin", async () => {
+    const gid = "rt-new";
+    await prisma.zaloGroup.deleteMany({ where: { groupId: gid } });
+    // Webhook chỉ upsert khung nhóm — không gán loại tin nào (giống src/app/api/zalo/webhook/route.ts:61).
+    await prisma.zaloGroup.upsert({ where: { groupId: gid }, create: { groupId: gid, source: "WEBHOOK" }, update: {} });
+    const again = await prisma.zaloGroup.findUniqueOrThrow({ where: { groupId: gid } });
+    expect(again).toMatchObject({ source: "WEBHOOK", categories: "[]" });
+    expect(await groupsFor("CHAM_CONG", lan.departmentId)).not.toContain(gid);
+  });
+
   it("không nhóm nào nhận loại tin → không ghi log", async () => {
     await prisma.zaloGroup.updateMany({ where: { groupId: { in: ALL } }, data: { categories: "[]" } });
     const key = `rt-none:${Date.now()}`;

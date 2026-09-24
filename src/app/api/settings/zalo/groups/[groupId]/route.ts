@@ -4,7 +4,9 @@ import { badRequest, handle, json, notFound, parseJson } from "@/lib/api";
 import { requirePerm } from "@/lib/permissions";
 import { audit } from "@/lib/audit";
 import { announce } from "@/lib/announce";
-import { ZALO_CATEGORY_INFO, categoriesSchema, groupCategories, groupDepartmentIds } from "@/lib/zalo-routing";
+import { ZALO_CATEGORY_INFO, categoriesSchema, groupCategories, groupDepartmentIds, nowText } from "@/lib/zalo-routing";
+import { sendZaloMessage } from "@/lib/zalo-oa";
+import { ROLE_LABEL, type Role } from "@/lib/roles";
 
 // PATCH: không dùng .default() (luật zod 4 của dự án) — trường không gửi thì giữ nguyên.
 const patchSchema = z.object({
@@ -37,4 +39,41 @@ export const PATCH = handle<{ groupId: string }>(async (req, ctx) => {
     always: true,
   });
   return json({ ok: true, groupId, categories, departmentIds });
+});
+
+/**
+ * Xóa nhóm khỏi danh sách nhận tin (v1.15.0): báo vào chính nhóm đó rồi gỡ khỏi DB — từ đó không gửi gì nữa.
+ * Nhật ký tin đã gửi (NotificationLog) giữ nguyên. Nếu nhóm nhắn cho OA lần nữa, webhook `create_group` sẽ thêm lại
+ * nhóm với danh sách loại tin RỖNG (không nhận tin) cho tới khi Quản trị tích lại — đúng ý "hiện lại nhưng không nhận tin".
+ */
+export const DELETE = handle<{ groupId: string }>(async (req, ctx) => {
+  const u = await requirePerm(req, "settings.system");
+  const { groupId } = await ctx.params;
+  const row = await prisma.zaloGroup.findUnique({ where: { groupId } });
+  if (!row) throw notFound("Không có nhóm này");
+  const categories = groupCategories(row.categories);
+  const name = row.name ?? groupId;
+  // Xóa TRƯỚC rồi mới báo: hai lượt xóa cùng lúc (bấm đúp, hai Quản trị) thì chỉ một lượt có count → lượt kia 404 thay vì 500,
+  // và nhóm chỉ nhận đúng MỘT tin chia tay. sendZaloMessage không đọc bảng ZaloGroup nên xóa rồi vẫn gửi được.
+  const gone = await prisma.zaloGroup.deleteMany({ where: { groupId } });
+  if (!gone.count) throw notFound("Không có nhóm này");
+  await sendZaloMessage({
+    toGroupId: groupId,
+    messageType: "GROUP_EVENT",
+    dedupeKey: `grp:zalo-disconnect:${groupId}:${Date.now()}`,
+    data: {
+      actorRole: ROLE_LABEL[u.role as Role] ?? u.role,
+      actorName: u.name,
+      action: "đã NGỪNG gửi tin Face Beo vào nhóm này",
+      detail: "Nhóm đã được gỡ khỏi danh sách nhận tin trong Cấu hình → Zalo OA.",
+      atText: nowText(),
+    },
+  });
+  await audit({ actorId: u.id, action: "ZALO_GROUP_ROUTING", entity: "ZaloGroup", entityId: groupId, detail: { deleted: true, groupName: row.name, categories } });
+  await announce(u, `đã xóa nhóm Zalo "${name}" khỏi danh sách nhận tin`, {
+    key: `zalo-delete:${groupId}:${Date.now()}`,
+    detail: categories.length ? `Nhóm này đang nhận: ${categories.map((c) => ZALO_CATEGORY_INFO[c as keyof typeof ZALO_CATEGORY_INFO]?.label ?? c).join(", ")} — từ nay không nhận nữa.` : "Nhóm này vốn không nhận tin nào.",
+    always: true,
+  });
+  return json({ ok: true, groupId });
 });

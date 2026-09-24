@@ -107,7 +107,7 @@ footer{color:var(--muted);font-size:.85rem;text-align:center;padding:10px}
 <div class="layout">
 <nav class="toc" id="toc">
   <div class="brand">📘 Cẩm nang Face Beo</div>
-  <div class="sub">Hướng dẫn sử dụng · bản v1.14</div>
+  <div class="sub">Hướng dẫn sử dụng · bản v1.15</div>
   <button class="menu-mobile" onclick="document.getElementById('toc').classList.toggle('open')">☰ Mục lục</button>
   <ol>
     <li class="grp">Bắt đầu</li>
@@ -274,7 +274,18 @@ npm run admin:create -- --code AD01 --name "Nguyễn Văn A" --phone 0901234567<
 <!-- 4 -->
 <section id="cau-hinh-ca">
   <h2><span class="num">4.</span>Cấu hình ca &amp; hệ số công</h2>
-  <p class="lead"><span class="pill a">Quản trị</span> Menu <b>Cấu hình</b> → thẻ <b>Ca làm việc</b>. Ca là nền tảng của mọi phép tính: trễ, sớm, giờ công, ngày công, OT.</p>
+  <p class="lead"><span class="pill a">Quản trị</span> Menu <b>Cấu hình</b> → tab <b>Ca &amp; lịch</b> → thẻ <b>Ca làm việc</b>. Ca là nền tảng của mọi phép tính: trễ, sớm, giờ công, ngày công, OT.</p>
+  <div class="callout"><b>Trang Cấu hình chia 5 tab</b> (v1.15.0)
+    <div class="tw"><table>
+      <tr><th>Tab</th><th>Có gì</th><th>Ai thấy</th></tr>
+      <tr><td><b>Ca &amp; lịch</b></td><td>Ca làm việc · Mẫu tuần làm việc · Ngày lễ · Hệ số công theo phòng</td><td>Quản trị (và vai trò được cấp quyền <b>Tổ chức</b>)</td></tr>
+      <tr><td><b>Tổ chức</b></td><td>Phòng ban &amp; quản lý (kèm cách duyệt đơn, "không chấm công") · Chức danh &amp; chuyên khoa</td><td>Quản trị (và vai trò được cấp quyền <b>Tổ chức</b>)</td></tr>
+      <tr><td><b>Chấm công</b></td><td>Tình trạng mô hình nhận diện · ngưỡng khớp khuôn mặt, liveness · mốc tính vắng, làm tròn OT, hạn lưu ảnh</td><td>Chỉ Quản trị</td></tr>
+      <tr><td><b>Zalo OA</b></td><td>Trạng thái kết nối · nhóm nhận tin · 10 tin nhóm gần nhất</td><td>Chỉ Quản trị</td></tr>
+      <tr><td><b>Hành nghề</b></td><td>Tra cứu GPHN trên medinet · ngưỡng CME và báo trước hết hạn</td><td>Chỉ Quản trị</td></tr>
+    </table></div>
+    <p>Đang ở tab nào thì địa chỉ ghi luôn tab đó (vd. <code>/admin/settings?tab=zalo</code>) — lưu lại hoặc gửi cho người khác đều mở đúng chỗ, F5 không nhảy về đầu.</p>
+  </div>
 
   <h3>4.1 Các trường của một ca</h3>
   <div class="tw"><table>
@@ -522,7 +533,7 @@ flowchart TD
     <div class="card"><h4>⚠ Cảnh báo khi nào</h4><ul><li>Chức danh bắt buộc mà chưa có GPHN</li><li>(Người được cấp GPHN chưa đủ 2 năm chưa bị xét mốc 48 tiết)</li><li>GPHN tình trạng khác "Hoạt động"</li><li>GPHN / chứng chỉ đã hết hạn hoặc còn ≤ 90 ngày</li><li>CME 2 năm dưới 48 tiết</li><li>Chu kỳ còn ≤ 180 ngày mà chưa đủ 120 tiết</li><li>Quá 12 tháng chưa đối chiếu medinet</li><li><b>medinet</b>: GPHN không còn hoạt động, tên / ngày cấp / phạm vi khác hồ sơ, không tìm thấy số GPHN, <b>đang đăng ký hành nghề cả ở nơi khác</b>, chưa ghi nơi công tác tại phòng khám</li></ul></div>
     <div class="card"><h4>📣 Thấy cảnh báo ở đâu</h4><ul><li>Huy hiệu <b>⚠ Hồ sơ hành nghề</b> trên thẻ nhân viên</li><li>Dải <b>Cảnh báo hành nghề</b> ở Tổng quan (bấm để xem từng người)</li><li><b>Nhóm Zalo minh bạch</b> lúc 07:30 — <b>một tin tổng hợp</b> các vấn đề mới, mỗi vấn đề nhắc tối đa <b>1 lần / tháng</b> ("chưa đối chiếu medinet" chỉ hiện trên web)</li></ul></div>
   </div>
-  <div class="callout"><b>Ai xem được?</b><p>Chỉ Nhân sự, Quản trị và chính chủ (nhân viên xem hồ sơ của mình, mở được file của mình ở Trang cá nhân, không sửa được). Trưởng phòng không xem được. Nhân sự không tự cập nhật hồ sơ hành nghề của chính mình — nhờ Nhân sự khác hoặc Quản trị. Tin Zalo không kèm file hay CCCD. Các ngưỡng 48 / 120 / 5 năm / 90 ngày sửa ở Cấu hình → Ngưỡng.</p></div>
+  <div class="callout"><b>Ai xem được?</b><p>Chỉ Nhân sự, Quản trị và chính chủ (nhân viên xem hồ sơ của mình, mở được file của mình ở Trang cá nhân, không sửa được). Trưởng phòng không xem được. Nhân sự không tự cập nhật hồ sơ hành nghề của chính mình — nhờ Nhân sự khác hoặc Quản trị. Tin Zalo không kèm file hay CCCD. Các ngưỡng 48 / 120 / 5 năm / 90 ngày sửa ở Cấu hình → tab <b>Hành nghề</b>.</p></div>
   <div class="callout"><b>Cấu hình tra cứu medinet</b> <span class="pill a">Quản trị</span><p>Cấu hình → <b>Tra cứu GPHN trên medinet</b>: bật/tắt tự tra hằng ngày, số ngày giữa 2 lần tra (mặc định 30), và <b>số GPHĐ của phòng khám</b> (vd. <code>06410/HCM-GPHĐ</code>) — cần có số này thì hệ thống mới nhận ra nhân viên "đăng ký hành nghề ở nơi khác". Nguồn là trang công khai của Sở Y tế TP.HCM: GPHN do tỉnh khác cấp có thể không có (báo "không tìm thấy" — tra tay). Trang medinet lỗi thì hệ thống giữ kết quả cũ, không cảnh báo sai.</p></div>
   <div class="ex"><div class="t">Ví dụ kết quả tra</div><p>BS. An — medinet: <b>Hoạt động</b>, khớp hồ sơ. Nơi công tác: Phòng khám của mình (Nội tổng hợp, T2–CN 07:00–17:00) · <b>⚠ Phòng khám đa khoa X</b> (Da liễu, T2–T7 17:30–20:00) → cảnh báo "Đang đăng ký hành nghề cả ở: Phòng khám đa khoa X (T2: 17:30 → 20:00…)". Làm ngoài giờ ở nơi khác có thể hợp lệ — Nhân sự xem lịch để chắc không trùng giờ làm ở phòng khám.</p></div>
   <div class="callout warn"><b>Sao lưu file scan</b><p>File scan lưu ở thư mục <code>data/credentials/</code> trên máy chủ. Bản sao lưu tự động hằng đêm chỉ gồm cơ sở dữ liệu — khi chép sao lưu ra ngoài máy, nhớ chép cả thư mục này.</p></div>
@@ -899,7 +910,7 @@ stateDiagram-v2
 <!-- 15 -->
 <section id="zalo">
   <h2><span class="num">15.</span>Zalo &amp; thông báo</h2>
-  <p class="lead"><span class="pill a">Quản trị</span> Menu <b>Cấu hình</b> → thẻ <b>Zalo OA — nhóm nhận tin</b>. Có thể dùng nhiều nhóm; mỗi nhóm tích <b>loại tin</b> muốn nhận.</p>
+  <p class="lead"><span class="pill a">Quản trị</span> Menu <b>Cấu hình</b> → tab <b>Zalo OA</b> → thẻ <b>Nhóm nhận tin</b>. Có thể dùng nhiều nhóm; mỗi nhóm tích <b>loại tin</b> muốn nhận.</p>
 
   <div class="tw"><table>
     <tr><th>Loại tin</th><th>Nhóm nhận thấy gì</th><th>Ví dụ nhóm</th></tr>
@@ -922,12 +933,16 @@ stateDiagram-v2
   <h3>15.2 Thêm nhóm và chọn loại tin</h3>
   <ol class="steps">
     <li>Trong OA Manager, tạo nhóm chat GMF (vd. "YDSG-NHÂN VIÊN") và thêm thành viên.</li>
-    <li>Mở thẻ Zalo OA: dòng trạng thái phải là <b>"Đang gửi thật"</b> (nếu là "mô phỏng" thì máy chủ chưa có khóa Zalo — báo kỹ thuật).</li>
+    <li>Mở tab <b>Zalo OA</b>: dòng trạng thái phải là <b>"Đang gửi thật"</b> (nếu là "mô phỏng" thì máy chủ chưa có khóa Zalo — báo kỹ thuật).</li>
     <li>Mở nhóm trong OA Manager, <b>chép link trên thanh địa chỉ</b> (dạng <code>https://oa.zalo.me/chat?gid=712b…&amp;oaid=4184…</code>), dán vào ô dưới cùng, bấm <b>Thêm nhóm</b>. Hệ thống tự lấy phần <code>gid</code> (ID nhóm). Nhóm tạo mới cũng có thể tự hiện trong danh sách nếu đã bật webhook.</li>
     <li>Ở khối của nhóm: tích <b>loại tin</b> (vd. "Chấm công nhân viên" + "Đơn từ nhân viên"); muốn chỉ một số phòng thì bấm chọn phòng (không chọn = mọi phòng). Bấm <b>Lưu</b>.</li>
     <li>Bấm <b>Gửi tin thử</b> của nhóm đó; kết quả phải là <code>SENT</code>. Bảng "10 tin nhóm gần nhất" ghi rõ tin nào vào nhóm nào.</li>
   </ol>
   <div class="callout"><b>ID nhóm và ID OA</b><p>Trong link, <code>gid=…</code> là ID nhóm (có lẫn chữ a–f), <code>oaid=…</code> là ID của OA (toàn chữ số). Dán nhầm chuỗi toàn số, hệ thống sẽ báo "đây là ID của OA, không phải ID nhóm".</p></div>
+  <div class="callout warn"><b>Xóa một nhóm khỏi danh sách</b> (v1.15.0)
+    <p>Bấm nút <b>thùng rác</b> ở khối của nhóm → xác nhận. Hệ thống gửi một tin báo <i>"đã NGỪNG gửi tin Face Beo vào nhóm này"</i> vào chính nhóm đó (để người trong nhóm không tưởng hệ thống hỏng), rồi gỡ nhóm khỏi danh sách và ngừng gửi mọi tin. Nhật ký tin đã gửi trước đó <b>vẫn giữ nguyên</b>; nhóm minh bạch nhận tin báo ai đã xóa.</p>
+    <p>Nếu sau này nhóm đó nhắn cho OA lần nữa, nhóm sẽ <b>hiện lại</b> trong danh sách nhưng ở trạng thái <b>không nhận tin</b> cho tới khi Quản trị tích lại loại tin. Chỉ muốn tạm ngừng thì không cần xóa — bỏ tích hết loại tin là đủ.</p>
+  </div>
   <div class="callout"><b>Tin nhắn Zalo cá nhân cho từng nhân viên</b>
     <p>Hệ thống có gửi tin riêng (nhắc trễ, đơn được duyệt, thiếu giờ ra…) cho người <b>đã liên kết Zalo</b> ở trang cá nhân, nhưng Zalo chỉ cho OA nhắn miễn phí trong 48 giờ sau khi người đó nhắn cho OA — nên tin riêng là "có thì tốt", chưa đảm bảo (đang chờ quyết định dùng ZNS trả phí). Nhân viên luôn xem được thông báo tại <code>/me</code> → <b>Thông báo gần đây</b>. Chi tiết kỹ thuật và sơ đồ: <a href="https://claude.ai/artifact/KwxtwjjshvwgYp8F9T64gh" target="_blank" rel="noopener noreferrer">Tài liệu Zalo OA</a> (<code>docs/zalo-oa.html</code>).</p>
   </div>
@@ -994,7 +1009,7 @@ stateDiagram-v2
   <h2><span class="num">18.</span>Hỏi đáp &amp; xử lý sự cố</h2>
   <div class="callout"><b>Địa chỉ ứng dụng</b><p>Từ 21/09/2026 Face Beo chạy tại <b>https://face.ydsg.website</b> — đăng nhập ở <code>/login</code>, trang cá nhân <code>/me</code>, kiosk <code>/kiosk</code>. Dùng được cả ở nhà qua Internet (không cần cùng mạng công ty). Địa chỉ IP nội bộ cũ không còn dùng.</p></div>
   <details><summary>Không mở được face.ydsg.website / báo lỗi 502, 530</summary><p>Máy chủ đang khởi động lại (thường vài giây khi cập nhật phiên bản) hoặc mất kết nối tới Cloudflare. Đợi 1–2 phút rồi tải lại; vẫn lỗi thì báo kỹ thuật (xem <code>docs/DEPLOY-VPS.md</code> mục Theo dõi). Kiosk vẫn giữ lượt quét trong hàng đợi và tự gửi lại khi có mạng.</p></details>
-  <details><summary>Kiosk nhận nhầm người khác</summary><p>Báo HR ngay. HR mở Chấm công, xem snapshot của lần quét đó; Quản trị xóa log sai (ghi lý do). Enroll lại cả hai người cho kỹ 5 góc, tại chỗ đặt kiosk. Quản trị có thể nâng ngưỡng khớp ở <b>Cấu hình → Ngưỡng &amp; thời hạn</b> (mặc định 0.45, chênh lệch 0.08).</p></details>
+  <details><summary>Kiosk nhận nhầm người khác</summary><p>Báo HR ngay. HR mở Chấm công, xem snapshot của lần quét đó; Quản trị xóa log sai (ghi lý do). Enroll lại cả hai người cho kỹ 5 góc, tại chỗ đặt kiosk. Quản trị có thể nâng ngưỡng khớp ở <b>Cấu hình → tab Chấm công</b> (mặc định 0.45, chênh lệch 0.08).</p></details>
   <details><summary>Kiosk hay báo "Không nhận ra"</summary><p>Kiểm tra ánh sáng (không ngược sáng), camera sạch, nhân viên bỏ khẩu trang/mũ. Enroll lại nếu hồ sơ hiện "Enroll lại". Nếu cả kiosk báo "máy chủ chưa sẵn sàng" → báo kỹ thuật.</p></details>
   <details><summary>Nhân viên bị báo vắng dù đã xin nghỉ</summary><p>Đơn nghỉ phép có thể chưa được duyệt. Duyệt đơn xong công được tính lại tự động.</p></details>
   <details><summary>Ở lại làm thêm nhưng báo cáo OT = 0</summary><p>Cần đơn <b>Tăng ca</b> đã duyệt che khoảng thời gian đó. Gửi đơn (trong vòng 3 ngày) và duyệt, OT được tính lại.</p></details>
@@ -1010,7 +1025,7 @@ stateDiagram-v2
   <details><summary>Đăng xuất trên điện thoại thì máy tính cũng bị thoát?</summary><p>Đúng, có chủ đích: đăng xuất ở bất kỳ đâu sẽ thoát tài khoản trên mọi thiết bị (kể cả phiên lỡ để lại ở máy dùng chung). Đăng nhập lại là được. Đổi mật khẩu cũng vậy.</p></details>
 </section>
 
-<footer>Face Beo · Cẩm nang sử dụng · cập nhật 22/09/2026 (phiên bản ứng dụng v1.14.0 · https://face.ydsg.website)</footer>
+<footer>Face Beo · Cẩm nang sử dụng · cập nhật 24/09/2026 (phiên bản ứng dụng v1.15.0 · https://face.ydsg.website)</footer>
 </main>
 </div>
 

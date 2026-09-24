@@ -410,12 +410,13 @@ cloudflared tunnel --url http://localhost:3000
     <tr><td><code>CRON_SECRET</code>, <code>DISABLE_CRON</code></td><td>Không</td><td>Gọi job từ lịch ngoài / tắt cron nội bộ</td></tr>
   </table></div>
   <div class="callout warn"><b>Quy tắc "mô phỏng"</b><p>Mô phỏng khi thiếu <code>ZALO_OA_APP_ID</code> hoặc <code>ZALO_OA_SECRET</code>, <b>hoặc</b> vừa không có <code>ZALO_OA_REFRESH_TOKEN</code> trong <code>.env</code> vừa trống bảng <code>ZaloToken</code>. Không có biến "bật/tắt mô phỏng" riêng.</p></div>
-  <h3>5.5 Màn hình Cấu hình → Zalo OA</h3>
+  <h3>5.5 Màn hình Cấu hình → tab Zalo OA</h3>
   <ul>
     <li><b>Badge</b>: mô phỏng / đang gửi thật; App ID/Secret có hay thiếu; token có và hạn; webhook secret có hay chưa.</li>
     <li><b>Cảnh báo đỏ</b> khi làm mới token thất bại (cũng hiện ở Tổng quan).</li>
     <li><b>Danh sách nhóm</b> (nhóm đang nhận tin lên đầu, viền xanh): tên, ID, số thành viên, nguồn, trạng thái; 3 ô tích loại tin (Minh bạch / Chấm công / Đơn từ); chọn phòng cho tin nhân viên; nút <b>Lưu</b>, <b>Gửi tin thử</b> và kết quả.</li>
     <li><b>Thêm nhóm</b>: dán link chat nhóm hoặc ID nhóm; chuỗi toàn số (ID của OA) bị chặn kèm giải thích.</li>
+    <li><b>Xóa nhóm</b> (v1.15.0, nút thùng rác): gửi tin "đã NGỪNG gửi tin Face Beo vào nhóm này" vào chính nhóm đó → xóa dòng <code>ZaloGroup</code> → ghi nhật ký <code>ZALO_GROUP_ROUTING</code> (<code>deleted: true</code>) + báo nhóm minh bạch. Nhật ký <code>NotificationLog</code> cũ giữ nguyên. Nhóm nhắn lại cho OA thì webhook <code>create_group</code> thêm lại nhóm với <b>danh sách loại tin rỗng</b> — hiện trong danh sách nhưng không nhận tin.</li>
     <li><b>10 tin nhóm gần nhất</b> kèm tên nhóm, trạng thái và mã lỗi.</li>
   </ul>
 </section>
@@ -507,7 +508,7 @@ cloudflared tunnel --url http://localhost:3000
   <p>Tài liệu nội bộ liên quan: <code>README.md</code> mục "Cấu hình Zalo OA", <code>docs/PRD-v2-Face-Beo.md</code> §7, <code>docs/PRD-v2.1-HR.md</code> §7, <code>docs/OPEN-DECISIONS.md</code> D4, cẩm nang sử dụng mục 15.</p>
 </section>
 
-<footer>Face Beo · Tài liệu Zalo OA · cập nhật 22/09/2026 (phiên bản ứng dụng v1.14.0 · https://face.ydsg.website)</footer>
+<footer>Face Beo · Tài liệu Zalo OA · cập nhật 24/09/2026 (phiên bản ứng dụng v1.15.0 · https://face.ydsg.website)</footer>
 </main>
 </div>
 

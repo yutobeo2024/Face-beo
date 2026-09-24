@@ -114,7 +114,7 @@ Chỉ ADMIN chấm tay trực tiếp được (không qua đơn), dùng cho trư
 
 ### Ngày công, nửa ngày phép và chốt công tháng (v1.2)
 
-- **Hệ số công:** mỗi ca có hệ số công chung (mặc định 1). Quản trị đặt hệ số riêng theo phòng ở **Cấu hình → Ca**, ví dụ Hành chính: Sáng thứ Bảy = 0.5.
+- **Hệ số công:** mỗi ca có hệ số công chung (mặc định 1). Quản trị đặt hệ số riêng theo phòng ở **Cấu hình → Ca & lịch**, ví dụ Hành chính: Sáng thứ Bảy = 0.5.
 - **Nửa ngày phép:** đi làm nửa ngày, nửa còn lại nghỉ phép đã duyệt thì được 0.5 công + 0.5 phép. Đơn về sớm không trừ công.
 - **Giờ bắt đầu nghỉ** của ca: giờ công chỉ trừ phần giờ nghỉ mà nhân viên có mặt. Ví dụ vào 13:00, ra 17:00 được 4 giờ.
 - **Chốt công tháng** ở trang Báo cáo:
@@ -159,7 +159,7 @@ phiên bản API qua ping). Reverse proxy phải cho body ≥ 8 MB (enroll gửi
 
 Vì sao đổi: mô hình `faceres` của Human (chạy trên tablet) không tách được người có nét giống nhau — trên dữ liệu thật của công ty nó nhận nhầm
 2/16 ảnh và từ chối 14 lượt quét; InsightFace R50 trên cùng dữ liệu: 0 nhầm (cùng người ≥ 0.51, khác người ≤ 0.35).
-Ngưỡng mặc định mới: khớp 0.45, chênh lệch top-1/top-2 0.08 (Cấu hình → Ngưỡng).
+Ngưỡng mặc định mới: khớp 0.45, chênh lệch top-1/top-2 0.08 (Cấu hình → tab Chấm công).
 
 ### Enroll khuôn mặt
 
@@ -192,7 +192,7 @@ Cách hoạt động:
 - Kiosk gửi kèm snapshot JPEG và khung mặt `faceBox` (toạ độ pixel của snapshot).
 - Server cắt vùng quanh khung mặt với hệ số 2,7, resize bilinear **khớp `cv2.resize`**, đưa vào mô hình theo thứ tự màu BGR, giá trị 0–255. Mô hình trả 3 lớp và lấy xác suất lớp 1 (“mặt thật”). Mỗi lượt mất khoảng 10–15 ms trên CPU.
 - Pipeline Node được đối chiếu với mã tham chiếu Python (onnxruntime + OpenCV): sai lệch xác suất < 0,002. Test hồi quy nằm trong `tests/unit/liveness-l2.test.ts`.
-- Lần quét chỉ được nhận khi **cả L1 và L2 cùng đạt**. Ngưỡng L2 chỉnh ở **Cấu hình → Ngưỡng liveness L2** (mặc định 0,5). Điểm `livenessScore` lưu vào log là điểm thấp hơn trong hai lớp.
+- Lần quét chỉ được nhận khi **cả L1 và L2 cùng đạt**. Ngưỡng L2 chỉnh ở **Cấu hình → tab Chấm công → Ngưỡng liveness L2 (server)** (mặc định 0,5). Điểm `livenessScore` lưu vào log là điểm thấp hơn trong hai lớp.
 - Khi L2 bật, request thiếu snapshot hoặc `faceBox` bị **từ chối**, để client không thể né L2 bằng cách bỏ trống dữ liệu.
 - Nếu mô hình lỗi hoặc thiếu (sự cố phía server), hệ thống tạm dùng L1 để không làm tê liệt chấm công, ghi AuditLog `LIVENESS_L2_UNAVAILABLE`, và dashboard ADMIN hiện cảnh báo đỏ.
 - **Hiệu chỉnh:** trong giai đoạn pilot, xem điểm L2 của các lần bị từ chối ở **Chấm công → Quét đáng ngờ** (lưu trong chi tiết AuditLog). Kết hợp với bài thử ảnh in / điện thoại / video để chọn ngưỡng. MiniFASNet được huấn luyện trên dữ liệu công khai, nên độ chính xác thực tế phụ thuộc camera và ánh sáng của tablet; hãy đo trên thiết bị thật trước khi tin vào con số.
@@ -328,6 +328,7 @@ Chạy `npm audit` trước mỗi lần phát hành. Mục tiêu là **0 lỗ h�
 - Chạy `npx prisma migrate deploy` mỗi lần cập nhật. SQLite được bật `journal_mode=WAL` và `busy_timeout=5000` khi khởi động.
 - Cookie session dùng cờ `secure` trong production. Nếu thử nghiệm trong LAN qua HTTP, đặt `INSECURE_COOKIES=true` (không dùng khi chạy thật).
 - Mô hình Human được phục vụ từ `public/models` (do `npm install` chép vào). Nếu chép lại mô hình sau khi build, phải khởi động lại `next start`.
+- Trang Cấu hình (v1.15.0): chia 5 tab (`?tab=`), mã ở `src/app/admin/settings/sections/`. Nhóm Zalo xóa được (DELETE `/api/settings/zalo/groups/[groupId]`) — báo vào nhóm rồi gỡ; webhook có thể thêm lại nhóm ở trạng thái không nhận tin.
 - Cài thành app (v1.14.0): `public/manifest.webmanifest` + `public/sw.js` (không lưu đệm gì ngoài `offline.html`), nút cài ở khung menu; kiosk giữ `public/kiosk.webmanifest`. Icon: `npm run icons`.
 - Sao lưu ra ngoài máy chủ (v1.10.4): service `backup` đẩy bản DB mới nhất + `data/credentials/` + `data/avatars/` + `data/photos/` lên **Cloudflare R2**, mã hóa, mỗi ngày 03:30,
   giữ 30 ngày; khôi phục bằng `deploy/restore-offsite.sh` (xem `docs/DEPLOY-VPS.md` mục Sao lưu). Cất bản `.env` ra ngoài máy chủ.

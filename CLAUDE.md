@@ -7,7 +7,7 @@
   MiniFASNetV2 phía server), đơn từ, tính công/chốt công tháng, xuất Excel, thông báo Zalo OA (nhiều nhóm theo loại tin: minh bạch / chấm công / đơn từ + tin riêng).
 - Stack: Next.js 15 App Router, Prisma 6 (SQLite WAL), zod 4, luxon, exceljs, node-cron, jose JWT (HS256, 7 ngày, `sessionVersion`),
   vitest 4 (test tích hợp gọi thẳng route handler, DB `data/test.db`).
-- Phiên bản hiện tại: **v1.14.0** (tag GitHub `v1.14.0`, repo `yutobeo2024/Face-beo`). Phiên bản ghi trong prose (README, PRD,
+- Phiên bản hiện tại: **v1.15.0** (tag GitHub `v1.15.0`, repo `yutobeo2024/Face-beo`). Phiên bản ghi trong prose (README, PRD,
   OPEN-DECISIONS), không có CHANGELOG; `package.json` version không dùng để đánh số.
 
 ## Lệnh
@@ -65,6 +65,9 @@ chạy cron / khóa Zalo thật song song với VPS (refresh token Zalo dùng m�
   `data/photos/<id>/`, ≤ 2 MB sau cắt, sharp chuẩn hóa 600×800. Sửa = chính chủ / `employees.manage` (HR/ADMIN khác chỉ ADMIN). Nghỉ việc → `clearProfilePhoto`.
 - Không chấm công (v1.12.0, `src/lib/attendance-scope.ts`): truy vấn nhân viên cho chấm công / cảnh báo / báo cáo / xếp ca / chốt công phải ghép
   `TRACKED_WHERE` (AND). Chỉ ADMIN đổi `attendanceExempt` (phòng / người).
+- Trang Cấu hình (v1.15.0): khung tab ở `src/app/admin/settings/page.tsx`, từng mục ở `sections/` — thêm thẻ mới thì đặt vào đúng tab, mỗi thẻ
+  chỉ PUT khóa của chính nó. Xóa nhóm Zalo = DELETE `/api/settings/zalo/groups/[groupId]` (báo vào nhóm rồi xóa; webhook có thể thêm lại nhóm
+  với `categories: []`).
 - PWA (v1.14.0): manifest app nhân sự là file TĨNH `public/manifest.webmanifest` (layout con mới đè được), kiosk dùng `public/kiosk.webmanifest`;
   `public/sw.js` KHÔNG được lưu đệm gì ngoài `offline.html` (tránh chạy bản cũ / lộ dữ liệu có quyền). Luật hiện nút cài ở `src/lib/pwa.ts`.
 - zod 4: schema PATCH không được có `.default()` (`.partial()` vẫn áp default → xóa dữ liệu). Cột JSON trong SQLite lưu chuỗi.

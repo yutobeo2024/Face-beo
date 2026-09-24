@@ -22,6 +22,11 @@ Ghi lại những điểm đã phát hiện trong quá trình làm và test, c�
   tạo lại OA Secret Key webhook (nếu Zalo cho), dán lại vào `/opt/facebeo/.env`, `up -d --force-recreate`.
 - **Trạng thái:** chờ chủ dự án thao tác.
 
+## Đã chốt v1.15.0 (24/09/2026)
+
+- **Trang Cấu hình chia 5 tab** (Ca & lịch · Tổ chức · Chấm công · Zalo OA · Hành nghề), tab lưu trong địa chỉ.
+- **Xóa nhóm Zalo**: có gửi tin báo vào nhóm trước khi xóa; nhóm nhắn lại thì hiện lại nhưng không nhận tin. Xem PRD v2.1 mục 29.
+
 ## Đã chốt v1.14.0 (23/09/2026)
 
 - **Cài web app thành app (PWA)**: thanh nhắc + mục "Cài ứng dụng" trong menu; "Để sau" ẩn 14 ngày; đã cài thì ẩn hẳn; app mở thẳng `/me`

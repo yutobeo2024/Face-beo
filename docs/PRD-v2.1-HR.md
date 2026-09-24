@@ -356,7 +356,7 @@ công được tính trực tiếp từ planner. Quản lý được cấp `org.
   - `Credential` (nhiều): loại (Văn bằng, Chứng chỉ chuyên môn / định hướng, CME, Chức danh nghề nghiệp, An toàn bức xạ, Ngoại ngữ – tin học,
     Sư phạm y học, Khác), tên, nơi cấp, số hiệu, ngày cấp, hạn dùng, số tiết (bắt buộc với CME, kèm ngày cấp), file scan tùy chọn.
   - `JobTitle.requiresLicense`: chức danh bắt buộc GPHN (Cấu hình → Chức danh, ô "GPHN"); seed nền bật cho Bác sĩ, Điều dưỡng, Kỹ thuật viên.
-- **CME (TT 32/2023/TT-BYT, ngưỡng cấu hình được ở Cấu hình → Ngưỡng)**: ≥ `cmeTwoYearHours` (48) tiết trong 24 tháng gần nhất (theo ngày cấp
+- **CME (TT 32/2023/TT-BYT, ngưỡng cấu hình được ở Cấu hình → tab Hành nghề)**: ≥ `cmeTwoYearHours` (48) tiết trong 24 tháng gần nhất (theo ngày cấp
   chứng chỉ CME); ≥ `cmeCycleHours` (120) tiết trong chu kỳ `cmeCycleYears` (5) năm tính từ **mốc chu kỳ** = ngày gia hạn, không có thì ngày cấp
   GPHN (HR sửa được); tiết chu kỳ trước **không cộng sang**. Ví dụ mốc 01/03/2020, hôm nay 21/09/2026 → chu kỳ 01/03/2025–01/03/2030; chứng chỉ
   100 tiết cấp 06/2024 không tính cho chu kỳ này.
@@ -494,3 +494,17 @@ công được tính trực tiếp từ planner. Quản lý được cấp `org.
 - **Theo nền tảng**: Chrome/Edge/Android dùng `beforeinstallprompt` (bắt sớm bằng script nhỏ ở layout gốc vì Chrome bắn trước khi React chạy);
   iOS Safari hướng dẫn tay 3 bước (kèm lưu ý app và trình duyệt đăng nhập riêng); webview Zalo/Facebook chỉ hướng dẫn mở bằng trình duyệt;
   Firefox và mạng LAN `http://` không hiện gì (trình duyệt không cài được).
+
+## 29. Trang Cấu hình chia tab + xóa nhóm Zalo (v1.15.0, 24/09/2026)
+
+- **Lý do**: 9 thẻ cấu hình đổ chung một lưới 2 cột (1 file 1045 dòng) khiến trang dài, lệch cột, khó tìm. Nhóm Zalo chỉ có thể "bỏ tích hết
+  loại tin", không gỡ được khỏi danh sách.
+- **Bố cục**: `src/app/admin/settings/page.tsx` còn là khung (tab + hộp xác nhận xóa dùng chung); từng mục nằm ở
+  `src/app/admin/settings/sections/` (`schedule`, `org`, `thresholds` — gồm cả tab Hành nghề, `zalo`, `shared`).
+  Năm tab: **Ca & lịch** · **Tổ chức** (cả hai cần `org.manage`) · **Chấm công** · **Zalo OA** · **Hành nghề** (cần `settings.system`).
+  Tab nằm ở địa chỉ `?tab=…`; tab không có quyền thì không hiện; giá trị lạ → về tab đầu tiên. **Chỉ tab đang mở mới gọi API của nó.**
+- **Ngưỡng tách hai thẻ**: nhận diện + tính công ở tab Chấm công, CME + cảnh báo hết hạn ở tab Hành nghề. Mỗi thẻ vẫn chỉ PUT các khóa của
+  chính nó (luật cũ: không ghi đè cấu hình thẻ khác vừa lưu).
+- **Xóa nhóm Zalo**: `DELETE /api/settings/zalo/groups/[groupId]` (`settings.system`) → gửi `GROUP_EVENT` báo ngừng gửi vào chính nhóm đó →
+  xóa `ZaloGroup` → nhật ký `ZALO_GROUP_ROUTING` (`deleted: true`) → `announce` nhóm minh bạch. `NotificationLog` cũ giữ nguyên.
+  Webhook `create_group` vẫn upsert nên nhóm có thể **hiện lại với `categories: []`** (không nhận tin) — cố ý, để không mất dấu nhóm đang hoạt động.

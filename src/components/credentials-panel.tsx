@@ -346,7 +346,7 @@ export function CredentialsPanel({ employeeId, readOnly }: { employeeId: number;
               max={data.cme.cycleRequired}
             />
           )}
-          <p className="text-xs text-slate-500">Tiết của chu kỳ trước không cộng sang chu kỳ sau. Ngưỡng chỉnh trong Cấu hình → Ngưỡng.</p>
+          <p className="text-xs text-slate-500">Tiết của chu kỳ trước không cộng sang chu kỳ sau. Ngưỡng chỉnh trong Cấu hình → Hành nghề.</p>
         </Card>
       )}
 
