@@ -18,6 +18,12 @@ function isActive(pathname: string, item: NavItem) {
 
 async function logout(router: ReturnType<typeof useRouter>) {
   await api("/api/auth/logout", { body: {} }).catch(() => {});
+  // Máy dùng chung: xóa luôn lịch sử Chat bot lưu trên máy để người đăng nhập sau không đọc được của người trước.
+  try {
+    for (const k of Object.keys(localStorage)) if (k.startsWith("facebeo.chatbot.")) localStorage.removeItem(k);
+  } catch {
+    /* trình duyệt chặn lưu trữ */
+  }
   router.replace("/login");
   router.refresh();
 }

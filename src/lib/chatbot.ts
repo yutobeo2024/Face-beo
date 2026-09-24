@@ -45,8 +45,7 @@ export async function usageToday(employeeId: number): Promise<number> {
 }
 
 /** Ghi thêm một lượt hỏi (chỉ số đếm, không nội dung). Trả về tổng lượt trong ngày sau khi cộng. */
-export async function bumpUsage(employeeId: number): Promise<number> {
-  const day = todayVN();
+export async function bumpUsage(employeeId: number, day = todayVN()): Promise<number> {
   const row = await prisma.chatbotUsage.upsert({
     where: { employeeId_day: { employeeId, day } },
     create: { employeeId, day, count: 1 },
@@ -67,9 +66,12 @@ const dailyLimitError = () => new HttpError(429, `Bạn đã hỏi ${CHAT_PER_DA
  * nhiều tab hỏi cùng lúc sẽ lọt vài câu quá mức ngày. Hỏi hỏng → gọi `refund()` trả lại lượt.
  */
 export async function takeDailySlot(employeeId: number): Promise<{ used: number; refund: () => Promise<void> }> {
-  const used = await bumpUsage(employeeId);
+  // Ghim NGÀY lúc giữ chỗ: câu hỏi bắt đầu lúc 23:59:50 mà hỏng lúc 00:00:05 thì phải trả lại lượt của ngày hôm qua,
+  // không được trừ vào hạn mức của ngày mới.
+  const day = todayVN();
+  const used = await bumpUsage(employeeId, day);
   if (used > CHAT_PER_DAY) {
-    await releaseUsage(employeeId);
+    await releaseUsage(employeeId, day);
     throw dailyLimitError();
   }
   let done = false;
@@ -78,14 +80,14 @@ export async function takeDailySlot(employeeId: number): Promise<{ used: number;
     refund: async () => {
       if (done) return;
       done = true;
-      await releaseUsage(employeeId);
+      await releaseUsage(employeeId, day);
     },
   };
 }
 
-/** Trả lại một lượt (không cho âm). */
-async function releaseUsage(employeeId: number) {
-  await prisma.chatbotUsage.updateMany({ where: { employeeId, day: todayVN(), count: { gt: 0 } }, data: { count: { decrement: 1 } } });
+/** Trả lại một lượt của đúng ngày đã giữ chỗ (không cho âm). */
+async function releaseUsage(employeeId: number, day: string) {
+  await prisma.chatbotUsage.updateMany({ where: { employeeId, day, count: { gt: 0 } }, data: { count: { decrement: 1 } } });
 }
 
 // ---------------------------------------------------------------------------------------------------------------

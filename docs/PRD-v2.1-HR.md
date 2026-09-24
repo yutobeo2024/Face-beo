@@ -547,7 +547,8 @@ công được tính trực tiếp từ planner. Quản lý được cấp `org.
   có chốt sentinel không tự nạp quyền mới). Ô của cả phòng nằm trong tab Tổ chức nên còn cần `org.manage`.
 - **Không lưu nội dung**: máy chủ chỉ đếm lượt (`ChatbotUsage { employeeId, day, count }`) để chặn lạm dụng — **10 câu/phút,
   100 câu/ngày** mỗi người. Lượt được **giữ chỗ trước khi hỏi** (`takeDailySlot`, hỏi hỏng thì trả lại) nên mở nhiều tab cùng
-  lúc cũng không vượt mức ngày. Ảnh gửi kèm: ≤ 3 tấm, mỗi tấm ≤ 10 MB và cả lượt hỏi ≤ 12 MB. Lịch sử hội thoại nằm ở `localStorage` của máy người dùng (20 cuộc gần nhất).
+  lúc cũng không vượt mức ngày. Ảnh gửi kèm: ≤ 3 tấm, mỗi tấm ≤ 10 MB và cả lượt hỏi ≤ 12 MB. Lịch sử hội thoại nằm ở `localStorage` của máy người dùng (20 cuộc gần nhất), khóa **riêng theo mã nhân viên**
+  (`facebeo.chatbot.v1.<id>`) và bị xóa khi Đăng xuất — máy/tablet dùng chung thì người sau không đọc được của người trước.
 - **Ảnh minh họa**: câu trả lời chứa `/static/images/...` được đổi sang `/api/me/chatbot/static/...` và lấy hộ qua Face Beo
   (kiểm quyền, chặn đường dẫn lạ, `private, max-age=600`). Trình hiện Markdown chỉ nhận ảnh có tiền tố đó.
 - **Triển khai**: một mạng docker cầu nối **riêng** `facebeo-medichat` (external, tạo tay một lần) chỉ có đúng hai container

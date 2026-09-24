@@ -68,7 +68,8 @@ chạy cron / khóa Zalo thật song song với VPS (refresh token Zalo dùng m�
   `TRACKED_WHERE` (AND). Chỉ ADMIN đổi `attendanceExempt` (phòng / người).
 - Chat bot (v1.17.0, `src/lib/chatbot.ts`): Face Beo là cửa DUY NHẤT — gọi chat bot qua mạng docker kèm `X-Chat-Key`, KHÔNG để lộ
   địa chỉ/khóa ra trình duyệt, KHÔNG lưu nội dung hỏi đáp (chỉ đếm lượt ở `ChatbotUsage`). Quyền dùng: `Department.chatbotEnabled` +
-  `Employee.chatbotEnabled` (null = theo phòng); cấp phát cần `chatbot.grant`. Ảnh chỉ qua `/api/me/chatbot/static/` (chỉ nhận
+  `Employee.chatbotEnabled` (null = theo phòng); cấp phát cần `chatbot.grant`. Lịch sử ở `localStorage` phải theo TỪNG người
+  (`facebeo.chatbot.v1.<id>`, xóa khi đăng xuất — máy dùng chung). Ảnh chỉ qua `/api/me/chatbot/static/` (chỉ nhận
   `image/png|jpeg|webp|gif`). Mạng docker nối hai app là mạng CẦU NỐI RIÊNG `facebeo-medichat` — đừng cho `facebeo-app` vào thẳng
   `medichat_default` (cloudflared của medichat sẽ đi vòng qua mặt Caddy). Giới hạn lượt giữ chỗ trước khi hỏi (`takeDailySlot`).
 - Độ trễ (v1.16.0): `useApi` có kho nhớ theo URL (hiện dữ liệu cũ rồi làm mới ngầm) — sau mỗi lần GHI cứ để `api()` tự gọi `clearApiCache()`,

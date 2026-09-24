@@ -20,7 +20,13 @@ const Markdown = dynamic(() => import("./markdown").then((m) => m.Markdown), {
   loading: () => <p className="text-sm text-slate-400">Đang hiện câu trả lời…</p>,
 });
 
-const STORAGE_KEY = "facebeo.chatbot.v1";
+/**
+ * Lịch sử lưu RIÊNG cho từng mã nhân viên: tablet / máy dùng chung có nhiều người đăng nhập lần lượt,
+ * một khóa chung sẽ cho người sau đọc được hội thoại của người trước.
+ */
+const storageKey = (employeeId: number) => `facebeo.chatbot.v1.${employeeId}`;
+/** Khóa dùng chung của bản đầu (v1.17.0 lúc mới ra) — xóa đi cho khỏi còn hội thoại của người khác nằm lại trên máy. */
+const LEGACY_STORAGE_KEY = "facebeo.chatbot.v1";
 const MAX_CONVERSATIONS = 20;
 /** Trần chỗ lưu lịch sử trên máy (ký tự JSON) — 20 hội thoại dài vẫn vừa. */
 const MAX_STORED_CHARS = 1_500_000;
@@ -36,9 +42,9 @@ const newId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 const welcome = (): Msg[] => [{ id: "welcome", role: "ai", content: WELCOME }];
 
 /** Đọc lịch sử trên máy. Dữ liệu cũ / hỏng (người dùng tự sửa, bản cũ của trang) thì bỏ qua, không làm vỡ trang. */
-function load(): Conversation[] {
+function load(key: string): Conversation[] {
   try {
-    const v: unknown = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    const v: unknown = JSON.parse(localStorage.getItem(key) || "[]");
     if (!Array.isArray(v)) return [];
     return v
       .filter(
@@ -56,11 +62,11 @@ function load(): Conversation[] {
   }
 }
 /** Ghi lịch sử, bỏ bớt hội thoại cũ nhất nếu vượt hạn mức chỗ lưu của trình duyệt (~5 MB cho cả tên miền). */
-function save(list: Conversation[]) {
+function save(key: string, list: Conversation[]) {
   let keep = list;
   try {
     while (keep.length && JSON.stringify(keep).length > MAX_STORED_CHARS) keep = keep.slice(0, -1);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(keep));
+    localStorage.setItem(key, JSON.stringify(keep));
   } catch {
     /* lịch sử chỉ là tiện ích, mất cũng không sao */
   }
@@ -92,8 +98,16 @@ export default function ChatbotPage() {
 
   const convsRef = useRef<Conversation[]>([]);
   convsRef.current = convs;
+  const key = storageKey(me.id);
 
-  useEffect(() => setConvs(load()), []);
+  useEffect(() => {
+    try {
+      localStorage.removeItem(LEGACY_STORAGE_KEY); // dọn khóa dùng chung của bản đầu
+    } catch {
+      /* trình duyệt chặn lưu trữ */
+    }
+    setConvs(load(key));
+  }, [key]);
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, busy]);
@@ -114,8 +128,8 @@ export default function ChatbotPage() {
     const title = first.content.length > 40 ? `${first.content.slice(0, 40).trim()}…` : first.content;
     // Ghi ra localStorage ở ngoài hàm cập nhật state (React có thể gọi hàm đó hai lần ở chế độ kiểm tra).
     const next = [{ id: convId, title, messages, at: Date.now() }, ...convsRef.current.filter((c) => c.id !== convId)].slice(0, MAX_CONVERSATIONS);
-    setConvs(save(next));
-  }, [messages, convId]);
+    setConvs(save(key, next));
+  }, [messages, convId, key]);
 
   const pickFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
     const picked = Array.from(e.target.files ?? []);
@@ -175,7 +189,7 @@ export default function ChatbotPage() {
   }
   function clearHistory() {
     setConvs([]);
-    save([]);
+    save(key, []);
     toast.success("Đã xóa lịch sử trên máy này");
   }
 

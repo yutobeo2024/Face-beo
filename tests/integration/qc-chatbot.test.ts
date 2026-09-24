@@ -323,6 +323,30 @@ describe("giới hạn lượt/ngày — ranh giới và chạy song song", () =
     const rows = await prisma.chatbotUsage.findMany({ where: { employeeId: emp }, orderBy: { day: "asc" } });
     expect(rows.map((r) => [r.day, r.count])).toEqual([[yesterday, CHAT_PER_DAY], [todayVN(), 2]]);
   });
+
+  it("hỏi lúc gần nửa đêm rồi hỏng: trả lại lượt của ĐÚNG ngày đã giữ chỗ, không trừ sang ngày mới", async () => {
+    const yesterday = addDays(todayVN(), -1);
+    await setUsage(5, yesterday);
+    await setUsage(3);
+    // Giữ chỗ theo "hôm qua" (mô phỏng câu hỏi bắt đầu trước 00:00), rồi hoàn lại sau khi đã sang ngày mới.
+    const day = yesterday;
+    const before = await bumpUsage(emp, day);
+    expect(before).toBe(6);
+    await prisma.chatbotUsage.updateMany({ where: { employeeId: emp, day, count: { gt: 0 } }, data: { count: { decrement: 1 } } });
+    const rows = await prisma.chatbotUsage.findMany({ where: { employeeId: emp }, orderBy: { day: "asc" } });
+    expect(rows.map((r) => [r.day, r.count])).toEqual([[yesterday, 5], [todayVN(), 3]]);
+  });
+
+  it("chat bot hỏng giữa chừng → lượt được hoàn, hỏi lại vẫn còn chỗ", async () => {
+    await prisma.department.update({ where: { id: deptId }, data: { chatbotEnabled: true } });
+    await setUsage(CHAT_PER_DAY - 1);
+    mode = "throw";
+    expect((await ask(EMP)).status).toBe(502);
+    expect(await usageToday(emp)).toBe(CHAT_PER_DAY - 1); // hoàn đúng một lượt
+    mode = "ok";
+    expect((await ask(EMP)).status).toBe(200);
+    expect(await usageToday(emp)).toBe(CHAT_PER_DAY);
+  });
 });
 
 // ---------------------------------------------------------------------------------------------------
