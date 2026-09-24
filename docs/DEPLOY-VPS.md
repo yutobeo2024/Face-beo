@@ -133,12 +133,26 @@ apt-get install -y fail2ban   # rồi làm theo hướng dẫn trong deploy/fail
 caddy validate --config /etc/caddy/Caddyfile && systemctl reload caddy
 ```
 
+**Hiện trạng (24/09/2026)**: đã chuyển xong. `face.ydsg.website` và `direct.ydsg.website` cùng trỏ **A → 103.142.27.210**
+(DNS only). Caddy phục vụ cả hai trong một khối (`/etc/caddy/face.caddy`), chứng chỉ Let's Encrypt đã cấp.
+Đo sau khi chuyển: **35–90 ms** mỗi lượt (trước đó 300–530 ms, thỉnh thoảng 5 giây). Đã kiểm tra từ máy chủ nước ngoài:
+trang app trả 403 "chỉ truy cập được từ Việt Nam", riêng `/api/zalo/webhook` vẫn trả `{"ok":true}`.
+
+**Lưu ý khi sửa Caddy trên máy này**: Caddy chạy bằng `/opt/hermes/Caddyfile` (dự án zalo-hermess) chứ không phải
+`/etc/caddy/Caddyfile`; file đó dùng biến môi trường nên muốn kiểm tra cú pháp phải nạp biến trước:
+`set -a; . /opt/hermes/.env; set +a; caddy validate --config /opt/hermes/Caddyfile --adapter caddyfile`.
+Caddy ở đây đặt `admin off` nên **không reload được**, phải `systemctl restart caddy` (các trang khác gián đoạn vài giây).
+Thư mục log phải thuộc user `caddy`: `chown -R caddy:caddy /var/log/caddy`. Bản sao lưu cấu hình gốc:
+`/opt/hermes/Caddyfile.truoc-facebeo.bak`.
+
 **DNS (làm trên Cloudflare, sau khi Caddy chạy)**
 
 1. Thử trước: thêm `direct.ydsg.website` → **A** `103.142.27.210`, **tắt proxy** (đám mây xám). Mở thử, đăng nhập, quét kiosk.
-2. Chuyển chính thức: `face.ydsg.website` đổi từ **CNAME** (đường hầm) sang **A** `103.142.27.210`, **tắt proxy**, TTL 2 phút.
-   Caddy tự xin chứng chỉ Let's Encrypt trong vài giây ở lượt truy cập đầu.
-3. Muốn quay lui: trả `face.ydsg.website` về bản ghi CNAME đường hầm cũ (container `cloudflared` vẫn chạy). Không mất dữ liệu.
+2. Chuyển chính thức: xóa bản ghi **Tunnel** của `face.ydsg.website` rồi thêm **A** `103.142.27.210`, **tắt proxy**, TTL Auto.
+   Làm liền tay: vùng này có bản ghi `*.ydsg.website` (A, Proxied) sẽ tạm hứng `face` trong lúc trống.
+   Ngay sau đó thêm tên miền vào khối Caddy (`sed -i "s|^direct|face.ydsg.website, direct|" /etc/caddy/face.caddy`) và restart.
+3. Muốn quay lui: xóa bản ghi A, vào **Zero Trust → Networks → Tunnels → facebeo → Public Hostnames → Add**
+   (`face.ydsg.website` → `http://app:3000`). Container `cloudflared` vẫn chạy nên vài phút là về như cũ.
 
 **Bắt buộc đi kèm**: `deploy/docker-compose.yml` đã bỏ `CLIENT_IP_HEADER=cf-connecting-ip`. Khi đi thẳng, IP thật nằm ở
 `X-Forwarded-For` do Caddy ghi. Nếu quay về chạy **chỉ** qua đường hầm thì phải đặt lại biến đó, nếu không mọi người dùng bị tính
