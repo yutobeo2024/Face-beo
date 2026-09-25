@@ -205,8 +205,10 @@ docker network inspect facebeo-medichat -f '{{range .Containers}}{{.Name}} {{end
 
 Trong Face Beo, tài khoản được cấp quyền hỏi vẫn bình thường.
 
-**Lưu ý còn hở**: ảnh minh họa `https://medichat.../static/images/...` vẫn mở cho ai biết đúng tên tệp (trang quản trị của
-medichat cần đọc trực tiếp). Đó là hình vẽ minh họa quy trình, không có dữ liệu nhân viên; phần hỏi đáp mới là phần đã khóa.
+**Lưu ý còn hở**: ảnh minh họa `https://medichat.../static/images/...` vẫn mở cho ai biết đúng tên tệp (do chính backend
+phục vụ). Đó là hình vẽ minh họa quy trình, không có dữ liệu nhân viên; phần hỏi đáp mới là phần đã khóa.
+Từ 25/09/2026 giao diện chat công khai + trang `/admin` của medichat đã tắt (profile `web`), trang chủ trả 502; cần nạp tài
+liệu thì bật lại: `cd ~/medichat && docker compose --profile web up -d --build frontend`.
 
 **Trả lời theo luồng (v1.18.0)**: Face Beo gọi `POST /api/v1/chat/stream` của medichat và chuyển tiếp SSE thẳng cho trình duyệt.
 Caddy trên VPS không đệm phản hồi nên chữ ra ngay; nếu sau này đưa chat bot ra sau một proxy khác, nhớ giữ `X-Accel-Buffering: no`

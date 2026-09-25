@@ -537,7 +537,8 @@ công được tính trực tiếp từ planner. Quản lý được cấp `org.
   `POST /api/me/chatbot/ask` → máy chủ Face Beo kiểm đăng nhập + quyền + giới hạn rồi gọi `http://backend:8089/api/v1/chat`
   **trong mạng docker** kèm header `X-Chat-Key`. Trình duyệt không biết địa chỉ lẫn khóa của chat bot.
 - **Khóa đường công khai**: `backend/main.py` của medichat thêm `_require_chat_key` — có biến `CHAT_API_KEY` thì `/api/v1/chat`
-  bắt buộc header khớp, thiếu → 401 (thiếu biến thì in cảnh báo lúc khởi động). Trang `/admin` nạp tài liệu giữ nguyên.
+  bắt buộc header khớp, thiếu → 401 (thiếu biến thì in cảnh báo lúc khởi động). Từ 25/09/2026 giao diện chat công khai và
+  trang `/admin` của medichat đã tắt (bật lại bằng profile `web` khi cần nạp tài liệu).
   Gọi kèm khóa hợp lệ thì medichat **bỏ bộ đếm theo IP** của nó, vì mọi nhân viên đi chung một container Face Beo nên đếm theo
   IP sẽ biến thành hạn mức chung cho cả phòng khám; việc chặn lạm dụng do Face Beo lo theo từng người.
   Ảnh `/static/images/...` của medichat vẫn công khai (trang quản trị của nó cần), nhưng chỉ là hình minh họa quy trình.

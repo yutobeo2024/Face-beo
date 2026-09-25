@@ -21,7 +21,7 @@ VPS chạy **5 dự án** trong cùng một Docker daemon. Chỉ được đụn
 | `facebeo-backup-1` | `rclone/rclone` | — | `facebeo_default` | Sao lưu R2 03:30 |
 | `medichat-backend-1` | `medichat-backend` | `127.0.0.1:8089→8089` | `medichat_default`, `facebeo-medichat` | FastAPI + RAG |
 | `medichat-qdrant-1` | `qdrant/qdrant` | `127.0.0.1:6333` | `medichat_default` | Kho vector |
-| `medichat-frontend-1` | `medichat-frontend` | `127.0.0.1:3000` | `medichat_default` | Giao diện chat công khai (nay chỉ còn xem được, hỏi thì 401) |
+| `medichat-frontend-1` | `medichat-frontend` | `127.0.0.1:3000` | `medichat_default` | Giao diện chat công khai + trang `/admin`. **Đã tắt từ 25/09/2026** (nằm sau profile `web`): chat bot chỉ phục vụ Face Beo. Bật lại khi cần nạp tài liệu: `cd ~/medichat && docker compose --profile web up -d --build frontend` |
 | `medichat-cloudflared-1` | `cloudflare/cloudflared` | — | `medichat_default` | Đường hầm của medichat |
 
 Tất cả cổng đều bind **loopback**, không có cổng nào mở ra Internet. Tường lửa chỉ mở 80/443/22.
@@ -210,7 +210,7 @@ docker logs medichat-backend-1 2>&1 | grep 'CHAT_API_KEY trống'
 |---|---|---|
 | `POST /api/v1/chat` | Bản cũ / dự phòng khi luồng không khả dụng | JSON `{reply_text, sources[]}` |
 | `POST /api/v1/chat/stream` | Mặc định từ v1.18.0 | SSE: `sources` → `chunk`* → `done`, hỏng thì `error` |
-| `GET /static/images/...` | Ảnh minh họa | Ảnh (vẫn công khai, xem §9.12) |
+| `GET /static/images/...` | Ảnh minh họa | Ảnh (do backend phục vụ, vẫn công khai — xem §9.12) |
 
 Cả hai endpoint chat đều đi qua `_chat_guard`: bắt buộc `X-Chat-Key` khi `CHAT_API_KEY` được đặt; **có khóa hợp lệ thì bỏ
 qua bộ đếm theo IP** (`_chat_rate_guard`), vì mọi nhân viên đi chung một container.
@@ -586,8 +586,9 @@ Xem §8.4. Sau khi thêm hai lớp dự phòng, nhật ký một lượt hỏi t
 - **Nguyên nhân**: chuyển tiếp nguyên header ⇒ upstream trả `image/svg+xml` hoặc `text/html` thì trình duyệt có thể chạy mã trong ngữ cảnh Face Beo.
 - **Xử lý**: chỉ nhận `image/png|jpeg|jpg|webp|gif`, kèm `X-Content-Type-Options: nosniff`, `Cache-Control: private, max-age=600`;
   lọc đường dẫn (`[A-Za-z0-9._-]` mỗi đoạn, cấm `.`/`..`, ≤ 8 đoạn, ≤ 300 ký tự).
-- **Còn hở đã ghi nhận**: `https://medichat…/static/images/*` vẫn công khai (trang `/admin` của medichat cần đọc trực tiếp).
-  Đó là hình minh họa quy trình trong tài liệu Bộ Y tế, không chứa dữ liệu nhân sự.
+- **Còn hở đã ghi nhận**: `https://medichat…/static/images/*` vẫn công khai vì do chính backend phục vụ (không nằm sau khóa).
+  Đó là hình minh họa quy trình trong tài liệu Bộ Y tế, không chứa dữ liệu nhân sự. Từ 25/09/2026 trang chủ và `/admin` của
+  medichat trả **502** vì frontend đã tắt; chỉ `/api/*` (có khóa) và `/static/*` còn sống.
 
 ### 9.13 Vitest báo `database is locked`
 
