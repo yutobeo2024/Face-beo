@@ -131,6 +131,7 @@ describe("hỏi chat bot theo luồng", () => {
     expect(usedEvent).toEqual({ used: 1, limit: CHAT_PER_DAY });
     expect(calls[0].url).toBe("http://backend:8089/api/v1/chat/stream");
     expect(calls[0].init.headers?.["X-Chat-Key"]).toBe("khoa-test-123");
+    expect(JSON.parse(decodeURIComponent(calls[0].init.headers?.["X-Chat-Viewer"] ?? "")).role).toBe(emp.role);
     expect(await usageToday(emp.id)).toBe(1);
   });
 

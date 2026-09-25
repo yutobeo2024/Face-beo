@@ -1,7 +1,7 @@
 import { handle, json, HttpError, parseJson } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
 import { rateLimit } from "@/lib/rate-limit";
-import { CHAT_PER_MINUTE, askChatbot, assertChatbotAllowed, takeDailySlot, usageToday, CHAT_PER_DAY } from "@/lib/chatbot";
+import { CHAT_PER_MINUTE, askChatbot, assertChatbotAllowed, chatbotViewer, takeDailySlot, usageToday, CHAT_PER_DAY } from "@/lib/chatbot";
 import { askSchema } from "./schema";
 
 
@@ -22,11 +22,10 @@ export const POST = handle(async (req) => {
   const slot = await takeDailySlot(u.id);
   let reply;
   try {
-    reply = await askChatbot({
-      message: body.message || "Xem hình ảnh tôi gửi",
-      attachments: body.attachments ?? [],
-      history: body.history ?? [],
-    });
+    reply = await askChatbot(
+      { message: body.message || "Xem hình ảnh tôi gửi", attachments: body.attachments ?? [], history: body.history ?? [] },
+      await chatbotViewer(u),
+    );
   } catch (e) {
     await slot.refund();
     throw e;

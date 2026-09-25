@@ -111,9 +111,22 @@ export function __setChatbotTestHooks(f: FetchLike | null) {
 const baseUrl = () => (process.env.CHATBOT_API_URL || "").replace(/\/+$/, "");
 export const chatbotConfigured = () => !!baseUrl();
 
-function headers(json = false): Record<string, string> {
+/** Ai đang hỏi: chat bot chỉ tìm trong tài liệu người này được xem (quy chế lương chỉ Ban Giám đốc + Kế toán…). */
+export type ChatViewer = { role: string; dept: string };
+
+export async function chatbotViewer(u: Pick<AuthUser, "role" | "departmentId">): Promise<ChatViewer> {
+  const d = await prisma.department.findUnique({ where: { id: u.departmentId }, select: { name: true } });
+  return { role: u.role, dept: d?.name ?? "" };
+}
+
+function headers(json = false, viewer?: ChatViewer): Record<string, string> {
   const key = process.env.CHATBOT_API_KEY;
-  return { ...(json ? { "Content-Type": "application/json" } : {}), ...(key ? { "X-Chat-Key": key } : {}) };
+  return {
+    ...(json ? { "Content-Type": "application/json" } : {}),
+    ...(key ? { "X-Chat-Key": key } : {}),
+    // Header HTTP chỉ nhận ASCII: tên phòng tiếng Việt phải mã hóa URL. Chat bot chỉ tin header này khi đi kèm khóa đúng.
+    ...(viewer ? { "X-Chat-Viewer": encodeURIComponent(JSON.stringify(viewer)) } : {}),
+  };
 }
 
 export type ChatAsk = {
@@ -128,11 +141,11 @@ export type ChatReply = { reply_text: string; sources: { source_type: string; ti
 export { IMAGE_PROXY_PREFIX, rewriteImagePaths, rewriteImageUrl } from "./client/chatbot-text";
 
 /** Hỏi chat bot. Lỗi mạng / chat bot chết → thông báo tiếng Việt, không lộ địa chỉ nội bộ. */
-export async function askChatbot(body: ChatAsk): Promise<ChatReply> {
+export async function askChatbot(body: ChatAsk, viewer?: ChatViewer): Promise<ChatReply> {
   if (!chatbotConfigured()) throw new HttpError(503, "Chat bot chưa được cấu hình trên máy chủ — báo Quản trị.");
   let res: Awaited<ReturnType<FetchLike>>;
   try {
-    res = await fetchImpl(`${baseUrl()}/api/v1/chat`, { method: "POST", headers: headers(true), body: JSON.stringify(body) });
+    res = await fetchImpl(`${baseUrl()}/api/v1/chat`, { method: "POST", headers: headers(true, viewer), body: JSON.stringify(body) });
   } catch {
     throw new HttpError(502, "Không gọi được Chat bot (máy chủ chat bot đang tắt?). Thử lại sau ít phút.");
   }
@@ -163,11 +176,11 @@ const IMAGE_TYPES = /^image\/(png|jpeg|jpg|webp|gif)$/i;
  * Gemini viết một câu dài mất cả phút, nên chữ phải hiện dần thay vì chờ xong hết.
  * Chat bot đời cũ chưa có đường này (404) → `null` để nơi gọi quay về cách hỏi một lần.
  */
-export async function askChatbotStream(body: ChatAsk): Promise<ReadableStream<Uint8Array> | null> {
+export async function askChatbotStream(body: ChatAsk, viewer?: ChatViewer): Promise<ReadableStream<Uint8Array> | null> {
   if (!chatbotConfigured()) throw new HttpError(503, "Chat bot chưa được cấu hình trên máy chủ — báo Quản trị.");
   let res: Awaited<ReturnType<FetchLike>>;
   try {
-    res = await fetchImpl(`${baseUrl()}/api/v1/chat/stream`, { method: "POST", headers: headers(true), body: JSON.stringify(body) });
+    res = await fetchImpl(`${baseUrl()}/api/v1/chat/stream`, { method: "POST", headers: headers(true, viewer), body: JSON.stringify(body) });
   } catch {
     throw new HttpError(502, "Không gọi được Chat bot (máy chủ chat bot đang tắt?). Thử lại sau ít phút.");
   }

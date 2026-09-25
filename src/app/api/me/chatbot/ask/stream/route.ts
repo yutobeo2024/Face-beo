@@ -1,7 +1,7 @@
 import { handle, HttpError, parseJson } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
 import { rateLimit } from "@/lib/rate-limit";
-import { CHAT_PER_MINUTE, CHAT_PER_DAY, askChatbot, askChatbotStream, assertChatbotAllowed, takeDailySlot } from "@/lib/chatbot";
+import { CHAT_PER_MINUTE, CHAT_PER_DAY, askChatbot, askChatbotStream, assertChatbotAllowed, chatbotViewer, takeDailySlot } from "@/lib/chatbot";
 import { rewriteImageUrl } from "@/lib/client/chatbot-text";
 import { askSchema } from "../schema";
 
@@ -22,12 +22,13 @@ export const POST = handle(async (req) => {
 
   const rl = rateLimit(`chatbot:${u.id}`, CHAT_PER_MINUTE);
   if (!rl.ok) throw new HttpError(429, `Bạn hỏi hơi nhanh — chờ ${rl.retryAfter} giây rồi hỏi tiếp nhé.`);
+  const viewer = await chatbotViewer(u); // đọc DB trước khi giữ lượt: lỗi ở đây không làm mất lượt hỏi
   const slot = await takeDailySlot(u.id);
 
   const ask = { message: body.message || "Xem hình ảnh tôi gửi", attachments: body.attachments ?? [], history: body.history ?? [] };
   let upstream: ReadableStream<Uint8Array> | null;
   try {
-    upstream = await askChatbotStream(ask);
+    upstream = await askChatbotStream(ask, viewer);
   } catch (e) {
     await slot.refund();
     throw e;
@@ -42,7 +43,7 @@ export const POST = handle(async (req) => {
   if (!upstream) {
     let reply;
     try {
-      reply = await askChatbot(ask);
+      reply = await askChatbot(ask, viewer);
     } catch (e) {
       await slot.refund();
       throw e;

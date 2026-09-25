@@ -63,6 +63,7 @@ fail2ban-client set facebeo-login unbanip <IP>                           # gỡ 
 facebeo-app-1 ──[mạng facebeo-medichat]──> medichat-backend-1:8089
                  POST /api/v1/chat/stream
                  header X-Chat-Key: <khóa chung>
+                 header X-Chat-Viewer: <vai trò + phòng ban người hỏi, JSON mã hóa URL>
 ```
 
 Không đi qua Caddy, không ra Internet, không qua Cloudflare.
@@ -217,6 +218,12 @@ qua bộ đếm theo IP** (`_chat_rate_guard`), vì mọi nhân viên đi chung 
 
 Thân yêu cầu: `{ message: str, attachments: [{data: base64, mime_type}], history: [{role: "user"|"ai", content}] }`.
 
+Header `X-Chat-Viewer` (từ 25/09/2026): `encodeURIComponent(JSON.stringify({ role, dept }))`, lấy từ `AuthUser.role` và tên
+phòng ban của người hỏi (`chatbotViewer` trong `src/lib/chatbot.ts`). medichat dùng nó để chỉ tìm trong tài liệu người hỏi được
+xem ở các kho hạn chế (quy chế, mô tả công việc — mỗi file khai báo `ai_duoc_xem` trong danh mục khi nạp). medichat **chỉ tin**
+header này khi đi kèm `X-Chat-Key` đúng; thiếu header thì chỉ thấy tài liệu công khai (`all`). Header phải là ASCII nên tên phòng
+tiếng Việt được mã hóa URL. Đổi tên phòng ban trong Face Beo thì phải sửa danh mục quyền xem bên medichat rồi nạp lại file.
+
 ### 4.2 Endpoint của Face Beo (trình duyệt gọi)
 
 | Endpoint | Việc |
@@ -249,7 +256,7 @@ Chi tiết lỗi gốc **chỉ nằm trong log**; không bao giờ trả xuống
 
 | Tệp | Nội dung |
 |---|---|
-| `src/lib/chatbot.ts` | Quyền dùng (`chatbotInfo`, `assertChatbotAllowed`), hạn mức (`takeDailySlot`, `bumpUsage`), gọi upstream (`askChatbot`, `askChatbotStream`), lấy ảnh (`fetchChatbotImage`), hook test (`__setChatbotTestHooks`) |
+| `src/lib/chatbot.ts` | Quyền dùng (`chatbotInfo`, `assertChatbotAllowed`), hạn mức (`takeDailySlot`, `bumpUsage`), người hỏi (`chatbotViewer` → header `X-Chat-Viewer`), gọi upstream (`askChatbot`, `askChatbotStream`), lấy ảnh (`fetchChatbotImage`), hook test (`__setChatbotTestHooks`) |
 | `src/lib/client/chatbot-text.ts` | `rewriteImagePaths` / `rewriteImageUrl` — dùng chung server và trình duyệt |
 | `src/app/api/me/chatbot/ask/schema.ts` | zod schema dùng chung hai route |
 | `src/app/api/me/chatbot/ask/stream/route.ts` | Đọc SSE upstream, phát lại, giữ/hoàn lượt, ping 15 s |

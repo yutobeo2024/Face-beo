@@ -112,6 +112,21 @@ describe("ai được dùng chat bot", () => {
 });
 
 describe("gọi sang chat bot", () => {
+  it("gửi kèm vai trò + phòng ban (X-Chat-Viewer) để chat bot chỉ tìm trong tài liệu người hỏi được xem", async () => {
+    await setDeptChatbot(A, emp.departmentId, true);
+    await setEmpChatbot(A, hr.id, true);
+    expect((await ask(EMP)).status).toBe(200);
+    expect((await ask(H)).status).toBe(200);
+    const [empDept, hrDept] = await Promise.all(
+      [emp.departmentId, hr.departmentId].map((id) => prisma.department.findUniqueOrThrow({ where: { id }, select: { name: true } })),
+    );
+    const viewer = (c: Call) => JSON.parse(decodeURIComponent(c.init.headers?.["X-Chat-Viewer"] ?? ""));
+    expect(viewer(calls[0])).toEqual({ role: emp.role, dept: empDept.name });
+    expect(viewer(calls[1])).toEqual({ role: hr.role, dept: hrDept.name });
+    // Header phải là ASCII (tên phòng tiếng Việt được mã hóa), nếu không fetch sẽ ném lỗi.
+    expect(calls[0].init.headers?.["X-Chat-Viewer"]).toMatch(/^[ -~]+$/);
+  });
+
   it("gửi kèm khóa X-Chat-Key, đổi đường ảnh sang Face Beo, không lộ khóa / địa chỉ nội bộ cho trình duyệt", async () => {
     await setDeptChatbot(A, emp.departmentId, true);
     const r = await ask(EMP);
