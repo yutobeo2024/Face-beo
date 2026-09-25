@@ -7,7 +7,7 @@
   MiniFASNetV2 phía server), đơn từ, tính công/chốt công tháng, xuất Excel, thông báo Zalo OA (nhiều nhóm theo loại tin: minh bạch / chấm công / đơn từ + tin riêng).
 - Stack: Next.js 15 App Router, Prisma 6 (SQLite WAL), zod 4, luxon, exceljs, node-cron, jose JWT (HS256, 7 ngày, `sessionVersion`),
   vitest 4 (test tích hợp gọi thẳng route handler, DB `data/test.db`).
-- Phiên bản hiện tại: **v1.18.0** (tag GitHub `v1.18.0`, repo `yutobeo2024/Face-beo`). Phiên bản ghi trong prose (README, PRD,
+- Phiên bản hiện tại: **v1.19.0** (tag GitHub `v1.19.0`, repo `yutobeo2024/Face-beo`). Phiên bản ghi trong prose (README, PRD,
   OPEN-DECISIONS), không có CHANGELOG; `package.json` version không dùng để đánh số.
 
 ## Lệnh
@@ -80,6 +80,8 @@ chạy cron / khóa Zalo thật song song với VPS (refresh token Zalo dùng m�
   `medichat_default` (cloudflared của medichat sẽ đi vòng qua mặt Caddy). Giới hạn lượt giữ chỗ trước khi hỏi (`takeDailySlot`);
   hỏng TRƯỚC khi có chữ thì hoàn lượt, đã ra chữ thì tính. Trả lời theo luồng SSE (`ask/stream` ↔ `/api/v1/chat/stream`);
   đừng đệm luồng (giữ `X-Accel-Buffering: no`), hàm đổi đường ảnh dùng chung ở `src/lib/client/chatbot-text.ts`.
+  Gợi ý câu hỏi: `src/app/me/chatbot/knowledge.ts` (`TOPICS`, 4 mục theo mảng tài liệu bên chat bot) — nạp xong mảng nào thì
+  đổi `ready: true` của mục đó, đừng xóa mục chưa nạp.
 - Độ trễ (v1.16.0): `useApi` có kho nhớ theo URL (hiện dữ liệu cũ rồi làm mới ngầm) — sau mỗi lần GHI cứ để `api()` tự gọi `clearApiCache()`,
   đừng fetch vòng ngoài. Ảnh đại diện `private, max-age=600` (URL có `?v=`). Phía trình duyệt KHÔNG dùng luxon (`src/lib/client/format.ts`
   tự tính theo UTC+7, có test đối chiếu). Chạy sau Caddy nên KHÔNG đặt `CLIENT_IP_HEADER` (IP thật ở `X-Forwarded-For`).

@@ -1,11 +1,29 @@
-// Danh mục chuyên khoa gợi ý ở trang Chat bot (v1.17.0) — chép từ dự án chat bot (RAG VER2 GG, frontend/src/app/knowledge.ts).
-// Nạp thêm tài liệu mới bên chat bot thì thêm một mục { name, questions } ở đây cho khớp.
-export type Specialty = {
+/**
+ * Câu hỏi gợi ý ở bảng bên trang Chat bot (v1.19.0).
+ *
+ * Bên chat bot (dự án RAG VER2 GG) nạp tài liệu theo từng mảng; ở đây chia đúng theo các mảng đó thành 4 mục lớn.
+ * NẠP XONG một mảng bên chat bot thì đổi `ready: true` của mục tương ứng — câu hỏi mẫu đã viết sẵn ở dưới.
+ * Mục chưa nạp vẫn hiện trong danh sách (để mọi người biết sắp có) nhưng bấm không được, tránh hỏi ra câu trả lời rỗng.
+ */
+export type QuestionGroup = {
   name: string;
   questions: string[];
 };
+/** Tên cũ, giữ cho khỏi vỡ chỗ nào còn dùng. */
+export type Specialty = QuestionGroup;
 
-export const SPECIALTIES: Specialty[] = [
+export type Topic = {
+  key: string;
+  /** Tên mục lớn, viết HOA cho dễ quét mắt. */
+  label: string;
+  /** Một dòng mô tả mục này tra được gì. */
+  hint: string;
+  /** Tài liệu đã nạp bên chat bot chưa. */
+  ready: boolean;
+  groups: QuestionGroup[];
+};
+
+export const SPECIALTIES: QuestionGroup[] = [
   {
     name: 'Hồi sức – Cấp cứu – Chống độc',
     questions: [
@@ -230,4 +248,140 @@ export const SPECIALTIES: Specialty[] = [
       'Tiêm botulinum toxin điều trị loạn trương lực cơ cổ',
     ],
   },
+];
+
+
+/** Tra cứu mã ICD-10 — tài liệu đã nạp 25/09/2026. */
+export const ICD_GROUPS: QuestionGroup[] = [
+  {
+    name: 'Cách tra và quy tắc chọn mã',
+    questions: [
+      'ICD-10 gồm bao nhiêu chương, chia theo nguyên tắc nào?',
+      'Khi người bệnh có nhiều chẩn đoán thì chọn mã chính thế nào?',
+      'Đuôi .8 và .9 trong mã ICD-10 khác nhau ra sao?',
+      'Khi nào dùng mã chữ U và mã có dấu † ‡?',
+    ],
+  },
+  {
+    name: 'Nội khoa thường gặp',
+    questions: [
+      'Mã ICD-10 của tăng huyết áp vô căn',
+      'Mã ICD-10 của đái tháo đường týp 2 có biến chứng thận',
+      'Mã ICD-10 của bệnh phổi tắc nghẽn mạn tính đợt cấp',
+      'Mã ICD-10 của suy tim sung huyết',
+      'Mã ICD-10 của loét dạ dày tá tràng có xuất huyết',
+    ],
+  },
+  {
+    name: 'Bệnh truyền nhiễm',
+    questions: [
+      'Mã ICD-10 của sốt xuất huyết Dengue có dấu hiệu cảnh báo',
+      'Mã ICD-10 của lao phổi có bằng chứng vi khuẩn học',
+      'Mã ICD-10 của viêm gan vi rút B mạn tính',
+      'Mã ICD-10 của tay chân miệng',
+    ],
+  },
+  {
+    name: 'Ngoại khoa – chấn thương – ngộ độc',
+    questions: [
+      'Mã ICD-10 của gãy kín thân xương đùi',
+      'Mã ICD-10 của vết thương hở vùng cẳng tay',
+      'Mã ICD-10 của bỏng nhiệt độ II vùng bàn tay',
+      'Mã ICD-10 của ngộ độc thuốc paracetamol',
+      'Phân biệt mã nguyên nhân ngoại sinh (V, W, X, Y) dùng khi nào',
+    ],
+  },
+  {
+    name: 'Sản khoa – nhi khoa',
+    questions: [
+      'Mã ICD-10 của thai nghén bình thường theo dõi định kỳ',
+      'Mã ICD-10 của sinh mổ do bất tương xứng đầu chậu',
+      'Mã ICD-10 của vàng da sơ sinh do sữa mẹ',
+      'Mã ICD-10 của tiêu chảy cấp ở trẻ em',
+    ],
+  },
+  {
+    name: 'Triệu chứng và khám sức khỏe',
+    questions: [
+      'Mã ICD-10 dùng cho khám sức khỏe định kỳ',
+      'Mã ICD-10 của sốt chưa rõ nguyên nhân',
+      'Mã ICD-10 của đau bụng vùng thượng vị',
+      'Khi nào được phép dùng mã nhóm R (triệu chứng) làm chẩn đoán chính?',
+    ],
+  },
+];
+
+/** Quy chế – quy định của phòng khám. Chờ nạp tài liệu bên chat bot. */
+export const REGULATION_GROUPS: QuestionGroup[] = [
+  {
+    name: 'Giờ làm việc – kỷ luật lao động',
+    questions: [
+      'Quy định về giờ làm việc, nghỉ giữa ca và đi trễ',
+      'Trình tự xin nghỉ phép, nghỉ bù, đổi ca',
+      'Quy định về trang phục và thẻ nhân viên',
+    ],
+  },
+  {
+    name: 'Hồ sơ bệnh án – lưu trữ',
+    questions: [
+      'Quy định ghi chép và hoàn thành hồ sơ bệnh án',
+      'Thời hạn lưu trữ hồ sơ bệnh án theo quy định',
+      'Ai được phép sao chụp hồ sơ bệnh án cho người bệnh?',
+    ],
+  },
+  {
+    name: 'Kê đơn – dược',
+    questions: [
+      'Quy chế kê đơn thuốc ngoại trú',
+      'Quy định bảo quản và cấp phát thuốc gây nghiện, hướng thần',
+      'Xử trí khi phát hiện thuốc gần hết hạn dùng',
+    ],
+  },
+  {
+    name: 'Kiểm soát nhiễm khuẩn – an toàn người bệnh',
+    questions: [
+      'Quy định vệ sinh tay và mang phương tiện phòng hộ',
+      'Quy trình xử lý chất thải y tế theo nhóm',
+      'Quy định báo cáo sự cố y khoa',
+    ],
+  },
+];
+
+/** Mô tả công việc theo vị trí. Chờ nạp tài liệu bên chat bot. */
+export const JOB_GROUPS: QuestionGroup[] = [
+  {
+    name: 'Khối khám chữa bệnh',
+    questions: [
+      'Mô tả công việc của bác sĩ khám bệnh ngoại trú',
+      'Nhiệm vụ của điều dưỡng trưởng khoa',
+      'Mô tả công việc của điều dưỡng hành chính',
+    ],
+  },
+  {
+    name: 'Cận lâm sàng',
+    questions: [
+      'Mô tả công việc của kỹ thuật viên xét nghiệm',
+      'Nhiệm vụ của kỹ thuật viên chẩn đoán hình ảnh',
+      'Trách nhiệm kiểm chuẩn thiết bị hằng ngày thuộc về ai?',
+    ],
+  },
+  {
+    name: 'Hành chính – tiếp đón',
+    questions: [
+      'Mô tả công việc của nhân viên tiếp nhận – thu ngân',
+      'Nhiệm vụ của nhân viên hành chính nhân sự',
+      'Mô tả công việc của nhân viên kho – vật tư y tế',
+    ],
+  },
+];
+
+/**
+ * Bốn mục lớn hiện ở bảng bên, theo đúng thứ tự hiển thị.
+ * Thêm mảng tài liệu mới: thêm một mục vào đây, không cần sửa giao diện.
+ */
+export const TOPICS: Topic[] = [
+  { key: 'icd', label: 'TRA CỨU MÃ ICD', hint: 'Tìm mã ICD-10 theo tên bệnh, quy tắc chọn mã', ready: true, groups: ICD_GROUPS },
+  { key: 'chuyen-mon', label: 'CHUYÊN MÔN Y TẾ', hint: 'Quy trình kỹ thuật, phác đồ điều trị theo chuyên khoa', ready: true, groups: SPECIALTIES },
+  { key: 'quy-che', label: 'QUY CHẾ – QUY ĐỊNH', hint: 'Quy chế, quy định nội bộ của phòng khám', ready: false, groups: REGULATION_GROUPS },
+  { key: 'mo-ta-cong-viec', label: 'MÔ TẢ CÔNG VIỆC', hint: 'Nhiệm vụ, trách nhiệm theo từng vị trí', ready: false, groups: JOB_GROUPS },
 ];

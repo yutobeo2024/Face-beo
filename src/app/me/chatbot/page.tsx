@@ -14,7 +14,7 @@ import { Avatar, Button, cx, IconButton } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import { useToast } from "@/components/toast";
 import { useMe } from "../me-nav";
-import { SPECIALTIES } from "./knowledge";
+import { TOPICS } from "./knowledge";
 
 // react-markdown chỉ nạp ở trang này (khoảng 40 KB nén) — các trang khác không phải tải.
 const Markdown = dynamic(() => import("./markdown").then((m) => m.Markdown), {
@@ -330,18 +330,41 @@ export default function ChatbotPage() {
           {!convs.length && <li className="px-2 py-1.5 text-xs text-slate-500">Chưa có hội thoại nào.</li>}
         </ul>
 
-        <p className="mb-1 px-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Chuyên khoa</p>
-        <ul className="space-y-0.5">
-          {SPECIALTIES.map((s) => (
-            <li key={s.name}>
-              <details className="rounded-lg">
-                <summary className="cursor-pointer rounded-lg px-2 py-1.5 text-sm text-slate-700 hover:bg-slate-100">{s.name}</summary>
-                <ul className="space-y-0.5 py-1 pl-2">
-                  {s.questions.map((q) => (
-                    <li key={q}>
-                      <button type="button" className="w-full rounded-md px-2 py-1.5 text-left text-xs text-brand-800 hover:bg-brand-50" disabled={busy} onClick={() => void send(q)}>
-                        {q}
-                      </button>
+        <p className="mb-1 px-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Tra cứu theo chủ đề</p>
+        <ul className="space-y-1">
+          {TOPICS.map((t) => (
+            <li key={t.key}>
+              <details className="rounded-lg border border-slate-100">
+                <summary className="cursor-pointer rounded-lg px-2.5 py-2 hover:bg-slate-50">
+                  <span className="text-[13px] font-semibold tracking-wide text-slate-800">{t.label}</span>
+                  {!t.ready && <span className="ml-1.5 rounded-full bg-amber-50 px-1.5 py-0.5 align-middle text-[10px] font-semibold text-amber-700">sắp có</span>}
+                  <span className="block text-[11px] font-normal text-slate-500">{t.hint}</span>
+                </summary>
+                {!t.ready && (
+                  <p className="mx-2 mb-1 rounded-md bg-amber-50 px-2 py-1.5 text-[11px] text-amber-800">
+                    Chưa nạp tài liệu cho mục này — câu hỏi mẫu để sẵn, bấm được ngay khi tài liệu lên.
+                  </p>
+                )}
+                <ul className="space-y-0.5 pb-1 pl-1.5">
+                  {t.groups.map((g) => (
+                    <li key={g.name}>
+                      <details className="rounded-lg">
+                        <summary className="cursor-pointer rounded-lg px-2 py-1.5 text-sm text-slate-700 hover:bg-slate-100">{g.name}</summary>
+                        <ul className="space-y-0.5 py-1 pl-2">
+                          {g.questions.map((q) => (
+                            <li key={q}>
+                              <button
+                                type="button"
+                                className="w-full rounded-md px-2 py-1.5 text-left text-xs text-brand-800 hover:bg-brand-50 disabled:cursor-not-allowed disabled:text-slate-400 disabled:hover:bg-transparent"
+                                disabled={busy || !t.ready}
+                                onClick={() => void send(q)}
+                              >
+                                {q}
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      </details>
                     </li>
                   ))}
                 </ul>

@@ -146,7 +146,11 @@ describe("định tuyến theo loại tin", () => {
 });
 
 describe("chấm công", () => {
-  const monday = nextWeekday(1);
+  // Dữ liệu mẫu (prisma/seed.ts) có sẵn một đơn nghỉ phép CHỜ DUYỆT của NV007 rơi vào "ngày làm việc kế tiếp".
+  // Chạy vào thứ Sáu / thứ Bảy / Chủ nhật thì ngày đó chính là thứ Hai tới: job coi như "có đơn chờ duyệt" nên chỉ
+  // đưa vào bản tổng hợp thay vì nhắc riêng ⇒ ca kiểm thử đỏ theo thứ trong tuần. Lấy thứ Hai của tuần kế tiếp nữa cho
+  // chắc (xa hơn mọi "ngày làm việc kế tiếp"); cả 4 người trong ca này đều ca cố định nên vẫn có lịch theo mẫu tuần.
+  const monday = addDays(nextWeekday(1), 7);
   it("chưa chấm vào → 1 tin/người (chạy lại không trùng); hết ca → vắng không phép; có đơn nghỉ → không báo", async () => {
     for (const e of [lan, minh, mgrHC]) await enrollFake(e.id, e.id + 700);
     // Minh đã gửi đơn bổ sung công (máy không nhận mặt) → không bị báo "vắng không phép".

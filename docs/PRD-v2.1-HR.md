@@ -550,6 +550,10 @@ công được tính trực tiếp từ planner. Quản lý được cấp `org.
   100 câu/ngày** mỗi người. Lượt được **giữ chỗ trước khi hỏi** (`takeDailySlot`, hỏi hỏng thì trả lại) nên mở nhiều tab cùng
   lúc cũng không vượt mức ngày. Ảnh gửi kèm: ≤ 3 tấm, mỗi tấm ≤ 10 MB và cả lượt hỏi ≤ 12 MB. Lịch sử hội thoại nằm ở `localStorage` của máy người dùng (20 cuộc gần nhất), khóa **riêng theo mã nhân viên**
   (`facebeo.chatbot.v1.<id>`) và bị xóa khi Đăng xuất — máy/tablet dùng chung thì người sau không đọc được của người trước.
+- **Bảng gợi ý theo chủ đề (v1.19.0)**: `src/app/me/chatbot/knowledge.ts` xuất `TOPICS` — 4 mục lớn khớp với các mảng tài
+  liệu nạp bên chat bot: `TRA CỨU MÃ ICD`, `CHUYÊN MÔN Y TẾ` (28 chuyên khoa cũ), `QUY CHẾ – QUY ĐỊNH`, `MÔ TẢ CÔNG VIỆC`.
+  Mỗi mục có `ready`: chưa nạp tài liệu thì vẫn hiện (kèm nhãn "sắp có") nhưng câu hỏi mẫu bị khóa, tránh hỏi ra câu trả lời
+  rỗng. Nạp xong bên chat bot chỉ cần đổi `ready: true`. Cấu trúc được canh bằng `tests/unit/chatbot-knowledge.test.ts`.
 - **Trả lời theo luồng (v1.18.0)**: `POST /api/me/chatbot/ask/stream` chuyển tiếp SSE của chat bot (`/api/v1/chat/stream`,
   Gemini `generate_content_stream`) — sự kiện `sources` → nhiều `chunk` → `used` (một lần) → `done`, hỏng thì `error`.
   Lý do: Gemini viết một câu dài mất **60–70 giây**, chờ đủ rồi mới hiện thì người dùng tưởng máy treo; theo luồng thì chữ
