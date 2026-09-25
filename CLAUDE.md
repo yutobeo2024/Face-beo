@@ -43,7 +43,8 @@ chạy cron / khóa Zalo thật song song với VPS (refresh token Zalo dùng m�
   `docs/zalo-oa.html` (artifact https://claude.ai/artifact/KwxtwjjshvwgYp8F9T64gh), đặc tả `docs/PRD-v2-Face-Beo.md` +
   `docs/PRD-v2.1-HR.md`, quyết định mở/đã chốt `docs/OPEN-DECISIONS.md`. Sửa tính năng thì cập nhật cẩm nang + PRD + republish.
   Cách nối Face Beo với chat bot medichat (logic, docker, luồng SSE, 12 sự cố đã gặp — viết cho người không chuyên):
-  `docs/ket-noi-hai-webapp.html`, KHÔNG publish artifact (chủ dự án muốn giữ trong repo).
+  `docs/ket-noi-hai-webapp.html` (cho người không chuyên) + `docs/ket-noi-hai-webapp-ky-thuat.md` (lệnh, VPS/Docker,
+  chẩn đoán, rollback). KHÔNG publish artifact hai tài liệu này (chủ dự án muốn giữ trong repo).
 
 ## Luật nghiệp vụ khóa cứng (đừng phá)
 - Quyền: ma trận `CAPABILITIES` trong `src/lib/permissions.ts` (DB `RolePermission`, ADMIN luôn đủ quyền, quyền `locked` chỉ ADMIN).

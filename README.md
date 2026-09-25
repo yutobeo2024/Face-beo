@@ -210,7 +210,9 @@ Mở `/kiosk/benchmark` trên tablet thật và bấm **Bắt đầu 50 lượt*
 Face Beo là cửa duy nhất vào chat bot medichat (cùng VPS): trình duyệt không thấy địa chỉ lẫn khóa của chat bot, quyền dùng
 cấp theo phòng ban / từng người, câu trả lời về theo luồng (chữ hiện dần). Cách nối hai ứng dụng — logic, mạng docker, khóa
 chung, luồng SSE, cùng **12 sự cố đã gặp và cách xử lý**, viết cho người không chuyên đọc hiểu được:
-[`docs/ket-noi-hai-webapp.html`](docs/ket-noi-hai-webapp.html). Triển khai: `docs/DEPLOY-VPS.md` mục "Chat bot tra cứu y khoa".
+[`docs/ket-noi-hai-webapp.html`](docs/ket-noi-hai-webapp.html). Bản **kỹ thuật** kèm lệnh, logic VPS/Docker, chẩn đoán và
+rollback: [`docs/ket-noi-hai-webapp-ky-thuat.md`](docs/ket-noi-hai-webapp-ky-thuat.md). Triển khai: `docs/DEPLOY-VPS.md`
+mục "Chat bot tra cứu y khoa".
 
 ## Cấu hình Zalo OA
 
