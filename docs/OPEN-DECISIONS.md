@@ -22,6 +22,19 @@ Ghi lại những điểm đã phát hiện trong quá trình làm và test, c�
   tạo lại OA Secret Key webhook (nếu Zalo cho), dán lại vào `/opt/facebeo/.env`, `up -d --force-recreate`.
 - **Trạng thái:** chờ chủ dự án thao tác.
 
+## Đã chốt v1.19.0 (25/09/2026)
+
+- **Bảng gợi ý của chat bot chia theo mảng tài liệu**, không theo chuyên khoa nữa: 4 mục lớn (TRA CỨU MÃ ICD, CHUYÊN MÔN Y TẾ,
+  QUY CHẾ – QUY ĐỊNH, MÔ TẢ CÔNG VIỆC). Mục chưa nạp tài liệu vẫn hiện kèm nhãn "sắp có" nhưng khóa không cho bấm — để nhân viên
+  biết sắp có mà không hỏi phải câu trả lời rỗng. Nạp xong bên chat bot thì đổi `ready: true` trong `src/app/me/chatbot/knowledge.ts`.
+
+## Đã chốt v1.18.0 (24/09/2026)
+
+- **Chat bot trả lời theo luồng** thay vì chờ xong cả câu: đo trên máy thật, Gemini viết một câu dài mất 60–70 giây nên chờ đủ rồi
+  mới hiện là không chấp nhận được. Chọn stream thật (SSE) chứ không làm hiệu ứng gõ chữ giả như bản gốc của chat bot.
+- **Tính lượt khi hỏng giữa chừng**: chưa ra được chữ nào thì hoàn lại lượt; đã ra chữ rồi thì tính một lượt (chat bot đã tốn tiền gọi AI).
+- **Chat bot hỏng thì Face Beo vẫn chạy**: mọi lỗi của chat bot quy về thông báo tiếng Việt, không chặn tính năng khác.
+
 ## Đã chốt v1.17.0 (24/09/2026)
 
 - **Chat bot tra cứu y khoa nhúng trong Face Beo**: dựng lại giao diện trong Face Beo (không iframe), khóa đường gọi công khai của

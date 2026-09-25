@@ -92,10 +92,12 @@ chạy cron / khóa Zalo thật song song với VPS (refresh token Zalo dùng m�
   `public/sw.js` KHÔNG được lưu đệm gì ngoài `offline.html` (tránh chạy bản cũ / lộ dữ liệu có quyền). Luật hiện nút cài ở `src/lib/pwa.ts`.
 - zod 4: schema PATCH không được có `.default()` (`.partial()` vẫn áp default → xóa dữ liệu). Cột JSON trong SQLite lưu chuỗi.
 
-## Việc còn mở (21/09/2026)
+## Việc còn mở (25/09/2026)
 - Chạy thử một phòng. Dữ liệu hiện có (máy cũ và seed demo) chỉ là mockup; máy mới/vận hành thật bắt đầu sạch theo `docs/HANDOFF.md`
   mục 1b: `db:deploy` → `db:seed:base` → `admin:create` (v1.5.4, logic ở `src/lib/bootstrap.ts`). Rà lại hệ số ca, ngày lễ trong năm.
 - Sao lưu ngoài VPS: service `backup` → Cloudflare R2 mã hóa 03:30 (v1.10.4, `deploy/backup.sh`, khôi phục `deploy/restore-offsite.sh`). D7 đổi token tunnel + OA Secret Key webhook (đã lộ trong ảnh chụp 21/09/2026).
 - Tra cứu medinet (v1.11.0, `src/lib/medinet.ts` + `medinet-check.ts`): đọc HTML trang Sở Y tế TP.HCM — Sở đổi giao diện thì sửa bộ đọc +
   cập nhật mẫu `tests/fixtures/medinet-*.html` (luôn **ẩn danh**, không commit dữ liệu người thật); không gọi medinet trong test.
 - D4 tin Zalo cá nhân (ZNS hay tin tư vấn); Cloudflare Tunnel cho webhook; sản xuất: Windows service, HTTPS trong LAN, backup ra ngoài máy.
+- Chat bot: chủ dự án đang nạp tài liệu cho **QUY CHẾ – QUY ĐỊNH** và **MÔ TẢ CÔNG VIỆC** bên medichat; nạp xong thì đổi `ready: true`
+  trong `src/app/me/chatbot/knowledge.ts`. Một khóa Gemini đã hết tiền trả trước (402) — nạp lại hoặc gỡ khỏi `GEMINI_API_KEY`.

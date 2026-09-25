@@ -261,7 +261,7 @@ Chi tiết lỗi gốc **chỉ nằm trong log**; không bao giờ trả xuống
 | `src/app/api/me/chatbot/ask/schema.ts` | zod schema dùng chung hai route |
 | `src/app/api/me/chatbot/ask/stream/route.ts` | Đọc SSE upstream, phát lại, giữ/hoàn lượt, ping 15 s |
 | `src/app/api/me/chatbot/static/[...path]/route.ts` | Proxy ảnh, lọc đường dẫn + `Content-Type` |
-| `src/app/me/chatbot/` | `page.tsx` (màn hình chat), `markdown.tsx` (render an toàn), `knowledge.ts` (gợi ý chuyên khoa), `layout.tsx` (chặn ở máy chủ) |
+| `src/app/me/chatbot/` | `page.tsx` (màn hình chat), `markdown.tsx` (render an toàn), `knowledge.ts` (gợi ý câu hỏi), `layout.tsx` (chặn ở máy chủ) |
 | `prisma/schema.prisma` | `Department.chatbotEnabled`, `Employee.chatbotEnabled`, model `ChatbotUsage` |
 
 ### 5.1 Thứ tự kiểm tra trong route (không được đổi)
@@ -298,6 +298,20 @@ INSERT OR IGNORE INTO "RolePermission" ("role","capability") VALUES ('HR','chatb
 ```
 
 ---
+
+### 5.4 Bảng gợi ý câu hỏi (v1.19.0)
+
+`src/app/me/chatbot/knowledge.ts` xuất `TOPICS` — 4 mục lớn **khớp với các mảng tài liệu nạp bên chat bot**:
+
+| `key` | Nhãn | `ready` | Nguồn câu hỏi |
+|---|---|---|---|
+| `icd` | TRA CỨU MÃ ICD | `true` | `ICD_GROUPS` (6 nhóm) |
+| `chuyen-mon` | CHUYÊN MÔN Y TẾ | `true` | `SPECIALTIES` (28 chuyên khoa, có sẵn từ v1.17.0) |
+| `quy-che` | QUY CHẾ – QUY ĐỊNH | `false` | `REGULATION_GROUPS` |
+| `mo-ta-cong-viec` | MÔ TẢ CÔNG VIỆC | `false` | `JOB_GROUPS` |
+
+`ready: false` ⇒ mục vẫn hiện (nhãn "sắp có") nhưng nút câu hỏi bị khóa — nạp tài liệu xong bên chat bot thì **chỉ cần đổi cờ này**,
+không phải sửa giao diện. Thêm mảng tài liệu mới: thêm một phần tử vào `TOPICS`.
 
 ## 6. Phía medichat — mã nguồn
 
@@ -668,4 +682,5 @@ Ghi chú: `git checkout <tag>` trong `update.sh` là thao tác thuận nghịch,
 | `tests/integration/qc-chatbot.test.ts` | Ca đối nghịch: phiên/kiosk/thu hồi phiên, ranh giới hạn mức, 18 đường dẫn ảnh độc hại |
 | `tests/integration/chatbot-stream.test.ts` | Luồng SSE: thứ tự sự kiện, quay về hỏi một lần, hoàn lượt |
 | `tests/integration/qc-chatbot-stream.test.ts` | Luồng cắt vụn, đua hạn mức, không lộ bí mật, không lưu nội dung |
+| `tests/unit/chatbot-knowledge.test.ts` | Cấu trúc 4 mục gợi ý: đủ mục, đúng thứ tự, không trùng câu hỏi, cờ `ready` |
 | `backend/tests/test_security.py` | Phiên admin, giới hạn, khóa `X-Chat-Key`, SSE, đổi khóa/model khi quá tải |
