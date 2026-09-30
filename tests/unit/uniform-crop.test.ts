@@ -10,8 +10,8 @@ describe("cắt vùng áo", () => {
     const r = chestRect(IMG_W, IMG_H, [540, 170, 200, 250]);
     expect(r.ok).toBe(true);
     if (!r.ok) return;
-    // rộng 1,6×200 = 320; cao 0,85×250 = 212,5; trái = 640 − 160 = 480; trên = 170 + 1,25×250 = 482,5
-    expect(r.rect).toEqual({ left: 480, top: 483, width: 320, height: 212 });
+    // rộng 1,6×200 = 320; cao 0,9×250 = 225; trái = 640 − 160 = 480; trên = 170 + 1,3×250 = 495
+    expect(r.rect).toEqual({ left: 480, top: 495, width: 320, height: 225 });
     expect(r.coverage).toBeCloseTo(1, 2); // làm tròn pixel nên hụt chưa tới 0,3 %
   });
 
@@ -67,9 +67,9 @@ describe("cắt vùng áo", () => {
   it("chỉnh tỉ lệ thì vùng cắt đổi theo (để hiệu chỉnh sau khi chạy thử)", () => {
     const box: FaceBox = [540, 170, 200, 250];
     const rong = chestRect(IMG_W, IMG_H, box, { ...SHIRT_CROP, widthFactor: 2.2 });
-    const cao = chestRect(IMG_W, IMG_H, box, { ...SHIRT_CROP, heightFactor: 0.6 });
+    const cao = chestRect(IMG_W, IMG_H, box, { ...SHIRT_CROP, heightFactor: 0.5 });
     expect(rong.ok && rong.rect.width).toBe(440);
-    expect(cao.ok && cao.rect.height).toBe(150);
+    expect(cao.ok && cao.rect.height).toBe(125);
     // Hạ mép trên vẫn phải nằm dưới cằm (giữ bất biến "không có mặt")
     const sat = chestRect(IMG_W, IMG_H, box, { ...SHIRT_CROP, topOffset: 1.02 });
     expect(sat.ok && sat.rect.top).toBeGreaterThanOrEqual(box[1] + box[3]);

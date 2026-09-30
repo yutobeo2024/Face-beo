@@ -130,6 +130,33 @@ export function skinRatio(px: Uint8Array | Uint8ClampedArray | number[]): number
   return skin / n;
 }
 
+/**
+ * "Độ không trơn" của vùng ngực — tỉ lệ điểm ảnh lệch hẳn khỏi màu nền của áo (0…1).
+ *
+ * Áo đồng phục của phòng khám LUÔN có logo trước ngực, nên vùng này không bao giờ trơn tuyệt đối. Áo thường cùng màu
+ * thì trơn. Đây là dấu hiệu KHÔNG đổi theo ánh sáng (khác với màu), nên rất hữu ích để tách hai áo cùng tông.
+ *
+ * Cách đo: lấy màu nền = trung vị từng kênh của cả vùng, rồi đếm điểm lệch quá `tol` (khoảng cách Chebyshev).
+ * Dùng trung vị chứ không dùng trung bình để logo (chiếm thiểu số) không tự kéo mốc về phía nó.
+ */
+export function patternRatio(px: Uint8Array | Uint8ClampedArray | number[], tol = 38): number {
+  const n = Math.floor(px.length / 3);
+  if (n < 16) return 0;
+  const med = (ch: number) => {
+    const v: number[] = [];
+    for (let i = 0; i < n; i++) v.push(px[i * 3 + ch]);
+    v.sort((a, b) => a - b);
+    return v[Math.floor(v.length / 2)];
+  };
+  const [mr, mg, mb] = [med(0), med(1), med(2)];
+  let off = 0;
+  for (let i = 0; i < n; i++) {
+    const d = Math.max(Math.abs(px[i * 3] - mr), Math.abs(px[i * 3 + 1] - mg), Math.abs(px[i * 3 + 2] - mb));
+    if (d > tol) off++;
+  }
+  return off / n;
+}
+
 /** Màu trung bình của vùng (sau cân bằng trắng) — chỉ để hiện ô màu trên giao diện cho người xem hiểu. */
 export function meanColorHex(px: Uint8Array | Uint8ClampedArray | number[], gains: [number, number, number] = [1, 1, 1]): string {
   const n = Math.floor(px.length / 3);

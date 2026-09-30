@@ -8,17 +8,20 @@ datasource db {
 }
 
 model Department {
-  id        Int        @id @default(autoincrement())
-  name      String     @unique
-  managerId Int?
-  manager   Employee?  @relation("DeptManager", fields: [managerId], references: [id])
-  employees Employee[] @relation("DeptMembers")
+  id               Int        @id @default(autoincrement())
+  name             String     @unique
+  managerId        Int?
+  manager          Employee?  @relation("DeptManager", fields: [managerId], references: [id])
+  employees        Employee[] @relation("DeptMembers")
   // Cách duyệt đơn của Nhân viên trong phòng có quản lý (v1.7.0): MANAGER_OR_HR | TWO_STEP | MANAGER_ONLY
-  approvalMode String @default("MANAGER_OR_HR")
+  approvalMode     String     @default("MANAGER_OR_HR")
   // v1.12.0: cả phòng không chấm công giờ giấc (vd. Ban Giám đốc) — không cảnh báo / Zalo, ẩn khỏi chấm công, báo cáo, xếp ca
-  attendanceExempt Boolean @default(false)
+  attendanceExempt Boolean    @default(false)
   // v1.17.0: cả phòng được dùng Chat bot tra cứu y khoa (từng người có thể đặt khác ở Employee.chatbotEnabled)
-  chatbotEnabled Boolean @default(false)
+  chatbotEnabled   Boolean    @default(false)
+  // v1.20.0: kiểm đồng phục ở lượt chấm vào đầu ca — OFF (mặc định) | SHADOW (chạy thử: chấm điểm, không kết luận,
+  // không gửi Zalo) | ON. Mỗi phòng khai mẫu áo riêng ở UniformTemplate.
+  uniformMode      String     @default("OFF")
 }
 
 // Danh mục chức danh / chuyên khoa (v1.7.0): thuộc tính của nhân viên, không ảnh hưởng phân quyền.
@@ -38,59 +41,59 @@ model Specialty {
 }
 
 model Employee {
-  id                 Int               @id @default(autoincrement())
-  code               String            @unique
-  name               String
-  phone              String?           @unique // v1.8.0: không bắt buộc (đăng nhập bằng mã NV vẫn được); SQLite cho nhiều NULL
+  id                     Int               @id @default(autoincrement())
+  code                   String            @unique
+  name                   String
+  phone                  String?           @unique // v1.8.0: không bắt buộc (đăng nhập bằng mã NV vẫn được); SQLite cho nhiều NULL
   // Thông tin cá nhân (v1.8.0) — chỉ Nhân sự/Quản trị và chính chủ xem; không vào tin Zalo, không ghi giá trị vào nhật ký.
-  nationalId         String?           @unique // CCCD 12 số hoặc CMND 9 số
-  dateOfBirth        String? // "YYYY-MM-DD"
-  gender             String? // NAM | NU | KHAC
-  address            String?
+  nationalId             String?           @unique // CCCD 12 số hoặc CMND 9 số
+  dateOfBirth            String? // "YYYY-MM-DD"
+  gender                 String? // NAM | NU | KHAC
+  address                String?
   // v1.10.0: ảnh đại diện = 1 ảnh nhìn thẳng đã cắt khuôn mặt lúc enroll (data/avatars/<id>/<key>); xóa cùng mẫu khuôn mặt.
   // v1.12.0: null = theo phòng; true = không chấm công; false = vẫn chấm công dù phòng không chấm công
-  attendanceExempt   Boolean?
+  attendanceExempt       Boolean?
   // v1.17.0: null = theo phòng; true = được dùng Chat bot dù phòng tắt; false = cấm dù phòng bật
-  chatbotEnabled     Boolean?
-  faceAvatarKey      String?
-  faceAvatarAt       DateTime?
+  chatbotEnabled         Boolean?
+  faceAvatarKey          String?
+  faceAvatarAt           DateTime?
   // v1.13.0: ảnh đại diện tự chọn (không dùng nhận diện), 600×800 JPEG ở data/photos/<id>/<key>; ưu tiên hơn ảnh khuôn mặt. Xóa khi nghỉ việc.
-  photoKey           String?
-  photoAt            DateTime?
-  passwordHash       String
-  mustChangePassword Boolean           @default(true)
-  role               String            @default("EMPLOYEE") // ADMIN | HR | MANAGER | EMPLOYEE
-  zaloUserId         String?           @unique
-  zaloLinkedAt       DateTime?
-  departmentId       Int
-  department         Department        @relation("DeptMembers", fields: [departmentId], references: [id])
-  managedDepartments Department[]      @relation("DeptManager")
-  defaultShiftId     Int
-  defaultShift       Shift             @relation(fields: [defaultShiftId], references: [id])
-  scheduleType       String            @default("FIXED") // FIXED (theo mẫu tuần) | ROTATING (phải đăng ký ca tuần)
-  workPatternId      Int?
-  workPattern        WorkPattern?      @relation(fields: [workPatternId], references: [id])
-  jobTitleId         Int?
-  jobTitle           JobTitle?         @relation(fields: [jobTitleId], references: [id])
-  specialtyId        Int?
-  specialty          Specialty?        @relation(fields: [specialtyId], references: [id])
-  avatarUrl          String?
-  active             Boolean           @default(true)
-  leftAt             DateTime? // thời điểm cho nghỉ việc: sau ngày này không còn lịch làm (không tính vắng)
-  biometricConsentAt DateTime?
-  failedLogins       Int               @default(0)
-  lockedUntil        DateTime?
-  sessionVersion     Int               @default(0) // tăng khi đổi/đặt lại mật khẩu, đăng xuất => mọi phiên (JWT) cũ hết hiệu lực
-  createdAt          DateTime          @default(now())
-  schedules          WorkSchedule[]
-  logs               AttendanceLog[]
-  faceTemplates      FaceTemplate[]
-  requests           LeaveRequest[]    @relation("Requester")
-  decidedRequests    LeaveRequest[]    @relation("Approver")
-  managerDecidedRequests LeaveRequest[] @relation("ManagerApprover")
+  photoKey               String?
+  photoAt                DateTime?
+  passwordHash           String
+  mustChangePassword     Boolean           @default(true)
+  role                   String            @default("EMPLOYEE") // ADMIN | HR | MANAGER | EMPLOYEE
+  zaloUserId             String?           @unique
+  zaloLinkedAt           DateTime?
+  departmentId           Int
+  department             Department        @relation("DeptMembers", fields: [departmentId], references: [id])
+  managedDepartments     Department[]      @relation("DeptManager")
+  defaultShiftId         Int
+  defaultShift           Shift             @relation(fields: [defaultShiftId], references: [id])
+  scheduleType           String            @default("FIXED") // FIXED (theo mẫu tuần) | ROTATING (phải đăng ký ca tuần)
+  workPatternId          Int?
+  workPattern            WorkPattern?      @relation(fields: [workPatternId], references: [id])
+  jobTitleId             Int?
+  jobTitle               JobTitle?         @relation(fields: [jobTitleId], references: [id])
+  specialtyId            Int?
+  specialty              Specialty?        @relation(fields: [specialtyId], references: [id])
+  avatarUrl              String?
+  active                 Boolean           @default(true)
+  leftAt                 DateTime? // thời điểm cho nghỉ việc: sau ngày này không còn lịch làm (không tính vắng)
+  biometricConsentAt     DateTime?
+  failedLogins           Int               @default(0)
+  lockedUntil            DateTime?
+  sessionVersion         Int               @default(0) // tăng khi đổi/đặt lại mật khẩu, đăng xuất => mọi phiên (JWT) cũ hết hiệu lực
+  createdAt              DateTime          @default(now())
+  schedules              WorkSchedule[]
+  logs                   AttendanceLog[]
+  faceTemplates          FaceTemplate[]
+  requests               LeaveRequest[]    @relation("Requester")
+  decidedRequests        LeaveRequest[]    @relation("Approver")
+  managerDecidedRequests LeaveRequest[]    @relation("ManagerApprover")
   license                PracticeLicense?
   credentials            Credential[]
-  notifications      NotificationLog[]
+  notifications          NotificationLog[]
 
   // v1.16.0: mọi danh sách đều lọc active + phòng rồi sắp theo mã; notify tra người duyệt theo vai trò.
   @@index([active, departmentId, code])
@@ -100,12 +103,12 @@ model Employee {
 model Shift {
   id                Int             @id @default(autoincrement())
   name              String          @unique
-  startTime         String          // "HH:mm" giờ VN
-  endTime           String          // "HH:mm"; endTime <= startTime nghĩa là ca qua đêm
+  startTime         String // "HH:mm" giờ VN
+  endTime           String // "HH:mm"; endTime <= startTime nghĩa là ca qua đêm
   breakMinutes      Int             @default(60)
   graceLateMinutes  Int             @default(5)
   graceEarlyMinutes Int             @default(0)
-  breakStart        String?         // "HH:mm" giờ bắt đầu nghỉ; null => trừ đủ breakMinutes (cách cũ)
+  breakStart        String? // "HH:mm" giờ bắt đầu nghỉ; null => trừ đủ breakMinutes (cách cũ)
   workDayValue      Float           @default(1) // hệ số công chung của ca (vd. ca sáng T7 = 0.5)
   employees         Employee[]
   schedules         WorkSchedule[]
@@ -116,7 +119,7 @@ model WorkSchedule {
   id         Int      @id @default(autoincrement())
   employeeId Int
   employee   Employee @relation(fields: [employeeId], references: [id])
-  date       String   // "YYYY-MM-DD", ngày công theo giờ VN
+  date       String // "YYYY-MM-DD", ngày công theo giờ VN
   shiftId    Int?
   shift      Shift?   @relation(fields: [shiftId], references: [id])
   isDayOff   Boolean  @default(false)
@@ -134,7 +137,7 @@ model FaceTemplate {
   id           Int      @id @default(autoincrement())
   employeeId   Int
   employee     Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  descriptor   Bytes    // Float32Array, mã hóa AES-256-GCM bằng BIOMETRIC_KEY
+  descriptor   Bytes // Float32Array, mã hóa AES-256-GCM bằng BIOMETRIC_KEY
   modelVersion String
   createdById  Int
   createdAt    DateTime @default(now())
@@ -158,17 +161,20 @@ model AttendanceLog {
   id                 Int          @id @default(autoincrement())
   employeeId         Int
   employee           Employee     @relation(fields: [employeeId], references: [id])
-  workDate           String       // ngày công mà lần quét thuộc về
+  workDate           String // ngày công mà lần quét thuộc về
   shiftId            Int?
   shift              Shift?       @relation(fields: [shiftId], references: [id])
-  checkTime          DateTime     // UTC
-  type               String       // IN | OUT
+  checkTime          DateTime // UTC
+  type               String // IN | OUT
   isLate             Boolean      @default(false)
   lateMinutes        Int          @default(0)
   isEarly            Boolean      @default(false)
   earlyMinutes       Int          @default(0)
   excusedByRequestId Int?
   snapshotUrl        String?
+  // v1.20.0: khung mặt JSON "[x,y,w,h]" theo pixel ảnh đã lưu — job kiểm đồng phục cắt vùng áo từ đây,
+  // cắt lại được khi đổi tỉ lệ mà không phải nhận diện lại.
+  faceBox            String?
   verified3D         Boolean      @default(false) // kết luận liveness do SERVER đặt
   livenessScore      Float?
   matchScore         Float?
@@ -186,30 +192,30 @@ model AttendanceLog {
 }
 
 model LeaveRequest {
-  id           Int       @id @default(autoincrement())
-  employeeId   Int
-  employee     Employee  @relation("Requester", fields: [employeeId], references: [id])
-  type         String    // NGHI_PHEP | VE_SOM | TANG_CA_OT | BO_SUNG_CONG
-  fromTime     DateTime
-  toTime       DateTime
-  reason       String
-  status       String    @default("PENDING") // PENDING | MANAGER_APPROVED (duyệt 2 bước: chờ HR) | APPROVED | REJECTED | CANCELLED
-  approverId   Int?
-  approver     Employee? @relation("Approver", fields: [approverId], references: [id])
-  decidedAt    DateTime?
-  decisionNote String?
+  id                Int       @id @default(autoincrement())
+  employeeId        Int
+  employee          Employee  @relation("Requester", fields: [employeeId], references: [id])
+  type              String // NGHI_PHEP | VE_SOM | TANG_CA_OT | BO_SUNG_CONG
+  fromTime          DateTime
+  toTime            DateTime
+  reason            String
+  status            String    @default("PENDING") // PENDING | MANAGER_APPROVED (duyệt 2 bước: chờ HR) | APPROVED | REJECTED | CANCELLED
+  approverId        Int?
+  approver          Employee? @relation("Approver", fields: [approverId], references: [id])
+  decidedAt         DateTime?
+  decisionNote      String?
   // Duyệt 2 bước (phòng TWO_STEP): bước 1 của trưởng phòng; approverId/decidedAt/decisionNote là quyết định cuối.
   managerApproverId Int?
   managerApprover   Employee? @relation("ManagerApprover", fields: [managerApproverId], references: [id])
   managerDecidedAt  DateTime?
   managerNote       String?
   // Đơn bổ sung công (quên chấm vào/ra): giờ cần bổ sung, và bước 2 "chấm tay" do Nhân sự thực hiện.
-  correctionAt   DateTime?
-  correctionKind String? // IN | OUT
-  executedById   Int?
-  executedAt     DateTime?
-  executedLogId  Int?
-  createdAt    DateTime  @default(now())
+  correctionAt      DateTime?
+  correctionKind    String? // IN | OUT
+  executedById      Int?
+  executedAt        DateTime?
+  executedLogId     Int?
+  createdAt         DateTime  @default(now())
 
   @@index([employeeId, status])
   // v1.16.0: danh sách đơn chờ (Tổng quan, trang Đơn từ) lọc theo trạng thái / loại rồi sắp theo thời gian.
@@ -218,16 +224,16 @@ model LeaveRequest {
 }
 
 model NotificationLog {
-  id           Int      @id @default(autoincrement())
-  dedupeKey    String   @unique
+  id           Int       @id @default(autoincrement())
+  dedupeKey    String    @unique
   toEmployeeId Int?
   toEmployee   Employee? @relation(fields: [toEmployeeId], references: [id])
   toGroupId    String? // nhóm Zalo OA (GMF) — tin minh bạch cho quản trị
   messageType  String
-  payload      String   // JSON
-  status       String   // SENT | SIMULATED | FAILED | SKIPPED_NO_ZALO
+  payload      String // JSON
+  status       String // SENT | SIMULATED | FAILED | SKIPPED_NO_ZALO
   error        String?
-  createdAt    DateTime @default(now())
+  createdAt    DateTime  @default(now())
 }
 
 model ZaloToken {
@@ -250,7 +256,7 @@ model AuditLog {
   action    String
   entity    String
   entityId  String?
-  detail    String?  // JSON
+  detail    String? // JSON
   createdAt DateTime @default(now())
 
   // v1.16.0: Tổng quan đếm/tra theo action + thời gian; bảng này lớn nhanh nhất nên không có chỉ mục là quét toàn bảng.
@@ -370,7 +376,7 @@ model PayrollLock {
 
 // Bản chụp kết quả công của một nhân viên trong một ngày thuộc tháng đã chốt (JSON DaySummary + plan + logs).
 model LockedDay {
-  employeeId Int
+  employeeId   Int
   workDate     String
   month        String
   departmentId Int? // phòng ban của nhân viên vào ngày đó (báo cáo theo phòng của tháng đã chốt không đổi khi chuyển phòng)
@@ -397,25 +403,25 @@ model ZaloGroup {
 
 // v1.9.0 — Giấy phép hành nghề (GPHN, thay CCHN cũ): 1 bản / nhân viên. Chỉ Nhân sự / Quản trị sửa; chính chủ xem.
 model PracticeLicense {
-  id            Int       @id @default(autoincrement())
-  employeeId    Int       @unique
-  employee      Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  number        String // vd. 0015578/BYT-CCHN
-  issuedAt      String // "YYYY-MM-DD"
-  issuer        String // Bộ Y tế / Sở Y tế …
-  subject       String // đối tượng cấp: Bác sĩ, Y sĩ, Điều dưỡng, Hộ sinh, Kỹ thuật y, Dược sĩ, Khác
-  scope         String // phạm vi chuyên môn
-  status        String    @default("ACTIVE") // ACTIVE | SUSPENDED | REVOKED | UNKNOWN
-  expiresAt     String? // GPHN mới có thời hạn 5 năm; CCHN cũ không thời hạn → trống
-  renewedAt     String? // ngày gia hạn gần nhất
-  cmeCycleStart String // mốc chu kỳ CME 5 năm (mặc định = ngày gia hạn / ngày cấp)
-  workplaceNote String? // nơi đăng ký hành nghề / ghi chú (vd. đang đứng tên nơi khác)
-  verifiedAt    DateTime? // lần đối chiếu medinet gần nhất
-  verifiedById  Int?
+  id               Int       @id @default(autoincrement())
+  employeeId       Int       @unique
+  employee         Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  number           String // vd. 0015578/BYT-CCHN
+  issuedAt         String // "YYYY-MM-DD"
+  issuer           String // Bộ Y tế / Sở Y tế …
+  subject          String // đối tượng cấp: Bác sĩ, Y sĩ, Điều dưỡng, Hộ sinh, Kỹ thuật y, Dược sĩ, Khác
+  scope            String // phạm vi chuyên môn
+  status           String    @default("ACTIVE") // ACTIVE | SUSPENDED | REVOKED | UNKNOWN
+  expiresAt        String? // GPHN mới có thời hạn 5 năm; CCHN cũ không thời hạn → trống
+  renewedAt        String? // ngày gia hạn gần nhất
+  cmeCycleStart    String // mốc chu kỳ CME 5 năm (mặc định = ngày gia hạn / ngày cấp)
+  workplaceNote    String? // nơi đăng ký hành nghề / ghi chú (vd. đang đứng tên nơi khác)
+  verifiedAt       DateTime? // lần đối chiếu medinet gần nhất
+  verifiedById     Int?
   // v1.11.0: lần tự tra cứu medinet gần nhất + kết quả (JSON: tìm thấy?, dữ liệu medinet, chỗ khác nhau, nơi công tác)
   medinetCheckedAt DateTime?
   medinetResult    String?
-  updatedAt     DateTime  @updatedAt
+  updatedAt        DateTime  @updatedAt
 }
 
 // v1.9.0 — Văn bằng, chứng chỉ, CME … (nhiều / nhân viên), file scan tùy chọn lưu ở data/credentials/<employeeId>/.
@@ -438,4 +444,75 @@ model Credential {
   createdAt   DateTime @default(now())
 
   @@index([employeeId, type])
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Kiểm đồng phục (v1.20.0). Quy định CHỈ về áo; mỗi phòng khai 2–3 mẫu áo, nhân viên mặc mẫu nào cũng được.
+// Kiểm ở lượt chấm VÀO đầu ca, mỗi người mỗi ngày một lần, do job nền chạy — KHÔNG chạy trong route chấm công.
+
+// Một mẫu áo của một phòng. embedding / colorHist là trung bình của các ảnh mẫu, tính sẵn để so cho nhanh.
+model UniformTemplate {
+  id           Int             @id @default(autoincrement())
+  departmentId Int
+  name         String
+  active       Boolean         @default(true)
+  embedding    String? // JSON mảng số thực đã chuẩn hóa (đặc trưng mô hình AI)
+  embedVersion String? // phiên bản mô hình đã dùng; lệch phiên bản thì phải tính lại
+  colorHist    String? // JSON biểu đồ màu (xem src/lib/uniform-color.ts)
+  colorHex     String? // màu chủ đạo, chỉ để hiện ô màu trên giao diện
+  sampleCount  Int             @default(0)
+  createdById  Int?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  samples      UniformSample[]
+
+  @@unique([departmentId, name])
+  @@index([departmentId, active])
+}
+
+// Ảnh mẫu của một mẫu áo: ảnh áo rời (SHIRT) hoặc vùng áo cắt từ ảnh chấm công thật (WORN — đúng ánh sáng của kiosk).
+model UniformSample {
+  id          Int             @id @default(autoincrement())
+  templateId  Int
+  template    UniformTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  fileKey     String // data/uniforms/<templateId>/<uuid>.jpg
+  kind        String          @default("SHIRT") // SHIRT | WORN
+  embedding   String?
+  colorHist   String?
+  createdById Int?
+  createdAt   DateTime        @default(now())
+
+  @@index([templateId])
+}
+
+// Kết quả kiểm của một người trong một ngày. machineStatus là kết luận của MÁY (người không ghi đè được),
+// status là kết luận có hiệu lực (bằng machineStatus, hoặc bằng quyết định của người xác nhận).
+// employeeId / logId / departmentId / shiftId để Int trơn, không quan hệ: xóa log không bị chặn và không xóa lây bản ghi này.
+model UniformCheck {
+  id            Int       @id @default(autoincrement())
+  employeeId    Int
+  workDate      String // "YYYY-MM-DD" giờ VN
+  departmentId  Int // phòng lúc kiểm (người có thể chuyển phòng sau)
+  shiftId       Int?
+  logId         Int? // lượt chấm vào đầu ca đã dùng
+  checkTime     DateTime
+  mode          String    @default("ON") // ON | SHADOW (chạy thử: không gửi Zalo, không dùng để xử lý nhân sự)
+  machineStatus String // PASS | FAIL | REVIEW | SKIPPED
+  status        String
+  reason        String? // mã lý do, nhãn tiếng Việt ở src/lib/uniform-score.ts
+  templateId    Int? // mẫu áo khớp nhất
+  score         Float?
+  embedScore    Float?
+  colorScore    Float?
+  cropUrl       String? // ảnh vùng áo (KHÔNG chứa khuôn mặt); xóa cùng hạn lưu ảnh chấm công
+  detail        String? // JSON: điểm từng mẫu, chất lượng ảnh, ngưỡng và phiên bản mô hình đã dùng
+  decidedById   Int?
+  decidedAt     DateTime?
+  note          String?
+  digestAt      DateTime? // đã đưa vào tin tổng hợp Zalo
+  createdAt     DateTime  @default(now())
+
+  @@unique([employeeId, workDate])
+  @@index([workDate, status])
+  @@index([departmentId, workDate])
 }

@@ -5,7 +5,7 @@ import { checkGate } from "@/lib/face/engine";
 
 const VIDEO = { videoWidth: 1280, videoHeight: 720 } as unknown as HTMLVideoElement;
 const SCRATCH = {} as unknown as HTMLCanvasElement;
-const KIOSK = { minFace: 180, maxAngle: 20, chestRoom: 0.9 };
+const KIOSK = { minFace: 180, maxAngle: 20, chestRoom: 1.1 };
 
 /** Một khuôn mặt "đạt" ở vị trí / kích cỡ cho trước. */
 function face(box: [number, number, number, number], yaw = 0, pitch = 0): FaceResult {
@@ -50,9 +50,9 @@ describe("cổng chất lượng kiosk", () => {
     expect(checkGate([face([100, 100, 200, 250]), face([700, 100, 200, 250])], VIDEO, SCRATCH, KIOSK).reason).toBe("Chỉ một người trước camera");
   });
 
-  it("ranh giới: đúng 0,9 lần chiều cao mặt thì vẫn qua, thiếu một chút thì không", () => {
-    // mặt cao 300, cằm ở y+300; cần còn ≥ 270 px bên dưới → y + 300 + 270 ≤ 720 ⇒ y ≤ 150
-    expect(checkGate([face([540, 150, 220, 300])], VIDEO, SCRATCH, KIOSK).ok).toBe(true);
-    expect(checkGate([face([540, 160, 220, 300])], VIDEO, SCRATCH, KIOSK).reason).toBe("Lùi lại một bước");
+  it("ranh giới: đúng 1,1 lần chiều cao mặt thì vẫn qua, thiếu một chút thì không", () => {
+    // mặt cao 250, cằm ở y+250; cần còn ≥ 275 px bên dưới → y + 250 + 275 ≤ 720 ⇒ y ≤ 195
+    expect(checkGate([face([540, 195, 200, 250])], VIDEO, SCRATCH, KIOSK).ok).toBe(true);
+    expect(checkGate([face([540, 205, 200, 250])], VIDEO, SCRATCH, KIOSK).reason).toBe("Lùi lại một bước");
   });
 });

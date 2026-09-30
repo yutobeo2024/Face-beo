@@ -17,6 +17,12 @@ export const settingsSchema = z.object({
   // v1.11.0: tự tra cứu GPHN trên medinet (1 = bật) và số ngày giữa 2 lần tra mỗi người
   medinetAutoCheck: z.coerce.number().int().min(0).max(1),
   medinetCheckDays: z.coerce.number().int().min(7).max(365),
+  // v1.20.0 — kiểm đồng phục. Ngưỡng đặt tạm, hiệu chỉnh bằng dữ liệu thật sau 2 tuần chạy thử.
+  uniformPassEmbed: z.coerce.number().min(0).max(1),
+  uniformPassColor: z.coerce.number().min(0).max(1),
+  uniformFailScore: z.coerce.number().min(0).max(1),
+  uniformColorWeight: z.coerce.number().min(0).max(1),
+  uniformKeepCrop: z.coerce.number().int().min(0).max(1), // 1 = lưu ảnh vùng áo để Nhân sự xem lại
 });
 export type AppSettings = z.infer<typeof settingsSchema>;
 
@@ -32,6 +38,11 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   cmeCycleHours: 120,
   cmeCycleYears: 5,
   credentialWarnDays: 90,
+  uniformPassEmbed: 0.55,
+  uniformPassColor: 0.55,
+  uniformFailScore: 0.45,
+  uniformColorWeight: 0.4,
+  uniformKeepCrop: 1,
   medinetAutoCheck: 1,
   medinetCheckDays: 30,
 };

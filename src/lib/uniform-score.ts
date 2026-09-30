@@ -22,6 +22,7 @@ export type UniformReason =
   | "MODEL_ERROR"
   | "MODEL_VERSION_MISMATCH"
   | "LOW_CONFIDENCE_TEMPLATE" // mẫu áo còn ít ảnh, chưa đủ tin
+  | "LOGO_MISSING" // màu giống áo đồng phục nhưng ngực trơn, không thấy logo
   | "SNAPSHOT_GONE";
 
 export type UniformTemplateRef = {
@@ -31,6 +32,8 @@ export type UniformTemplateRef = {
   embedding: number[] | null;
   embedVersion: string | null;
   sampleCount: number;
+  /** "Độ không trơn" của mẫu áo (logo trước ngực). null = chưa đo được. */
+  pattern?: number | null;
 };
 
 export type UniformThresholds = {
@@ -43,6 +46,14 @@ export type UniformThresholds = {
   /** Tỉ trọng của màu trong điểm gộp (0…1). */
   colorWeight: number;
 };
+
+/**
+ * Áo đồng phục luôn có logo trước ngực. Nếu mẫu áo đo được độ không trơn từ mức này trở lên mà ảnh chụp lại
+ * trơn hơn hẳn (dưới `LOGO_MIN_RATIO` lần của mẫu) thì rất có thể là áo khác cùng màu → không cho ĐẠT thẳng,
+ * chuyển sang CẦN XEM LẠI để Nhân sự nhìn ảnh quyết.
+ */
+export const LOGO_TEMPLATE_MIN = 0.06;
+export const LOGO_MIN_RATIO = 0.35;
 
 export const DEFAULT_UNIFORM_THRESHOLDS: UniformThresholds = { passEmbed: 0.55, passColor: 0.55, failScore: 0.45, colorWeight: 0.4 };
 
@@ -67,7 +78,17 @@ export function cosine(a: ArrayLike<number>, b: ArrayLike<number>): number {
   return Math.max(-1, Math.min(1, dot / (Math.sqrt(na) * Math.sqrt(nb))));
 }
 
-export type TemplateScore = { templateId: number; name: string; embedScore: number | null; colorScore: number; score: number; sampleCount: number; versionOk: boolean };
+export type TemplateScore = {
+  templateId: number;
+  name: string;
+  embedScore: number | null;
+  colorScore: number;
+  score: number;
+  sampleCount: number;
+  versionOk: boolean;
+  /** Độ không trơn của mẫu áo (logo) — so với `pattern` của ảnh để phát hiện áo cùng màu nhưng không có logo. */
+  templatePattern?: number | null;
+};
 
 /** Điểm của vùng áo với từng mẫu áo của phòng, sắp giảm dần theo điểm gộp. */
 export function scoreTemplates(
@@ -81,9 +102,16 @@ export function scoreTemplates(
       const versionOk = !!t.embedVersion && t.embedVersion === feature.embedVersion;
       const embedScore = feature.embedding && t.embedding && versionOk ? cosine(feature.embedding, t.embedding) : null;
       const score = embedScore === null ? colorScore : (1 - th.colorWeight) * embedScore + th.colorWeight * colorScore;
-      return { templateId: t.id, name: t.name, embedScore, colorScore, score, sampleCount: t.sampleCount, versionOk };
+      return { templateId: t.id, name: t.name, embedScore, colorScore, score, sampleCount: t.sampleCount, versionOk, templatePattern: t.pattern ?? null };
     })
     .sort((a, b) => b.score - a.score);
+}
+
+/** Mẫu áo có logo rõ mà ảnh chụp lại trơn hẳn ⇒ nghi mặc áo khác cùng màu. */
+function missingLogo(templatePattern: number | null | undefined, imagePattern: number | null | undefined): boolean {
+  if (templatePattern == null || imagePattern == null) return false;
+  if (templatePattern < LOGO_TEMPLATE_MIN) return false; // mẫu áo vốn trơn, không suy ra được gì
+  return imagePattern < templatePattern * LOGO_MIN_RATIO;
 }
 
 function bhatt(a: ArrayLike<number>, b: ArrayLike<number>): number {
@@ -113,6 +141,8 @@ export function decideUniform(args: {
   scores: TemplateScore[];
   modelFailed?: boolean;
   th?: UniformThresholds;
+  /** Độ không trơn đo được trên ảnh chụp (xem patternRatio) — dùng để tìm logo trước ngực. */
+  pattern?: number | null;
 }): UniformDecision {
   const th = args.th ?? DEFAULT_UNIFORM_THRESHOLDS;
   const none: UniformDecision = { status: "REVIEW", reason: null, templateId: null, templateName: null, score: null, embedScore: null, colorScore: null };
@@ -149,7 +179,10 @@ export function decideUniform(args: {
 
   const embedOk = best.embedScore >= th.passEmbed;
   const colorOk = best.colorScore >= th.passColor;
-  if (embedOk && colorOk) return { ...base, status: "PASS", reason: null };
+  if (embedOk && colorOk) {
+    if (missingLogo(best.templatePattern, args.pattern)) return { ...base, status: "REVIEW", reason: "LOGO_MISSING" };
+    return { ...base, status: "PASS", reason: null };
+  }
   if (!embedOk && !colorOk && best.score <= th.failScore) return { ...base, status: "FAIL", reason: "LOW_SCORE" };
   return { ...base, status: "REVIEW", reason: "AMBIGUOUS" };
 }
@@ -175,5 +208,6 @@ export const UNIFORM_REASON_LABEL: Record<UniformReason, string> = {
   MODEL_ERROR: "Mô hình nhận dạng đang lỗi",
   MODEL_VERSION_MISMATCH: "Mẫu áo cần tính lại theo mô hình mới",
   LOW_CONFIDENCE_TEMPLATE: "Mẫu áo còn ít ảnh, chưa đủ tin",
+  LOGO_MISSING: "Màu áo giống nhưng không thấy logo trước ngực",
   SNAPSHOT_GONE: "Ảnh chấm công đã bị xóa theo hạn lưu",
 };

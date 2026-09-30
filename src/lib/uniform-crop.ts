@@ -28,7 +28,12 @@ export type CropOptions = {
   minSidePx: number;
 };
 
-export const SHIRT_CROP: CropOptions = { widthFactor: 1.6, heightFactor: 0.85, topOffset: 1.25, minCoverage: 0.6, minSidePx: 96 };
+/**
+ * Tỉ lệ mặc định: vùng từ 0,3 đến 1,2 lần chiều cao khuôn mặt tính từ cằm — ôm trọn chỗ đặt LOGO trước ngực áo
+ * (áo đồng phục của phòng khám luôn có logo ở đây, đó là dấu hiệu không đổi theo ánh sáng).
+ * Hiệu chỉnh lại sau đợt chạy thử nếu bố cục thực tế lệch.
+ */
+export const SHIRT_CROP: CropOptions = { widthFactor: 1.6, heightFactor: 0.9, topOffset: 1.3, minCoverage: 0.6, minSidePx: 96 };
 
 /**
  * Vùng áo trong ảnh `imgW × imgH` theo khung mặt `faceBox`.

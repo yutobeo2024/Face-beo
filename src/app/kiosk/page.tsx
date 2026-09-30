@@ -237,8 +237,8 @@ export default function KioskPage() {
             }
             continue;
           }
-          // chestRoom 0.9: dưới cằm còn ≥ 0,9 lần chiều cao mặt → ảnh lấy được từ ngang ngực trở lên để kiểm đồng phục (v1.20.0).
-          const g = checkGate(res.face, video, scratchRef.current!, { minFace: 180, maxAngle: 20, chestRoom: 0.9 });
+          // chestRoom 1.1: dưới cằm còn ≥ 1,1 lần chiều cao mặt → ảnh lấy trọn vùng ngực, nơi có logo áo đồng phục (v1.20.0).
+          const g = checkGate(res.face, video, scratchRef.current!, { minFace: 180, maxAngle: 20, chestRoom: 1.1 });
           if (!g.ok) {
             stable = 0;
             frames = [];

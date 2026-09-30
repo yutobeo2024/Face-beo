@@ -135,6 +135,26 @@ describe("kết luận", () => {
     expect(decideUniform({ scores: s, th: { ...TH, passEmbed: 0.45 } })).toMatchObject({ status: "PASS" });
   });
 
+  it("áo cùng màu nhưng ngực trơn (không có logo) → CẦN XEM LẠI chứ không cho ĐẠT", () => {
+    const khop = [sc({ embedScore: 0.8, colorScore: 0.9, templatePattern: 0.18 })];
+    // Ảnh có logo như mẫu → đạt
+    expect(decideUniform({ scores: khop, pattern: 0.15 })).toMatchObject({ status: "PASS" });
+    // Ảnh trơn hẳn (dưới 35% độ không trơn của mẫu) → nghi áo khác cùng màu
+    expect(decideUniform({ scores: khop, pattern: 0.02 })).toMatchObject({ status: "REVIEW", reason: "LOGO_MISSING" });
+  });
+
+  it("mẫu áo vốn trơn hoặc chưa đo được thì không suy diễn gì về logo", () => {
+    expect(decideUniform({ scores: [sc({ embedScore: 0.8, colorScore: 0.9, templatePattern: 0.03 })], pattern: 0.001 })).toMatchObject({ status: "PASS" });
+    expect(decideUniform({ scores: [sc({ embedScore: 0.8, colorScore: 0.9, templatePattern: null })], pattern: 0.001 })).toMatchObject({ status: "PASS" });
+    expect(decideUniform({ scores: [sc({ embedScore: 0.8, colorScore: 0.9, templatePattern: 0.2 })] })).toMatchObject({ status: "PASS" }); // ảnh chưa đo
+  });
+
+  it("thiếu logo KHÔNG bao giờ tự thành KHÔNG ĐẠT", () => {
+    const d = decideUniform({ scores: [sc({ embedScore: 0.85, colorScore: 0.95, templatePattern: 0.2 })], pattern: 0 });
+    expect(d.status).toBe("REVIEW");
+    expect(d.status).not.toBe("FAIL");
+  });
+
   it("mọi trạng thái và lý do đều có nhãn tiếng Việt", () => {
     expect(Object.values(UNIFORM_STATUS_LABEL).every((v) => v.length > 0)).toBe(true);
     expect(Object.values(UNIFORM_REASON_LABEL).every((v) => v.length > 0)).toBe(true);

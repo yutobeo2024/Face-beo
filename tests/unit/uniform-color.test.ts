@@ -1,6 +1,6 @@
 // v1.20.0: đặc trưng màu vùng áo — hàm thuần trên mảng pixel, không cần ảnh thật.
 import { describe, expect, it } from "vitest";
-import { HIST_SIZE, brightnessStats, colorHistogram, grayWorldGains, histSimilarity, meanColorHex, rgbToHsv, skinRatio } from "@/lib/uniform-color";
+import { HIST_SIZE, brightnessStats, colorHistogram, grayWorldGains, histSimilarity, meanColorHex, patternRatio, rgbToHsv, skinRatio } from "@/lib/uniform-color";
 
 /** Mảng pixel RGB phẳng của một vùng đơn sắc, có thể thêm nhiễu nhẹ cho giống ảnh thật. */
 function solid(r: number, g: number, b: number, n = 400, noise = 0): number[] {
@@ -79,6 +79,28 @@ describe("biểu đồ màu vùng áo", () => {
     expect(skinRatio(solid(205, 160, 135, 200))).toBeGreaterThan(0.9);
     expect(skinRatio(NAVY)).toBeLessThan(0.05);
     expect(skinRatio(TRANG)).toBeLessThan(0.2);
+  });
+
+  it("nhận ra áo có logo trước ngực (không trơn) so với áo trơn", () => {
+    // Áo trơn: chỉ nhiễu nhẹ của camera
+    const trơn = solid(30, 45, 95, 400, 10);
+    // Áo đồng phục: nền navy + một mảng logo sáng màu chiếm ~12% diện tích
+    const coLogo = [...solid(30, 45, 95, 350, 10), ...solid(235, 200, 60, 50, 6)];
+    expect(patternRatio(trơn)).toBeLessThan(0.05);
+    expect(patternRatio(coLogo)).toBeGreaterThan(0.08);
+    // Logo nhỏ vẫn phát hiện được, nhưng không nhầm nhiễu thành logo
+    const logoNho = [...solid(30, 45, 95, 380, 10), ...solid(235, 200, 60, 20, 6)];
+    expect(patternRatio(logoNho)).toBeGreaterThan(patternRatio(trơn) + 0.02);
+  });
+
+  it("độ không trơn không đổi khi ảnh tối đi (dấu hiệu bền với ánh sáng)", () => {
+    const sang = [...solid(60, 90, 190, 350, 10), ...solid(235, 200, 60, 50, 6)];
+    const toi = sang.map((v) => Math.round(v * 0.45));
+    expect(Math.abs(patternRatio(sang) - patternRatio(toi))).toBeLessThan(0.05);
+  });
+
+  it("vùng quá ít điểm ảnh → coi như không đo được", () => {
+    expect(patternRatio([1, 2, 3])).toBe(0);
   });
 
   it("đổi màu sang HSV đúng các mốc quen thuộc", () => {
