@@ -19,6 +19,20 @@ const WORK_FIELDS: SettingsField[] = [
   { key: "otRoundMinutes", label: "Làm tròn OT (phút)", hint: "Phút OT làm tròn xuống theo bội số này.", step: 1 },
   { key: "snapshotRetentionDays", label: "Lưu snapshot (ngày)", hint: "Job 02:00 tự xóa ảnh quá hạn.", step: 1 },
 ];
+const KIOSK_FIELDS: SettingsField[] = [
+  {
+    key: "kioskIdleSeconds",
+    label: "Tự về chờ sau (giây)",
+    hint: "Camera đang bật mà không thấy ai suốt ngần này giây thì tắt camera, về màn hình “Chạm để chấm công”. Mặc định 120.",
+    step: 10,
+  },
+  {
+    key: "kioskAwakeSeconds",
+    label: "Giữ camera sau khi chấm (giây)",
+    hint: "0 = chấm xong về chờ ngay, người tiếp theo phải chạm (an toàn nhất, chống chấm nhầm khi đi ngang). Giờ cao điểm thấy chậm thì đặt 30.",
+    step: 5,
+  },
+];
 const CME_FIELDS: SettingsField[] = [
   { key: "cmeTwoYearHours", label: "CME tối thiểu 2 năm (tiết)", hint: "TT 32/2023: ≥ 48 tiết trong 2 năm liên tiếp.", step: 1 },
   { key: "cmeCycleHours", label: "CME tối thiểu mỗi chu kỳ (tiết)", hint: "≥ 120 tiết / chu kỳ để gia hạn GPHN; chu kỳ trước không cộng sang.", step: 1 },
@@ -109,6 +123,16 @@ export function ThresholdsSection({ busy, run }: SectionProps) {
         saved={saved}
       />
       <NumberCard title="Tính công & lưu ảnh" fields={WORK_FIELDS} form={form} setForm={setForm} busy={busy} run={run} saved={saved} />
+      <NumberCard
+        title="Chế độ chờ của máy chấm công"
+        hint="Camera chỉ bật khi có người chạm màn hình. Đi ngang lúc đang chờ thì không thể bị ghi lượt quét, và camera không chạy suốt."
+        fields={KIOSK_FIELDS}
+        form={form}
+        setForm={setForm}
+        busy={busy}
+        run={run}
+        saved={saved}
+      />
     </div>
   );
 }

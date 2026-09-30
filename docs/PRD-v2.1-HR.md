@@ -694,3 +694,32 @@ Có ca test đo tốc độ lượt quét để giữ điều này.
 - Ảnh vùng áo: 160×160, **không chứa khuôn mặt**, ngoài `public`, kiểm quyền theo phòng, xóa cùng hạn 90 ngày, có công tắc tắt
   hẳn (`uniformKeepCrop`). Dung lượng ~8 KB/người/ngày ⇒ 100 người × 90 ngày ≈ 72 MB.
 - `deploy/backup.sh` / `restore-offsite.sh` gói thêm `data/uniforms` (ảnh mẫu áo).
+
+## 33. Kiosk có chế độ chờ: chạm rồi mới chấm (v1.21.0, 30/09/2026)
+
+**Vấn đề.** Kiosk chạy trên máy dùng chung đặt ở lối đi, mở trang là camera chạy tới khi đóng. `findDuplicateScan`
+(`src/lib/attendance.ts`) chỉ chặn quét lại trong **120 giây**, nên người đi ngang sau đó vẫn tạo được một lượt mới.
+`computeDayLogs` đặt **lượt sớm nhất = VÀO, mọi lượt sau = RA** ⇒ một lượt đi ngang lỡ là lượt cuối ngày (người đó về
+bằng cửa khác hoặc quên chấm ra) sẽ thành **"về sớm" oan**. Màn hình cũng hiện tên + giờ cho người đứng gần thấy.
+
+**Cách giải quyết.** Thêm giai đoạn `standby`: **camera TẮT** cho tới khi có người chạm màn hình.
+
+| Giai đoạn | Camera | Vào bằng | Ra bằng |
+|---|---|---|---|
+| `boot` | tắt | mở trang | nạp xong mô hình |
+| `standby` | **tắt** | chấm xong · vắng quá hạn · lỗi mở camera | **chạm màn hình** |
+| `ready`/`collecting`/`sending` | bật | chạm | có kết quả, hoặc `isIdle()` |
+| `result` | bật | quét xong | sau 3 s → `phaseAfterResult()` |
+
+- Mô hình nhận diện **nạp ngay khi mở trang nhưng không mở camera**, nên chạm một cái là quét được ngay (chỉ tốn
+  `openCamera`). Trình duyệt cũng chỉ hỏi quyền camera ở lần chạm đầu.
+- `standby` nằm ngoài danh sách giai đoạn hoạt động của vòng lặp ⇒ lúc chờ **không gọi `human.detect`**, không tốn CPU.
+- Quyết định thuần ở `src/lib/face/standby.ts` (`isIdle`, `phaseAfterResult`), test không cần trình duyệt — cùng lối với
+  `cooldown.ts`.
+- Hai số đặt trong **Cấu hình → Chấm công**: `kioskIdleSeconds` (mặc định 120, 30–1800) và `kioskAwakeSeconds`
+  (mặc định **0** = chấm xong về chờ ngay; > 0 = giữ camera thức cho hàng đợi giờ cao điểm). Trả kèm trong
+  `/api/kiosk/ping` (đã gọi `getSettings()` sẵn, kiosk ping mỗi 20 giây) nên đổi là có hiệu lực trong 20 giây,
+  không cần tải lại trang kiosk.
+- Mở camera lỗi lúc chạm (chương trình khác đang chiếm) → báo lý do và **ở lại `standby`** để chạm lại, không rơi vào
+  `fatal`. Hàng đợi ngoại tuyến nằm ở effect riêng nên vẫn đồng bộ bình thường lúc đang chờ.
+- Không đụng `checkGate`, `captureSnapshot`, `submit` hay bất kỳ nhánh quyết định nào của việc chấm công.

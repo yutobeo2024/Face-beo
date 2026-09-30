@@ -12,6 +12,8 @@ export const GET = handle(async (req) => {
     device: { id: d.id, name: d.name, location: d.location },
     serverTime: new Date().toISOString(),
     livenessThreshold: s.livenessThreshold,
+    // Chế độ chờ (v1.21.0): kiosk đọc lại mỗi lần ping nên đổi trong Cấu hình là có hiệu lực trong 20 giây.
+    kiosk: { idleSeconds: s.kioskIdleSeconds, awakeSeconds: s.kioskAwakeSeconds },
     // Kiosk tải lại trang khi giá trị này đổi (deploy bản mới / đổi mô hình).
     apiVersion: `${KIOSK_API_VERSION}:${FACE_MODEL_VERSION}`,
   });

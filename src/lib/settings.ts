@@ -23,6 +23,9 @@ export const settingsSchema = z.object({
   uniformFailScore: z.coerce.number().min(0).max(1),
   uniformColorWeight: z.coerce.number().min(0).max(1),
   uniformKeepCrop: z.coerce.number().int().min(0).max(1), // 1 = lưu ảnh vùng áo để Nhân sự xem lại
+  // v1.21.0 — chế độ chờ của kiosk (camera tắt tới khi có người chạm).
+  kioskIdleSeconds: z.coerce.number().int().min(30).max(1800),
+  kioskAwakeSeconds: z.coerce.number().int().min(0).max(300),
 });
 export type AppSettings = z.infer<typeof settingsSchema>;
 
@@ -45,6 +48,8 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   uniformKeepCrop: 1,
   medinetAutoCheck: 1,
   medinetCheckDays: 30,
+  kioskIdleSeconds: 120,
+  kioskAwakeSeconds: 0,
 };
 
 export async function getSettings(): Promise<AppSettings> {

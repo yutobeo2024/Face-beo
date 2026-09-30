@@ -35,6 +35,8 @@ export type Settings = {
   cmeCycleHours: number;
   cmeCycleYears: number;
   credentialWarnDays: number;
+  kioskIdleSeconds: number;
+  kioskAwakeSeconds: number;
 };
 export type SettingsField = { key: keyof Settings; label: string; hint: string; step: number };
 export type SystemInfo = {

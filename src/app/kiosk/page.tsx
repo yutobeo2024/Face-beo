@@ -3,13 +3,15 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { beep, boxToSnapshot, captureSnapshot, checkGate, engineInfo, landmarks5, landmarksToSnapshot, loadEngine, meshFlatness, openCamera, stopCamera } from "@/lib/face/engine";
 import { cooldownStep, startCooldown, type CooldownState } from "@/lib/face/cooldown";
+import { isIdle, phaseAfterResult } from "@/lib/face/standby";
 import { boxToRect, coverFit, rectToScreen } from "@/lib/face/overlay";
 import { chestRectRaw } from "@/lib/uniform-crop";
 import { DeviceRevokedError, NetworkError, queue, sendScan, type QueuedScan, type ScanResponse } from "@/lib/face/offline-queue";
 import { Icon } from "@/components/icons";
 import { cx, Spinner } from "@/components/ui";
 
-type Phase = "boot" | "ready" | "collecting" | "sending" | "result" | "cooldown" | "fatal";
+// "standby" (v1.21.0): camera TẮT, chờ người chạm màn hình — đi ngang lúc này không thể bị ghi lượt quét.
+type Phase = "boot" | "standby" | "ready" | "collecting" | "sending" | "result" | "cooldown" | "fatal";
 type Card = { tone: "ok" | "warn" | "error" | "info"; title: string; lines: string[] };
 
 const FRAMES = 5;
@@ -72,6 +74,13 @@ export default function KioskPage() {
   const liveGuideRef = useRef<HTMLDivElement>(null);
   const faceBoxRef = useRef<HTMLDivElement>(null);
   const shirtBoxRef = useRef<HTMLDivElement>(null);
+  // Chế độ chờ (v1.21.0): giữ luồng camera để bật / tắt được, và mốc lần cuối thấy khuôn mặt để tự ngủ.
+  const streamRef = useRef<MediaStream | null>(null);
+  const lastSeenRef = useRef<number | null>(null);
+  const wakingRef = useRef(false);
+  const kioskCfgRef = useRef({ idleSeconds: 120, awakeSeconds: 0 });
+  /** Hàm tắt camera về màn hình chờ — đặt trong vòng lặp, gọi được từ chỗ khác (sau mỗi kết quả). */
+  const sleepRef = useRef<(() => void) | null>(null);
 
   const go = (p: Phase) => {
     phaseRef.current = p;
@@ -133,6 +142,7 @@ export default function KioskPage() {
         if (alive) {
           setOnline(true);
           setDevice(d.device);
+          if (d.kiosk) kioskCfgRef.current = { idleSeconds: Number(d.kiosk.idleSeconds) || 120, awakeSeconds: Number(d.kiosk.awakeSeconds) || 0 };
         }
         void sync();
       } catch {
@@ -197,7 +207,13 @@ export default function KioskPage() {
       setTimeout(() => {
         setCard(null);
         setProgress(0);
+        // Mặc định về chờ ngay (camera tắt, người sau phải chạm). Đặt kioskAwakeSeconds > 0 thì giữ thức cho hàng đợi.
+        if (phaseAfterResult(kioskCfgRef.current.awakeSeconds) === "standby") {
+          sleepRef.current?.();
+          return;
+        }
         cooldownRef.current = startCooldown(recognized ? lastVideoBoxRef.current : null, Date.now());
+        lastSeenRef.current = Date.now();
         setHint(recognized ? "Mời người tiếp theo" : "Vui lòng thử lại");
         go("cooldown");
       }, RESULT_MS);
@@ -243,29 +259,53 @@ export default function KioskPage() {
     still.style.opacity = "0";
   }, []);
 
-  // Vòng lặp nhận diện.
+  // Vòng lặp nhận diện. Mô hình nạp ngay khi mở trang, nhưng CAMERA CHỈ BẬT KHI CÓ NGƯỜI CHẠM (v1.21.0).
   useEffect(() => {
-    let stream: MediaStream | null = null;
     let stop = false;
+    /** Tắt camera, dọn trạng thái dở dang, về màn hình chờ. */
+    const sleep = () => {
+      stopCamera(streamRef.current);
+      streamRef.current = null;
+      if (videoRef.current) videoRef.current.srcObject = null;
+      streamRef.current = null;
+      lastSeenRef.current = null;
+      cooldownRef.current = null;
+      if (liveGuideRef.current) liveGuideRef.current.style.opacity = "0";
+      if (staticGuideRef.current) staticGuideRef.current.style.opacity = "1";
+      setCard(null);
+      setProgress(0);
+      setHint("Chạm để chấm công");
+      go("standby");
+    };
+    sleepRef.current = sleep;
     (async () => {
       try {
         const human = await loadEngine(setHint);
         setBackend(engineInfo(human).backend);
-        stream = await openCamera(videoRef.current!);
-        go("ready");
-        setHint("Hãy nhìn vào camera");
-        const video = videoRef.current!;
+        go("standby");
+        setHint("Chạm để chấm công");
         let stable = 0;
         let frames: { real: number; live: number }[] = [];
         let flat: number | undefined;
         let size = 0;
         while (!stop) {
           const p = phaseRef.current;
+          // "standby" nằm ngoài danh sách này nên lúc chờ vòng lặp chỉ nghỉ, KHÔNG gọi human.detect.
           if (p !== "ready" && p !== "collecting" && p !== "cooldown") {
             await new Promise((r) => setTimeout(r, 120));
             continue;
           }
+          const video = videoRef.current;
+          if (!video || !streamRef.current) {
+            await new Promise((r) => setTimeout(r, 120));
+            continue;
+          }
           const res = await human.detect(video);
+          if (res.face.some((x) => x.faceScore > 0.6 || x.score > 0.6)) lastSeenRef.current = Date.now();
+          else if (isIdle(Date.now(), lastSeenRef.current, kioskCfgRef.current.idleSeconds)) {
+            sleep(); // vắng quá lâu: tắt camera, khỏi chạy suốt
+            continue;
+          }
           if (p === "cooldown") {
             // Chỉ theo dõi, không thu khung liveness và không gửi request.
             const faces = res.face.filter((x) => x.faceScore > 0.6 || x.score > 0.6);
@@ -334,14 +374,33 @@ export default function KioskPage() {
         }
       } catch (e) {
         go("fatal");
-        setHint((e as Error).message || "Không khởi động được camera");
+        setHint((e as Error).message || "Không khởi động được mô hình nhận diện");
       }
     })();
     return () => {
       stop = true;
-      stopCamera(stream);
+      sleepRef.current = null;
+      stopCamera(streamRef.current);
+      streamRef.current = null;
     };
   }, [submit, paintGuide]);
+
+  /** Chạm màn hình chờ: bật camera rồi vào trạng thái sẵn sàng. Mở camera lỗi thì Ở LẠI màn hình chờ để chạm lại. */
+  async function wake() {
+    if (wakingRef.current || phaseRef.current !== "standby") return;
+    wakingRef.current = true;
+    setHint("Đang bật camera…");
+    try {
+      streamRef.current = await openCamera(videoRef.current!);
+      lastSeenRef.current = Date.now();
+      setHint("Hãy nhìn vào camera");
+      go("ready");
+    } catch (e) {
+      setHint((e as Error).message || "Không mở được camera — chạm để thử lại");
+    } finally {
+      wakingRef.current = false;
+    }
+  }
 
   function fullscreen() {
     const el = document.documentElement;
@@ -431,6 +490,27 @@ export default function KioskPage() {
               ))}
             </div>
           </div>
+        )}
+        {/* Màn hình chờ (v1.21.0): camera TẮT. Chạm chỗ nào trong vùng này cũng bật. */}
+        {phase === "standby" && (
+          <button
+            type="button"
+            onClick={() => void wake()}
+            className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-5 bg-slate-950 px-6 text-center"
+            aria-label="Chạm để chấm công"
+          >
+            <span className="grid size-28 place-items-center rounded-full bg-brand-600/15 ring-4 ring-brand-500/40">
+              <Icon name="face" className="size-14 text-brand-300" strokeWidth={1.6} />
+            </span>
+            <span className="text-4xl font-bold tracking-wide sm:text-5xl">CHẠM ĐỂ CHẤM CÔNG</span>
+            <span className="text-6xl font-bold tabular-nums text-white/90 sm:text-7xl">
+              {now ? now.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Ho_Chi_Minh" }) : "--:--"}
+            </span>
+            <span className="flex items-center gap-2 text-base text-slate-400">
+              <Icon name="camera" className="size-5" /> Camera đang tắt
+            </span>
+            {hint !== "Chạm để chấm công" && <span className="text-lg font-semibold text-amber-300">{hint}</span>}
+          </button>
         )}
         {phase === "fatal" && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-slate-950/90 p-6 text-center">

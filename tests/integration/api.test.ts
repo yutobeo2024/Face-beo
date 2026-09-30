@@ -100,6 +100,23 @@ describe("kiosk", () => {
     expect((await pingRoute.GET(req("/api/kiosk/ping", { cookie }), ctx())).status).toBe(401);
   });
 
+  it("ping trả cấu hình chế độ chờ để kiosk biết khi nào tắt camera (v1.21.0)", async () => {
+    const { cookie } = await pairedDevice("Kiosk chế độ chờ");
+    const body = await (await pingRoute.GET(req("/api/kiosk/ping", { cookie }), ctx())).json();
+    expect(body.kiosk).toEqual({ idleSeconds: 120, awakeSeconds: 0 });
+  });
+
+  it("đổi được chế độ chờ trong Cấu hình; giá trị ngoài miền bị chặn", async () => {
+    const adminCookie = await sessionCookie(admin.id);
+    const put = (body: unknown) => settingsRoute.PUT(req("/api/settings", { method: "PUT", cookie: adminCookie, body }), ctx());
+    expect((await put({ kioskIdleSeconds: 10 })).status).toBe(400); // dưới 30 giây: ngủ ngay giữa lúc đang quét
+    expect((await put({ kioskAwakeSeconds: 999 })).status).toBe(400); // quá 300 giây
+    expect((await put({ kioskIdleSeconds: 300, kioskAwakeSeconds: 30 })).status).toBe(200);
+    const { cookie } = await pairedDevice("Kiosk đổi chế độ chờ");
+    expect((await (await pingRoute.GET(req("/api/kiosk/ping", { cookie }), ctx())).json()).kiosk).toEqual({ idleSeconds: 300, awakeSeconds: 30 });
+    await put({ kioskIdleSeconds: 120, kioskAwakeSeconds: 0 }); // trả về mặc định cho các test khác
+  });
+
   it("ghép thiết bị bằng mã 6 số", async () => {
     const d = await prisma.kioskDevice.create({ data: { name: "Kiosk ghép", pairCode: "654321", pairExpiresAt: new Date(Date.now() + 60_000) } });
     const r = await pairRoute.POST(req("/api/kiosk/pair", { method: "POST", body: { code: "654321" } }), ctx());
