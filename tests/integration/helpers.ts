@@ -29,6 +29,13 @@ export function req(path: string, init: { method?: string; cookie?: string; body
   });
 }
 
+/** Yêu cầu có thân NHỊ PHÂN (tải ảnh lên): ảnh đại diện, ảnh mẫu áo. */
+export function binaryReq(path: string, body: Uint8Array, init: { method?: string; cookie?: string } = {}) {
+  const headers: Record<string, string> = { "content-type": "application/octet-stream" };
+  if (init.cookie) headers.cookie = init.cookie;
+  return new NextRequest(new URL(path, BASE), { method: init.method ?? "PUT", headers, body: new Uint8Array(body) });
+}
+
 export const ctx = <P extends Record<string, string | string[]>>(params: P = {} as P) => ({ params: Promise.resolve(params) });
 
 export async function byCode(code: string) {

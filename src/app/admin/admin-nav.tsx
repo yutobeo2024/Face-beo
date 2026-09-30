@@ -20,6 +20,7 @@ export function AdminNav({ user, caps, children }: { user: ShellUser & { id: num
     has("roster.view") && { href: "/admin/roster", label: "Xếp ca", icon: "calendar", mobile: true },
     (has("requests.decide") || has("attendance.executeCorrection")) && { href: "/admin/requests", label: "Đơn từ", icon: "inbox", mobile: true },
     has("attendance.view") && { href: "/admin/attendance", label: "Chấm công", icon: "clock", mobile: true },
+    has("uniform.view") && { href: "/admin/uniform", label: "Đồng phục", icon: "shirt" },
     has("reports.view") && { href: "/admin/reports", label: "Báo cáo", icon: "chart" },
     (has("employees.view") || has("employees.manage")) && { href: "/admin/employees", label: "Nhân viên", icon: "users" },
     has("links.manage") && { href: "/admin/links", label: "Liên kết", icon: "link" },
