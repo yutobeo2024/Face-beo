@@ -31,7 +31,9 @@ chạy cron / khóa Zalo thật song song với VPS (refresh token Zalo dùng m�
 - Chạy liền mạch, **không dừng hỏi xác nhận từng bước**; chỉ hỏi khi lựa chọn làm khác hẳn kết quả hoặc thao tác phá hủy/ra ngoài.
 - Mỗi tính năng: lên plan ngắn → làm → **song song 1 agent review + 1 agent QC** (agent không tạo worktree, không đụng
   `node_modules`) → lint + typecheck + toàn bộ vitest xanh → build → cập nhật tài liệu → commit (tiếng Việt, có
-  `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>`) → push → tag `v1.x.y` khi phát hành → cập nhật VPS: `ssh root@103.142.27.210 "sh /opt/facebeo/src/deploy/update.sh v1.x.y"`
+  `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>`) → push → tag `v1.x.y` khi phát hành → cập nhật VPS: `ssh vps` (user **beodev**, khóa của chủ dự án; `root` KHÔNG nhận khóa) rồi
+  `sudo sh /opt/facebeo/src/deploy/update.sh v1.x.y` — cần `sudo` vì `/opt/facebeo/src` thuộc root. Lệnh `docker …` thì beodev
+  chạy thẳng được (đã ở nhóm docker). Dòng lệnh dài dán vào PowerShell hay bị cắt → vào VPS trước rồi gõ từng lệnh ngắn.
   (chờ `/login` 200; kiểm tra `https://face.ydsg.website`).
 - Giải thích bằng tiếng Việt, có ví dụ số cụ thể; quy tắc công/lương phải **cấu hình được** (theo ca, theo phòng), không hard-code.
 - `package-lock.json`: image dựng bằng **Node 22 / npm 10**, máy local đang npm 11 → lock do npm 11 sinh làm `npm ci` trong Docker

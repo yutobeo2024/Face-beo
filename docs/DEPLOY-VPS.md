@@ -22,10 +22,13 @@ Caddy / ufw / container khác.
 ## 2. VPS — chuẩn bị (một lần)
 
 ```bash
-ssh root@103.142.27.210
-mkdir -p /opt/facebeo/data /opt/facebeo/models
-git clone https://github.com/yutobeo2024/Face-beo.git /opt/facebeo/src
+ssh vps                      # user beodev; root không nhận khóa (chỉ beodev có authorized_keys)
+sudo mkdir -p /opt/facebeo/data /opt/facebeo/models
+sudo git clone https://github.com/yutobeo2024/Face-beo.git /opt/facebeo/src
 ```
+
+> `/opt/facebeo/src` thuộc **root** nên mọi lệnh git / `update.sh` phải đi kèm `sudo` (không có thì git báo
+> *"detected dubious ownership"*). Riêng `docker …` thì `beodev` chạy thẳng được vì đã ở nhóm `docker`.
 
 ## 3. Chuyển dữ liệu từ máy đang chạy (Windows)
 
