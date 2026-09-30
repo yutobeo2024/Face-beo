@@ -567,3 +567,116 @@ công được tính trực tiếp từ planner. Quản lý được cấp `org.
   `facebeo-app` và `medichat-backend`. Không cho Face Beo vào thẳng `medichat_default` vì như vậy `cloudflared` của medichat
   cũng gọi được `facebeo-app:3000`, thành đường vòng qua mặt Caddy (chặn ngoài Việt Nam + fail2ban). Biến `CHATBOT_API_URL`,
   `CHATBOT_API_KEY` trong `/opt/facebeo/.env` phải khớp `CHAT_API_KEY` của medichat.
+
+## 32. Kiểm áo đồng phục khi chấm công (v1.20.0, 30/09/2026)
+
+**Bài toán.** Phòng khám quy định áo đồng phục (chỉ áo), mỗi phòng 2–3 mẫu khác màu rõ rệt, nhân viên mặc mẫu nào cũng được.
+Không mặc đồng phục phải được ghi nhận như đi trễ / về sớm, có bảng theo dõi, **file báo cáo riêng** và tin Zalo.
+
+**Nguồn dữ liệu có sẵn.** Mỗi lượt chấm kiosk đã lưu ảnh toàn khung 1280×720 và (từ v1.20.0) cả khung khuôn mặt
+`AttendanceLog.faceBox` = JSON `[x,y,w,h]`. Không phải đụng camera hay quy trình chấm công.
+
+### 32.1 Sửa gốc khâu thu thập trước khi viết luật
+
+`checkGate` (`src/lib/face/engine.ts`) trước đây chỉ chặn mặt **quá nhỏ**, không có giới hạn trên → người đứng sát camera thì
+mặt choán gần hết khung, chỉ còn thấy cổ áo. Thay vì viết luật chịu đựng ảnh thiếu, sửa từ gốc:
+
+- `checkGate` thêm điều kiện `chestRoom`: dưới cằm phải còn chỗ cho ngực (`chiều cao ảnh − (y + h) ≥ 1,1 · h`), không đạt thì
+  nhắc **"Lùi lại một bước"** và không nhận lượt quét.
+- Khung ngắm kiosk đổi `aspect-[4/5]` → **`aspect-[2/3]`** (tỉ lệ ảnh thẻ 4×6), thêm vạch gợi ý "ngang ngực".
+- `minFace: 180` giữ nguyên nên chất lượng nhận diện khuôn mặt không đổi. Cập nhật kiosk = tải lại trang, **không** enroll lại.
+
+### 32.2 Máy quyết định thế nào
+
+Cắt vùng ngực từ khung mặt (`src/lib/uniform-crop.ts`, `SHIRT_CROP`): rộng `1,6·w`, cao `0,9·h`, bắt đầu từ `y + 1,3·h`.
+Vùng này **không bao giờ giao với khung mặt** → ảnh lưu lại không chứa khuôn mặt (có test tính chất trên 200 khung ngẫu nhiên).
+
+| Tín hiệu | Cách tính | Tệp |
+|---|---|---|
+| **Màu áo** | Cân bằng trắng Shades-of-Gray trên **toàn khung** (không phải trên vùng áo đơn sắc) → histogram H(24)×S(4) + 3 bin vô sắc → hệ số Bhattacharyya | `uniform-color.ts` |
+| **Logo trước ngực** | `patternRatio` — "độ không trơn" quanh trung vị; mẫu áo có logo mà ảnh chụp trơn hẳn ⇒ nghi áo khác cùng màu | `uniform-color.ts` |
+| **Hình dáng** | DINOv2-small ONNX int8 (24 MB), 224×224, chuẩn hóa ImageNet, vector 384 chiều = **trung bình các ô ảnh** (bỏ ô tổng hợp) → cosine | `uniform-embed.ts` |
+
+Bảng quyết định ở `decideUniform` (`uniform-score.ts`): hai tín hiệu chính (màu, hình dáng) phải **đồng thuận** mới kết luận.
+
+| Tình huống | Kết luận |
+|---|---|
+| Cả hai đạt ngưỡng (và không thiếu logo) | **ĐẠT** kèm tên mẫu khớp |
+| Cả hai dưới ngưỡng **và** điểm gộp ≤ ngưỡng trượt | **KHÔNG ĐẠT** |
+| Hai tín hiệu lệch nhau | **CẦN XEM LẠI** (`AMBIGUOUS`) |
+| Ảnh xấu / tràn khung / quá tối / chói / da > 50 % / mẫu áo < 3 ảnh người mặc / mô hình lỗi / sai phiên bản mô hình | **CẦN XEM LẠI** kèm lý do — **không bao giờ** suy ra KHÔNG ĐẠT từ ảnh thiếu |
+| Phòng chưa khai mẫu áo | **BỎ QUA** |
+
+Mô hình hỏng thì còn tầng màu, nhưng đòi chắc chắn hơn: chỉ ĐẠT khi `màu ≥ passColor + 0,10` và không thiếu logo.
+
+### 32.3 Ngưỡng — đo, không đoán
+
+Ngưỡng mặc định **đo trên ảnh thật của phòng khám** (6 ảnh mặc đúng đồng phục, 4 ảnh mặc sai, chạy qua đúng mã sản phẩm):
+
+| | Mặc đúng | Mặc sai |
+|---|---|---|
+| Màu áo | 0,919 – 0,958 | 0,269 – 0,639 |
+| Hình dáng | 0,910 – 0,960 | 0,650 – 0,808 |
+
+⇒ `uniformPassColor` **0,80** · `uniformPassEmbed` **0,85** · `uniformFailScore` **0,70** · `uniformColorWeight` **0,50**
+(+ `uniformKeepCrop` bật/tắt lưu ảnh vùng áo). Tất cả sửa được ở **Cấu hình → Chấm công**.
+
+Hai bài học đắt giá từ đợt đo này:
+
+1. **Mô hình đầu tiên chấm sai hướng.** MobileCLIP-S0 cho áo đen thường **0,741** — cao hơn áo đồng phục thật (**0,459**);
+   nó chỉ nhận ra "người mặc áo sẫm". Đổi sang DINOv2-small mới tách đúng.
+2. **Ảnh áo rời không làm mẫu được.** Mẫu dựng từ ảnh áo trải phẳng chấm chính 6 người đang mặc đúng cái áo đó chỉ
+   **0,35–0,40** ⇒ cả 6 đều "không đạt". Nên `recomputeTemplate` **chỉ lấy trung bình từ ảnh người mặc** (`kind = WORN`);
+   chỉ có ảnh áo rời thì `sampleCount = 0` và máy luôn để "cần xem lại".
+
+Mỗi phòng vẫn phải chạy **chế độ thử 2 tuần**, Nhân sự gắn nhãn trên bảng theo dõi, rồi `npm run uniform:eval` đề xuất ngưỡng
+theo tiêu chí **báo oan ≤ 2 %** (`--apply` để ghi thẳng vào Cấu hình).
+
+### 32.4 Chạy ở đâu — không đụng đường nóng
+
+`POST /api/kiosk/scan` **chỉ thêm đúng một việc**: lưu `faceBox` (một cột chữ). Không gọi sharp, không gọi ONNX.
+Có ca test đo tốc độ lượt quét để giữ điều này.
+
+- Job `uniform-check` (`*/5 * * * *`): lấy log **sớm nhất có `shiftId != null`** của mỗi (nhân viên, ngày công) — đó chính là
+  lượt vào đầu ca; không dùng `type = "IN"` vì `recomputeDay` gán lại type. Lọc phòng `uniformMode != OFF`, ghép `TRACKED_WHERE`,
+  bỏ ngày đã kiểm, tối đa 40 ảnh mỗi lượt. Mô hình **nạp một lần rồi giải phóng** (`withUniformModel`) — container 1,5 GB đã có
+  mô hình khuôn mặt 167 MB thường trú. Đo thật: nạp 0,26 s, 0,17 s/ảnh, RSS 133 MB.
+- Job `uniform-digest` (`0 18 * * *`): gom theo (phòng | ngày | ca), gửi trưởng phòng — không có thì Nhân sự/Quản trị.
+  `messageType` `UNIFORM_DIGEST`, dedupeKey `uniform-digest:<phòng>:<ngày>:<ca>`, đánh dấu `digestAt` nên chạy lại không trùng.
+  **Không gửi khi cả nhóm đều đạt**; bản chạy thử không gửi cho ai và không bị đánh dấu; tin không kèm lý do cá nhân, cắt 15 dòng.
+- Job `snapshot-cleanup` (02:00) xóa luôn ảnh vùng áo quá hạn và đặt `cropUrl = null`.
+
+### 32.5 Dữ liệu
+
+- `Department.uniformMode`: `OFF` (mặc định) · `SHADOW` (chạy thử) · `ON`.
+- `AttendanceLog.faceBox String?` — JSON `[x,y,w,h]`, cắt lại được khi đổi tỉ lệ mà không phải nhận diện lại.
+- `UniformTemplate` (mẫu áo theo phòng: tên, histogram + vector trung bình, `embedVersion`, `sampleCount` = số **ảnh người mặc**,
+  `colorHex`, `active`), `UniformSample` (ảnh mẫu, `kind` = `WORN` | `SHIRT`, cascade theo template).
+- `UniformCheck` — **một người một ngày** (`@@unique([employeeId, workDate])`): `machineStatus` (kết luận gốc của máy, người
+  **không** ghi đè được) tách khỏi `status` (kết luận hiệu lực), `reason`, `templateId`, `score/embedScore/colorScore`,
+  `cropUrl`, `detail` (điểm từng mẫu + chất lượng ảnh + ngưỡng + phiên bản mô hình), `decidedById/At/note`, `mode`, `digestAt`.
+- Khóa `employeeId/logId/departmentId/shiftId` để **Int trơn, không quan hệ** (như `LockedDay`, `ChatbotUsage`): xóa log không bị
+  chặn, cũng không cascade mất bản ghi kiểm.
+- Migration **viết tay** (`ALTER TABLE ADD COLUMN` + `CREATE TABLE`) kèm `INSERT OR IGNORE INTO "RolePermission"` cho 3 quyền mới.
+  Chỉ thêm, không sửa/xóa dữ liệu cũ ⇒ bản v1.19.0 vẫn chạy được trên DB đã nâng cấp (quay lui không cần đụng dữ liệu).
+
+### 32.6 Quyền và giao diện
+
+- Ba quyền nhóm "Đồng phục": `uniform.view` (xem + xuất Excel) · `uniform.decide` (xác nhận) · `uniform.manage` (mẫu áo, bật/tắt
+  phòng). HR đủ 3, Quản lý chỉ `uniform.view` trong phạm vi phòng mình (**không** được xác nhận).
+- `/admin/uniform` — bảng theo dõi: lọc ngày (≤ 31) · phòng · trạng thái, thẻ số liệu, mở dòng xem ảnh vùng áo + điểm từng tín
+  hiệu + nút Đạt / Không đạt. Ảnh vùng áo phục vụ qua route riêng có kiểm quyền và phạm vi phòng.
+- `/admin/uniform/templates` — mẫu áo theo phòng, ô màu chủ đạo, ảnh mẫu, chế độ Tắt / Chạy thử / Bật (ghi nhật ký + báo nhóm
+  minh bạch). Đổi chế độ dùng route riêng `/api/uniform/departments/[id]` vì HR không có `org.manage`.
+- **Lấy ảnh mẫu từ một lượt chấm công** (`POST /api/uniform/templates/:id/samples/from-check`): đọc ảnh gốc theo `logId`, cắt
+  vùng ngực, **áp cân bằng trắng vào điểm ảnh rồi mới lưu** — nhờ vậy `extractSampleFeature` (vốn không cân bằng) vẫn cùng một hệ
+  quy chiếu. Đây là cách lấy mẫu đúng điều kiện nhất và không bắt ai phải chụp ảnh.
+
+### 32.7 Báo cáo và quyền riêng tư
+
+- `/api/reports/uniform.xlsx` → **`DongPhuc_YYYYMMDD_YYYYMMDD.xlsx`**, ba sheet (Tổng hợp · Chi tiết · Ghi chú), đóng băng dòng
+  tiêu đề + bật lọc. **Tách hẳn khỏi bảng công**: kết luận đồng phục sửa được sau, còn tháng đã chốt thì bất biến — trộn chung sẽ
+  làm bảng công "đổi số" sau khi chốt. Có ca test giữ bất biến "xuất đồng phục không làm đổi file bảng công".
+- Ảnh vùng áo: 160×160, **không chứa khuôn mặt**, ngoài `public`, kiểm quyền theo phòng, xóa cùng hạn 90 ngày, có công tắc tắt
+  hẳn (`uniformKeepCrop`). Dung lượng ~8 KB/người/ngày ⇒ 100 người × 90 ngày ≈ 72 MB.
+- `deploy/backup.sh` / `restore-offsite.sh` gói thêm `data/uniforms` (ảnh mẫu áo).

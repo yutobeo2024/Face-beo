@@ -107,7 +107,7 @@ footer{color:var(--muted);font-size:.85rem;text-align:center;padding:10px}
 <div class="layout">
 <nav class="toc" id="toc">
   <div class="brand">📘 Cẩm nang Face Beo</div>
-  <div class="sub">Hướng dẫn sử dụng · bản v1.19</div>
+  <div class="sub">Hướng dẫn sử dụng · bản v1.20</div>
   <button class="menu-mobile" onclick="document.getElementById('toc').classList.toggle('open')">☰ Mục lục</button>
   <ol>
     <li class="grp">Bắt đầu</li>
@@ -125,6 +125,7 @@ footer{color:var(--muted);font-size:.85rem;text-align:center;padding:10px}
     <li><a href="#don-tu">9. Đơn từ &amp; tuyến duyệt</a></li>
     <li><a href="#bo-sung-cong">10. Bổ sung công (quên chấm)</a></li>
     <li><a href="#cham-cong">11. Theo dõi chấm công</a></li>
+    <li><a href="#dong-phuc">11.5 Kiểm áo đồng phục</a></li>
     <li class="grp">Công &amp; lương</li>
     <li><a href="#tinh-cong">12. Cách tính công, trễ, OT</a></li>
     <li><a href="#bao-cao">13. Báo cáo &amp; tính lương</a></li>
@@ -747,9 +748,111 @@ sequenceDiagram
     <tr><td>Nhắc đăng ký ca</td><td>Thứ Sáu 15:00</td><td>Nhắc quản lý phòng chưa đăng ký tuần sau</td></tr>
     <tr><td>Báo phòng thiếu lịch</td><td>Thứ Hai 07:00</td><td>Báo HR + nhóm Zalo</td></tr>
     <tr><td>Dọn ảnh snapshot</td><td>02:00 hằng ngày</td><td>Xóa ảnh cũ hơn 90 ngày (chỉnh được)</td></tr>
+    <tr><td>Kiểm áo đồng phục</td><td>Mỗi 5 phút</td><td>Xem ảnh lượt chấm vào đầu ca, đối chiếu mẫu áo của phòng (mục 11.5)</td></tr>
+    <tr><td>Tin đồng phục cuối ngày</td><td>18:00 hằng ngày</td><td>Một tin tổng hợp cho quản lý mỗi phòng; cả phòng đạt thì không gửi</td></tr>
     <tr><td>Sao lưu dữ liệu</td><td>03:00 hằng ngày</td><td>Sao lưu cơ sở dữ liệu</td></tr>
     <tr><td>Làm mới token Zalo</td><td>Mỗi 6 giờ</td><td>Giữ kết nối Zalo OA</td></tr>
   </table></div>
+</section>
+
+<!-- 11.5 -->
+<section id="dong-phuc">
+  <h2><span class="num">11.5</span>Kiểm áo đồng phục</h2>
+  <p class="lead"><span class="pill h">Nhân sự</span> <span class="pill m">Quản lý</span> Menu <b>Đồng phục</b>. Máy tự xem ảnh chấm công buổi sáng và đối chiếu áo với mẫu áo của phòng.</p>
+
+  <h3>11.5.1 Máy kiểm lúc nào, kiểm ai</h3>
+  <div class="tw"><table>
+    <tr><th>Điểm</th><th>Quy định</th></tr>
+    <tr><td>Lúc kiểm</td><td>Chỉ <b>lượt chấm VÀO đầu ca</b>, <b>một lần mỗi người mỗi ngày</b>. Chấm ra, chấm lần hai không kiểm.</td></tr>
+    <tr><td>Ai bị kiểm</td><td>Chỉ người thuộc phòng đã <b>bật kiểm</b> và phòng đó đã khai mẫu áo. Người "không chấm công" (Ban Giám đốc) không bị kiểm.</td></tr>
+    <tr><td>Khi nào chạy</td><td>Job nền <b>mỗi 5 phút</b>. Việc kiểm chạy hoàn toàn ngoài máy chấm công nên <b>không làm nhân viên phải chờ lâu hơn</b>.</td></tr>
+    <tr><td>Ảnh lưu lại</td><td>Một ảnh vùng ngực áo 160×160, <b>không có khuôn mặt</b>, xóa cùng hạn lưu ảnh chấm công (90 ngày).</td></tr>
+  </table></div>
+
+  <h3>11.5.2 Ba mức kết luận</h3>
+  <div class="grid">
+    <div class="card"><h4>✅ Đạt</h4><p>Áo khớp một trong các mẫu áo của phòng. Ghi kèm tên mẫu khớp.</p></div>
+    <div class="card"><h4>❌ Không đạt</h4><p><b>Cả hai</b> tín hiệu (màu áo và hình dáng) đều dưới ngưỡng trượt.</p></div>
+    <div class="card"><h4>⚠️ Cần xem lại</h4><p>Máy <b>chưa chắc</b>: ảnh tối, không thấy đủ vùng áo, mẫu áo còn ít ảnh, hai tín hiệu lệch nhau… <b>Nhân sự xem ảnh rồi quyết.</b></p></div>
+    <div class="card"><h4>➖ Bỏ qua</h4><p>Phòng chưa khai mẫu áo hoặc chưa bật kiểm.</p></div>
+  </div>
+
+  <div class="callout ok"><b>Nguyên tắc quan trọng nhất: không bao giờ báo oan</b>
+    <p>Ảnh thiếu, ảnh xấu, mô hình hỏng, mẫu áo chưa đủ ảnh — <b>tất cả đều ra "cần xem lại"</b>, không bao giờ tự suy thành "không mặc đồng phục". Máy chỉ kết luận "không đạt" khi thấy rõ áo và áo không giống mẫu nào.</p>
+  </div>
+
+  <h3>11.5.3 Máy nhìn vào đâu</h3>
+  <p>Từ khung khuôn mặt của lượt chấm công, máy cắt một vùng <b>ngay dưới cằm</b> (rộng 1,6 lần bề ngang mặt, cao 0,9 lần chiều cao mặt). Vùng này luôn nằm dưới khuôn mặt nên ảnh lưu lại không chứa mặt. Trên vùng đó máy đo <b>ba tín hiệu</b>:</p>
+  <div class="tw"><table>
+    <tr><th>Tín hiệu</th><th>Đo cái gì</th><th>Số đo thật (áo polo navy của phòng khám)</th></tr>
+    <tr><td><b>Màu áo</b></td><td>Biểu đồ màu sau khi cân bằng ánh sáng, so bằng hệ số Bhattacharyya</td><td>Mặc đúng <b>0,92 – 0,96</b> · mặc sai <b>0,27 – 0,64</b></td></tr>
+    <tr><td><b>Logo trước ngực</b></td><td>"Độ không trơn" của vùng ngực — áo thường cùng màu thì trơn, áo đồng phục có logo</td><td>Dùng để chặn ca "áo khác cùng màu"</td></tr>
+    <tr><td><b>Hình dáng (AI)</b></td><td>Mô hình DINOv2 chạy trên máy chủ, so vân vải và kiểu cổ áo</td><td>Mặc đúng <b>0,91 – 0,96</b> · mặc sai <b>0,65 – 0,81</b></td></tr>
+  </table></div>
+  <p>Ảnh <b>không gửi ra dịch vụ bên ngoài</b>. Mô hình chạy ngay trên máy chủ của phòng khám, nạp xong là giải phóng bộ nhớ.</p>
+
+  <div class="callout"><b>Mô hình hỏng thì sao?</b>
+    <p>Vẫn kiểm được bằng màu áo và logo, chỉ thận trọng hơn: đòi màu giống chắc chắn hơn mới cho "đạt". Việc chấm công không hề bị ảnh hưởng.</p>
+  </div>
+
+  <h3>11.5.4 Khai mẫu áo cho phòng</h3>
+  <p>Menu <b>Đồng phục → Mẫu áo</b>. Mỗi phòng khai 2–3 mẫu áo được chấp nhận; nhân viên mặc mẫu nào trong số đó cũng tính là đạt. Áo khoác đồng phục mặc ngoài nên khai thành một mẫu riêng.</p>
+
+  <div class="callout bad"><b>Ảnh áo rời KHÔNG dùng để kết luận được</b>
+    <p>Đã đo trên ảnh thật: lấy ảnh áo <b>trải phẳng trên bàn</b> làm mẫu rồi chấm chính 6 nhân viên đang mặc đúng cái áo đó — <b>cả 6 người đều bị chấm "không đạt"</b> (0,35 – 0,40). Áo trải phẳng khác hẳn áo đang mặc: nếp gấp, độ cong theo người, ánh sáng, tỉ lệ logo.</p>
+    <p>Vì vậy máy <b>chỉ lấy trung bình từ ảnh người mặc</b>. Ảnh áo rời vẫn tải lên được nhưng chỉ để người nhìn đối chiếu.</p>
+  </div>
+
+  <p><b>Cách lấy ảnh mẫu đúng nhất</b> — không phải chụp gì cả:</p>
+  <ol class="steps">
+    <li>Tạo mẫu áo, đặt tên dễ hiểu: "Áo polo navy", "Áo blouse trắng".</li>
+    <li>Cho vài nhân viên mặc đúng áo đó <b>chấm công bình thường</b>.</li>
+    <li>Vào <b>Đồng phục</b>, mở dòng của họ ra, bấm <b>"Dùng ảnh này làm ảnh mẫu"</b>.</li>
+    <li>Đủ <b>3 ảnh người mặc</b> thì bật mẫu áo lên.</li>
+  </ol>
+  <p>Ảnh mẫu lấy kiểu này sinh ra ở <b>chính điều kiện sau này máy phải so</b>: cùng camera, cùng đèn, cùng khoảng cách. Đây là lý do nó chính xác hơn hẳn ảnh chụp bằng điện thoại — ảnh điện thoại sáng hơn ảnh chấm công rất nhiều (độ sáng vùng áo đo thật chỉ 0,16 – 0,28).</p>
+  <p>Mẫu áo <b>dưới 3 ảnh người mặc</b> vẫn được chấm điểm, nhưng máy luôn để "cần xem lại" cho tới khi đủ ảnh.</p>
+
+  <h3>11.5.5 Ba chế độ của phòng</h3>
+  <div class="tw"><table>
+    <tr><th>Chế độ</th><th>Máy làm gì</th><th>Dùng khi nào</th></tr>
+    <tr><td><b>Tắt</b></td><td>Không kiểm gì cả</td><td>Mặc định</td></tr>
+    <tr><td><b>Chạy thử</b></td><td>Vẫn chấm điểm và lưu lại đầy đủ, nhưng <b>không gửi Zalo</b> và <b>không dùng để xử lý nhân sự</b></td><td><b>Bắt buộc 2 tuần đầu</b>, để đo ngưỡng cho đúng phòng mình</td></tr>
+    <tr><td><b>Bật</b></td><td>Kiểm thật: vào bảng theo dõi, file báo cáo, tin Zalo cuối ngày</td><td>Sau khi chạy thử xong và đã đo ngưỡng</td></tr>
+  </table></div>
+
+  <h3>11.5.6 Bảng theo dõi và xác nhận</h3>
+  <p>Menu <b>Đồng phục</b>: lọc theo khoảng ngày (tối đa 31 ngày), phòng, trạng thái. Mở một dòng ra sẽ thấy <b>ảnh vùng áo</b>, điểm từng tín hiệu, màu mẫu áo, và hai nút <b>Đạt / Không đạt</b>.</p>
+  <div class="callout"><b>Kết luận của máy không bao giờ bị xóa</b>
+    <p>Khi Nhân sự bấm Đạt hay Không đạt, hệ thống đổi kết luận <b>hiệu lực</b> nhưng vẫn giữ nguyên <b>kết luận gốc của máy</b>, kèm tên người xác nhận và thời điểm. Nhân viên khiếu nại thì mở đúng dòng đó ra là thấy đủ: ảnh, điểm số, ngưỡng đang dùng, ai đã quyết.</p>
+  </div>
+  <p>Quản lý phòng chỉ thấy phòng mình và <b>không</b> được xác nhận — quyền xác nhận thuộc Nhân sự / Quản trị.</p>
+
+  <h3>11.5.7 File báo cáo riêng</h3>
+  <p>Nút <b>Xuất Excel</b> (ở bảng theo dõi hoặc trang Báo cáo) tải file <b>DongPhuc_YYYYMMDD_YYYYMMDD.xlsx</b>, <b>tách hẳn khỏi bảng công</b>:</p>
+  <ul>
+    <li><b>Tổng hợp</b> — mỗi người một dòng: số ngày kiểm, đạt, không đạt, cần xem lại, tỉ lệ đạt, số ngày do người xác nhận.</li>
+    <li><b>Chi tiết</b> — mỗi ngày một dòng: kết luận, kết luận của máy, mẫu áo khớp, ba điểm, lý do, người xác nhận, chế độ.</li>
+    <li><b>Ghi chú</b> — cách đọc ba mức, ngưỡng đang dùng, phiên bản mô hình, danh sách phòng đang chạy thử.</li>
+  </ul>
+  <p>Sửa kết luận đồng phục <b>không làm đổi số liệu bảng công</b>, kể cả tháng đã chốt.</p>
+
+  <h3>11.5.8 Tin Zalo cuối ngày</h3>
+  <p>18:00 hằng ngày, mỗi phòng nhận <b>một tin tổng hợp</b> gửi quản lý phòng (không có trưởng phòng thì gửi Nhân sự / Quản trị), gom theo <b>phòng · ngày · ca</b>. Tin chỉ ghi tên, mã và mức kết luận — <b>không kèm lý do cá nhân</b>. Cả phòng đều đạt thì <b>không gửi tin</b>. Bản chạy thử không gửi cho ai.</p>
+
+  <h3>11.5.9 Quy trình triển khai một phòng</h3>
+  <ol class="steps">
+    <li>Khai mẫu áo, lấy đủ 3 ảnh người mặc cho từng mẫu (mục 11.5.4).</li>
+    <li>Đặt phòng về <b>Chạy thử</b>, để chạy <b>2 tuần</b>.</li>
+    <li>Nhân sự vào bảng theo dõi bấm Đạt / Không đạt cho các ngày — đây là "đáp án" để đo ngưỡng.</li>
+    <li>Quản trị chạy <code>npm run uniform:eval</code> kèm khoảng ngày; công cụ đề xuất ngưỡng với ràng buộc <b>báo oan ≤ 2 %</b>.</li>
+    <li>Đặt ngưỡng trong <b>Cấu hình → Chấm công</b>, rồi chuyển phòng sang <b>Bật</b>.</li>
+    <li>Theo dõi 1 tuần, ổn thì mở rộng sang phòng khác.</li>
+  </ol>
+
+  <div class="callout warn"><b>Người đứng quá sát camera</b>
+    <p>Nếu ảnh không thấy đủ vùng áo, máy nhắc ngay tại kiosk <b>"Lùi lại một bước"</b> và không nhận lượt quét đó. Khung ngắm trên màn hình kiosk đã đổi sang tỉ lệ <b>ảnh thẻ 4×6</b> kèm vạch "ngang ngực" để nhân viên tự đứng đúng chỗ.</p>
+  </div>
 </section>
 
 <!-- 12 -->

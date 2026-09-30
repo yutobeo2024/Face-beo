@@ -1,6 +1,6 @@
 # Bàn giao / chuyển máy làm việc
 
-Cập nhật 25/09/2026, phiên bản **v1.19.0**. Ngữ cảnh cho Claude Code nằm ở `CLAUDE.md` (gốc repo) — máy mới mở Claude Code trong thư mục
+Cập nhật 30/09/2026, phiên bản **v1.20.0**. Ngữ cảnh cho Claude Code nằm ở `CLAUDE.md` (gốc repo) — máy mới mở Claude Code trong thư mục
 dự án là đọc được ngay. Lịch sử hội thoại và memory của Claude Code **không** nằm trong repo.
 
 ## 0. Máy chủ thật đã ở VPS (từ 21/09/2026)
@@ -33,7 +33,8 @@ Bị `.gitignore` bỏ qua — **cố ý**, phải chép tay từ máy cũ (USB 
 | `data/credentials/` (v1.9.0) | file scan văn bằng / chứng chỉ / CME | Mất file đính kèm (dữ liệu nhập tay vẫn còn trong DB) |
 | `data/avatars/` (v1.10.0) | ảnh đại diện nhìn thẳng (cắt từ mẫu enroll) | Thẻ nhân viên hiện chữ viết tắt tới khi enroll lại |
 | `data/photos/` (v1.13.0) | ảnh đại diện **tự chọn** của nhân viên (không phải dữ liệu sinh trắc) | Quay về ảnh enroll / chữ viết tắt |
-| `models/*.onnx` (≈180 MB) | mô hình nhận diện + liveness | Tải lại: `npm run models:face` và `npm run models:liveness` |
+| `models/*.onnx` (≈205 MB) | mô hình nhận diện + liveness + đồng phục | Tải lại: `npm run models:face`, `npm run models:liveness`, `npm run models:uniform` |
+| `data/uniforms/` | ảnh mẫu áo đồng phục | Không có bản khác — phải nằm trong gói sao lưu (`deploy/backup.sh` đã gói) |
 | `public/models/`, `node_modules/`, `.next/` | sinh ra khi cài/build | `npm install`, `npm run build` |
 
 ## 1b. Bắt đầu sạch (dữ liệu hiện tại chỉ là mockup — chọn cách này khi chưa vận hành thật)
@@ -82,7 +83,7 @@ git clone https://github.com/yutobeo2024/Face-beo.git "D:\FACE BEO"
 cd "D:\FACE BEO"
 # chép .env và thư mục data/ vào đây (bước 2), models/*.onnx nếu có
 npm install                                   # prisma generate + copy models sang public/models
-npm run models:face && npm run models:liveness # bỏ qua nếu đã chép .onnx
+npm run models:face && npm run models:liveness && npm run models:uniform # bỏ qua nếu đã chép .onnx
 npm run db:deploy                             # áp migration còn thiếu cho DB vừa chép (DB trống: xem mục 1b)
 npm run build
 set LIVENESS_SERVER=true && npx next start -p 3000   # PowerShell: $env:LIVENESS_SERVER="true"; npx next start -p 3000
@@ -112,7 +113,7 @@ tổ chức → v1.5.2 Excel giờ vào/ra → v1.5.3 xóa tài khoản tạo nh
 v1.9.0 hồ sơ hành nghề (GPHN, CME) → v1.10.0 ảnh đại diện → v1.10.1 đóng gói Docker, triển khai VPS qua Cloudflare Tunnel, chuyển dữ liệu →
 v1.10.2 webhook Zalo trên face.ydsg.website (xác thực domain bằng tệp HTML, OA Secret Key).
 
-## 6. Mốc 22–25/09/2026 (v1.10.4 → v1.19.0)
+## 6. Mốc 22–30/09/2026 (v1.10.4 → v1.20.0)
 
 | Bản | Nội dung |
 |---|---|
@@ -127,6 +128,7 @@ v1.10.2 webhook Zalo trên face.ydsg.website (xác thực domain bằng tệp HT
 | v1.17.0 | **Chat bot tra cứu y khoa** nhúng trong Face Beo: khóa đường công khai của medichat, quyền theo phòng + từng người, 10 câu/phút · 100 câu/ngày, không lưu nội dung |
 | v1.18.0 | Chat bot **trả lời theo luồng** (chữ hiện dần), giao diện chat làm lại: bảng bên đóng/mở, nút Dừng, ba chấm nhấp nháy |
 | v1.19.0 | Bảng gợi ý chia **4 mục tra cứu**: TRA CỨU MÃ ICD · CHUYÊN MÔN Y TẾ · QUY CHẾ – QUY ĐỊNH · MÔ TẢ CÔNG VIỆC (hai mục sau chờ nạp tài liệu, cờ `ready` trong `src/app/me/chatbot/knowledge.ts`) |
+| v1.20.0 | **Kiểm áo đồng phục** ở lượt chấm vào đầu ca: 3 tín hiệu (màu · logo ngực · DINOv2), 3 mức Đạt / Không đạt / Cần xem lại, bảng theo dõi, Excel riêng `DongPhuc_*.xlsx`, tin Zalo 18:00 cho quản lý phòng. Khung ngắm kiosk đổi sang tỉ lệ ảnh thẻ 4×6 + nhắc "Lùi lại một bước" |
 
 ## 7. Việc đang chờ chủ dự án
 
@@ -134,3 +136,6 @@ v1.10.2 webhook Zalo trên face.ydsg.website (xác thực domain bằng tệp HT
 - **Khóa Gemini**: một khóa đã hết tiền trả trước (lỗi 402), nạp lại ở AI Studio hoặc gỡ khỏi `GEMINI_API_KEY` của medichat.
 - **D7** trong `docs/OPEN-DECISIONS.md`: đổi token tunnel + OA Secret Key đã lộ trong ảnh chụp 21/09/2026.
 - Chạy thử một phòng với dữ liệu thật (hiện vẫn là dữ liệu mẫu).
+- **Đồng phục**: chọn phòng chạy thử, khai mẫu áo rồi lấy **3 ảnh người mặc** bằng nút "Dùng ảnh này làm ảnh mẫu" ở
+  `/admin/uniform`; để chế độ **Chạy thử 2 tuần**, Nhân sự gắn nhãn, rồi `npm run uniform:eval -- --from=… --to=…` để đo ngưỡng
+  (báo oan ≤ 2 %) trước khi chuyển sang **Bật**. Ngưỡng hiện tại đo trên ảnh điện thoại, sáng hơn ảnh kiosk.

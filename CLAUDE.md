@@ -7,13 +7,13 @@
   MiniFASNetV2 phía server), đơn từ, tính công/chốt công tháng, xuất Excel, thông báo Zalo OA (nhiều nhóm theo loại tin: minh bạch / chấm công / đơn từ + tin riêng).
 - Stack: Next.js 15 App Router, Prisma 6 (SQLite WAL), zod 4, luxon, exceljs, node-cron, jose JWT (HS256, 7 ngày, `sessionVersion`),
   vitest 4 (test tích hợp gọi thẳng route handler, DB `data/test.db`).
-- Phiên bản hiện tại: **v1.19.0** (tag GitHub `v1.19.0`, repo `yutobeo2024/Face-beo`). Phiên bản ghi trong prose (README, PRD,
+- Phiên bản hiện tại: **v1.20.0** (tag GitHub `v1.20.0`, repo `yutobeo2024/Face-beo`). Phiên bản ghi trong prose (README, PRD,
   OPEN-DECISIONS), không có CHANGELOG; `package.json` version không dùng để đánh số.
 
 ## Lệnh
 ```bash
 npm install                      # postinstall: prisma generate + copy models
-npm run models:face && npm run models:liveness   # tải .onnx nếu chưa có trong models/
+npm run models:face && npm run models:liveness && npm run models:uniform   # tải .onnx nếu chưa có trong models/
 npm run db:deploy                # áp migration (KHÔNG dùng migrate reset trên DB thật)
 npm run db:seed:base             # DB trống: chỉ ca/mẫu tuần/ngày lễ/quyền, không NV, chạy lại được
 npm run admin:create -- --code AD01 --name "…" --phone 09…   # Quản trị đầu tiên; --reset <mã> cấp lại mật khẩu
@@ -90,9 +90,22 @@ chạy cron / khóa Zalo thật song song với VPS (refresh token Zalo dùng m�
   với `categories: []`).
 - PWA (v1.14.0): manifest app nhân sự là file TĨNH `public/manifest.webmanifest` (layout con mới đè được), kiosk dùng `public/kiosk.webmanifest`;
   `public/sw.js` KHÔNG được lưu đệm gì ngoài `offline.html` (tránh chạy bản cũ / lộ dữ liệu có quyền). Luật hiện nút cài ở `src/lib/pwa.ts`.
+- Đồng phục (v1.20.0, `src/lib/uniform*.ts`): CHỈ kiểm **lượt chấm VÀO đầu ca** (log sớm nhất có `shiftId`, đừng dùng `type === "IN"`),
+  một bản ghi mỗi người mỗi ngày. Toàn bộ xử lý ảnh nằm ở job nền `uniform-check` — **không** gọi sharp/ONNX trong
+  `api/kiosk/scan` (route chỉ lưu thêm `faceBox`; có test đo tốc độ giữ điều này). Ảnh thiếu / xấu / mô hình hỏng / mẫu áo
+  chưa đủ ảnh ⇒ **CẦN XEM LẠI**, không bao giờ tự thành "không đạt". Ảnh vùng áo cắt dưới cằm nên KHÔNG chứa khuôn mặt
+  (bất biến có test). `machineStatus` là kết luận gốc của máy — người xác nhận chỉ đổi `status`, không ghi đè. Bản `SHADOW`
+  không gửi Zalo và không dùng để xử lý nhân sự. Mẫu áo chỉ lấy trung bình từ **ảnh người mặc** (`kind = WORN`) — ảnh áo rời
+  trải phẳng chấm chính người mặc đúng áo đó chỉ 0,35–0,40 (đo thật), nên chỉ để đối chiếu bằng mắt. Ngưỡng
+  (`uniformPass*`/`uniformFailScore`/`uniformColorWeight`) đo bằng `npm run uniform:eval` sau 2 tuần chạy thử, đừng đoán.
+  Đổi mô hình thì phải đổi `UNIFORM_MODEL_VERSION` (mẫu cũ tự thành "cần tính lại"), `UNIFORM_INPUT_SIZE` và mean/std.
+  File Excel đồng phục TÁCH HẲN khỏi bảng công (tháng đã chốt là bất biến, kết luận đồng phục thì sửa được sau).
 - zod 4: schema PATCH không được có `.default()` (`.partial()` vẫn áp default → xóa dữ liệu). Cột JSON trong SQLite lưu chuỗi.
 
-## Việc còn mở (25/09/2026)
+## Việc còn mở (30/09/2026)
+- **Đồng phục**: chọn phòng chạy thử → khai mẫu áo → lấy 3 ảnh người mặc bằng nút "Dùng ảnh này làm ảnh mẫu" ở `/admin/uniform`
+  → chế độ **Chạy thử 2 tuần** → Nhân sự gắn nhãn → `npm run uniform:eval` đo ngưỡng (báo oan ≤ 2 %) → **Bật**. Ngưỡng mặc
+  định hiện tại đo trên ảnh điện thoại (sáng hơn ảnh kiosk), phải đo lại bằng dữ liệu kiosk thật.
 - Chạy thử một phòng. Dữ liệu hiện có (máy cũ và seed demo) chỉ là mockup; máy mới/vận hành thật bắt đầu sạch theo `docs/HANDOFF.md`
   mục 1b: `db:deploy` → `db:seed:base` → `admin:create` (v1.5.4, logic ở `src/lib/bootstrap.ts`). Rà lại hệ số ca, ngày lễ trong năm.
 - Sao lưu ngoài VPS: service `backup` → Cloudflare R2 mã hóa 03:30 (v1.10.4, `deploy/backup.sh`, khôi phục `deploy/restore-offsite.sh`). D7 đổi token tunnel + OA Secret Key webhook (đã lộ trong ảnh chụp 21/09/2026).
