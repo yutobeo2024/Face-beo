@@ -48,12 +48,14 @@ export type UniformThresholds = {
 };
 
 /**
- * Áo đồng phục luôn có logo trước ngực. Nếu mẫu áo đo được độ không trơn từ mức này trở lên mà ảnh chụp lại
- * trơn hơn hẳn (dưới `LOGO_MIN_RATIO` lần của mẫu) thì rất có thể là áo khác cùng màu → không cho ĐẠT thẳng,
- * chuyển sang CẦN XEM LẠI để Nhân sự nhìn ảnh quyết.
+ * Áo đồng phục luôn có logo trước ngực. Mẫu áo có hoa văn (≥ LOGO_TEMPLATE_MIN) mà ảnh chụp lại TRƠN TUYỆT ĐỐI
+ * (< LOGO_IMAGE_MIN) thì rất có thể là áo khác cùng màu → không cho ĐẠT thẳng, chuyển CẦN XEM LẠI để Nhân sự quyết.
+ *
+ * Dùng ngưỡng TUYỆT ĐỐI chứ không so tỉ lệ với mẫu: ảnh mẫu là cả cái áo, còn ảnh chụp chỉ là vùng ngực, logo
+ * chiếm phần trăm diện tích khác nhau nên so tỉ lệ sẽ sai.
  */
-export const LOGO_TEMPLATE_MIN = 0.06;
-export const LOGO_MIN_RATIO = 0.35;
+export const LOGO_TEMPLATE_MIN = 0.04;
+export const LOGO_IMAGE_MIN = 0.015;
 
 export const DEFAULT_UNIFORM_THRESHOLDS: UniformThresholds = { passEmbed: 0.55, passColor: 0.55, failScore: 0.45, colorWeight: 0.4 };
 
@@ -111,7 +113,7 @@ export function scoreTemplates(
 function missingLogo(templatePattern: number | null | undefined, imagePattern: number | null | undefined): boolean {
   if (templatePattern == null || imagePattern == null) return false;
   if (templatePattern < LOGO_TEMPLATE_MIN) return false; // mẫu áo vốn trơn, không suy ra được gì
-  return imagePattern < templatePattern * LOGO_MIN_RATIO;
+  return imagePattern < LOGO_IMAGE_MIN;
 }
 
 function bhatt(a: ArrayLike<number>, b: ArrayLike<number>): number {
@@ -172,7 +174,11 @@ export function decideUniform(args: {
   // Mô hình hỏng / mẫu tính bằng phiên bản mô hình khác: chỉ còn tầng màu, đòi hỏi chắc chắn hơn.
   if (args.modelFailed || best.embedScore === null) {
     const reason: UniformReason = args.modelFailed ? "MODEL_ERROR" : "MODEL_VERSION_MISMATCH";
-    if (best.colorScore >= th.passColor + 0.1) return { ...base, status: "PASS", reason: null };
+    if (best.colorScore >= th.passColor + 0.1) {
+      // Không có tín hiệu mô hình thì logo càng quan trọng: màu giống mà ngực trơn ⇒ nghi áo khác cùng màu.
+      if (missingLogo(best.templatePattern, args.pattern)) return { ...base, status: "REVIEW", reason: "LOGO_MISSING" };
+      return { ...base, status: "PASS", reason: null };
+    }
     if (best.colorScore <= 0.35) return { ...base, status: "FAIL", reason: "LOW_SCORE" };
     return { ...base, status: "REVIEW", reason };
   }
@@ -205,7 +211,7 @@ export const UNIFORM_REASON_LABEL: Record<UniformReason, string> = {
   LOW_CONTRAST: "Vùng áo mờ, không rõ chi tiết",
   SKIN_DOMINANT: "Ảnh cắt trúng vùng da, chưa thấy áo",
   NO_TEMPLATE: "Phòng chưa khai mẫu áo nào",
-  MODEL_ERROR: "Mô hình nhận dạng đang lỗi",
+  MODEL_ERROR: "Mô hình nhận dạng chưa sẵn sàng (chỉ so được màu áo)",
   MODEL_VERSION_MISMATCH: "Mẫu áo cần tính lại theo mô hình mới",
   LOW_CONFIDENCE_TEMPLATE: "Mẫu áo còn ít ảnh, chưa đủ tin",
   LOGO_MISSING: "Màu áo giống nhưng không thấy logo trước ngực",

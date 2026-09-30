@@ -129,6 +129,8 @@ export const POST = handle(async (req) => {
     livenessScore: live.score,
     matchScore: m.top1,
     verified3D: live.verified,
+    // Chỉ ghi lại 4 con số kiosk đã gửi; việc kiểm đồng phục do job nền làm sau, KHÔNG chạy ở đây (v1.20.0).
+    faceBox: body.faceBox ? JSON.stringify(body.faceBox) : null,
     });
   } catch (e) {
     // Hai request đồng thời cùng clientEventId: request sau trả kết quả của bản ghi đã có (idempotent).

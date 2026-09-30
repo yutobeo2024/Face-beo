@@ -271,8 +271,9 @@ describe("kiosk — lớp L2 phía server (LIVENESS_SERVER=true)", () => {
     try {
       const base = await enrollFake((await byCode("NV011")).id, 11);
       const { cookie } = await pairedDevice("Kiosk L2 thiếu dữ liệu");
-      expect((await scan(cookie, {}, base)).result).toBe("REJECTED_SPOOF");
-      expect((await scan(cookie, { snapshot: sampleJpeg() }, base)).result).toBe("REJECTED_SPOOF");
+      // Kiosk thật luôn gửi faceBox; ở đây cố tình bỏ đi để mô phỏng client bị sửa nhằm né lớp L2.
+      expect((await scan(cookie, { faceBox: undefined }, base)).result).toBe("REJECTED_SPOOF");
+      expect((await scan(cookie, { faceBox: undefined, snapshot: sampleJpeg() }, base)).result).toBe("REJECTED_SPOOF");
       const a = await prisma.auditLog.findFirst({ where: { action: "SCAN_SPOOF_REJECTED" }, orderBy: { id: "desc" } });
       expect(JSON.parse(a!.detail!).server.status).toBe("missing_input");
     } finally {

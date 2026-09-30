@@ -38,7 +38,10 @@ export function grayWorldGains(px: Uint8Array | Uint8ClampedArray | number[], p 
   const mg = Math.pow(sg / n, 1 / p);
   const mb = Math.pow(sb / n, 1 / p);
   const mean = (mr + mg + mb) / 3 || 1;
-  const gain = (m: number) => (m > 1 ? Math.min(3, Math.max(0.33, mean / m)) : 1);
+  // Kẹp biên độ: đủ sửa đèn vàng / LED lạnh (lệch tới chừng 40%), nhưng không cho kéo quá tay khi khung hình ít nền
+  // trung tính. Gray-world chỉ đúng khi ảnh có đủ tường / da / tóc — nên chỉ dùng cho ảnh chấm công toàn khung,
+  // KHÔNG dùng cho ảnh mẫu áo (xem extractSampleFeature).
+  const gain = (m: number) => (m > 1 ? Math.min(1.7, Math.max(0.6, mean / m)) : 1);
   return [gain(mr), gain(mg), gain(mb)];
 }
 

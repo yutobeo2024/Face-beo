@@ -14,6 +14,7 @@ const SCHEDULE: Record<JobName, string> = {
   "request-overdue": "*/30 * * * *",
   "credential-check": "30 7 * * *", // 07:30 hằng ngày, mỗi vấn đề báo tối đa 1 lần / tháng
   "medinet-check": "30 6 * * *", // 06:30: tự tra GPHN trên medinet (người chưa tra quá N ngày) — kết quả vào tin 07:30
+  "uniform-check": "*/5 * * * *", // kiểm đồng phục ở lượt chấm vào đầu ca; chạy ngoài đường chấm công nên không làm chậm kiosk
 };
 
 const g = globalThis as unknown as { __cronStarted?: boolean; __jobRunning?: Set<string> };

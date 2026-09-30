@@ -4,6 +4,8 @@ import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { DateTime } from "luxon";
 import { prisma } from "./db";
+import { runUniformCheck } from "./uniform-service";
+import { cropDir } from "./uniform-storage";
 import { addDays, decideAbsence, shiftInterval, shiftWindow, summarizeDay, TZ, vnDate, vnTime, type DayPlan, type RequestLite } from "./attendance";
 import { buildPlanner, loadRequests } from "./attendance-service";
 import { getSettings } from "./settings";
@@ -26,7 +28,7 @@ import { clearProfilePhoto } from "./profile-photo";
 import { medinetCheck } from "./medinet-check";
 import { TRACKED_WHERE } from "./attendance-scope";
 
-export const JOBS = ["absence-check", "missing-checkout", "zalo-token-refresh", "snapshot-cleanup", "db-backup", "roster-reminder", "roster-report", "request-overdue", "credential-check", "medinet-check"] as const;
+export const JOBS = ["absence-check", "missing-checkout", "zalo-token-refresh", "snapshot-cleanup", "db-backup", "roster-reminder", "roster-report", "request-overdue", "credential-check", "medinet-check", "uniform-check"] as const;
 export type JobName = (typeof JOBS)[number];
 
 type DigestItem = { name: string; code: string; note?: string };
@@ -203,26 +205,15 @@ export async function zaloTokenRefresh() {
 export async function snapshotCleanup(now = new Date()) {
   const settings = await getSettings();
   const cutoff = DateTime.fromJSDate(now, { zone: TZ }).minus({ days: settings.snapshotRetentionDays }).startOf("day");
-  let removedDirs = 0;
-  const root = snapshotDir();
-  const years = await readdir(root).catch(() => [] as string[]);
-  for (const y of years) {
-    const months = await readdir(join(root, y)).catch(() => [] as string[]);
-    for (const m of months) {
-      const days = await readdir(join(root, y, m)).catch(() => [] as string[]);
-      for (const d of days) {
-        const dt = DateTime.fromISO(`${y}-${m}-${d}`, { zone: TZ });
-        if (dt.isValid && dt < cutoff) {
-          await rm(join(root, y, m, d), { recursive: true, force: true });
-          removedDirs++;
-        }
-      }
-      if (!(await readdir(join(root, y, m)).catch(() => [])).length) await rm(join(root, y, m), { recursive: true, force: true });
-    }
-  }
+  // Ảnh vùng áo (v1.20.0) cùng lịch xóa với ảnh chấm công — cùng là ảnh chụp tại kiosk.
+  const removedDirs = (await removeOldDayDirs(snapshotDir(), cutoff)) + (await removeOldDayDirs(cropDir(), cutoff));
   const cleared = await prisma.attendanceLog.updateMany({
     where: { checkTime: { lt: cutoff.toJSDate() }, snapshotUrl: { not: null } },
     data: { snapshotUrl: null },
+  });
+  const clearedCrops = await prisma.uniformCheck.updateMany({
+    where: { checkTime: { lt: cutoff.toJSDate() }, cropUrl: { not: null } },
+    data: { cropUrl: null },
   });
   const pair = await prisma.kioskDevice.updateMany({
     where: { pairExpiresAt: { lt: now } },
@@ -234,7 +225,28 @@ export async function snapshotCleanup(now = new Date()) {
   if (faces.count) invalidateFaceCache();
   for (const e of await prisma.employee.findMany({ where: { active: false, faceAvatarKey: { not: null } }, select: { id: true } })) await clearFaceAvatar(e.id);
   for (const e of await prisma.employee.findMany({ where: { active: false, photoKey: { not: null } }, select: { id: true } })) await clearProfilePhoto(e.id);
-  return { removedDirs, clearedLogs: cleared.count, expiredPairCodes: pair.count, expiredLinkCodes: links.count, deletedTemplates: faces.count };
+  return { removedDirs, clearedLogs: cleared.count, clearedCrops: clearedCrops.count, expiredPairCodes: pair.count, expiredLinkCodes: links.count, deletedTemplates: faces.count };
+}
+
+/** Xóa các thư mục ngày (YYYY/MM/DD) cũ hơn mốc, dùng chung cho ảnh chấm công và ảnh vùng áo. */
+async function removeOldDayDirs(root: string, cutoff: DateTime): Promise<number> {
+  let removed = 0;
+  const years = await readdir(root).catch(() => [] as string[]);
+  for (const y of years) {
+    const months = await readdir(join(root, y)).catch(() => [] as string[]);
+    for (const m of months) {
+      const days = await readdir(join(root, y, m)).catch(() => [] as string[]);
+      for (const d of days) {
+        const dt = DateTime.fromISO(`${y}-${m}-${d}`, { zone: TZ });
+        if (dt.isValid && dt < cutoff) {
+          await rm(join(root, y, m, d), { recursive: true, force: true });
+          removed++;
+        }
+      }
+      if (!(await readdir(join(root, y, m)).catch(() => [])).length) await rm(join(root, y, m), { recursive: true, force: true });
+    }
+  }
+  return removed;
 }
 
 export async function dbBackup(now = new Date()) {
@@ -448,5 +460,7 @@ export async function runJob(name: JobName, now = new Date()) {
       return credentialCheck(now);
     case "medinet-check":
       return medinetCheck(now);
+    case "uniform-check":
+      return runUniformCheck(now);
   }
 }

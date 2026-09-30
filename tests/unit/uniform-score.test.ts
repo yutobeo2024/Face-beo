@@ -124,6 +124,12 @@ describe("kết luận", () => {
     expect(only(0.5)).toMatchObject({ status: "REVIEW", reason: "MODEL_ERROR" });
   });
 
+  it("không có mô hình: màu giống nhưng ngực trơn vẫn phải CẦN XEM LẠI (logo là tín hiệu chính lúc này)", () => {
+    const s = [sc({ embedScore: null, colorScore: 0.8, score: 0.8, templatePattern: 0.2 })];
+    expect(decideUniform({ modelFailed: true, scores: s, pattern: 0.18 })).toMatchObject({ status: "PASS" });
+    expect(decideUniform({ modelFailed: true, scores: s, pattern: 0.003 })).toMatchObject({ status: "REVIEW", reason: "LOGO_MISSING" });
+  });
+
   it("mẫu áo tính bằng mô hình cũ → CẦN XEM LẠI, nhắc tính lại", () => {
     const d = decideUniform({ scores: [sc({ embedScore: null, colorScore: 0.5, score: 0.5, versionOk: false })] });
     expect(d).toMatchObject({ status: "REVIEW", reason: "MODEL_VERSION_MISMATCH" });
@@ -140,11 +146,11 @@ describe("kết luận", () => {
     // Ảnh có logo như mẫu → đạt
     expect(decideUniform({ scores: khop, pattern: 0.15 })).toMatchObject({ status: "PASS" });
     // Ảnh trơn hẳn (dưới 35% độ không trơn của mẫu) → nghi áo khác cùng màu
-    expect(decideUniform({ scores: khop, pattern: 0.02 })).toMatchObject({ status: "REVIEW", reason: "LOGO_MISSING" });
+    expect(decideUniform({ scores: khop, pattern: 0.004 })).toMatchObject({ status: "REVIEW", reason: "LOGO_MISSING" });
   });
 
   it("mẫu áo vốn trơn hoặc chưa đo được thì không suy diễn gì về logo", () => {
-    expect(decideUniform({ scores: [sc({ embedScore: 0.8, colorScore: 0.9, templatePattern: 0.03 })], pattern: 0.001 })).toMatchObject({ status: "PASS" });
+    expect(decideUniform({ scores: [sc({ embedScore: 0.8, colorScore: 0.9, templatePattern: 0.02 })], pattern: 0.001 })).toMatchObject({ status: "PASS" });
     expect(decideUniform({ scores: [sc({ embedScore: 0.8, colorScore: 0.9, templatePattern: null })], pattern: 0.001 })).toMatchObject({ status: "PASS" });
     expect(decideUniform({ scores: [sc({ embedScore: 0.8, colorScore: 0.9, templatePattern: 0.2 })] })).toMatchObject({ status: "PASS" }); // ảnh chưa đo
   });
