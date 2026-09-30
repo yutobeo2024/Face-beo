@@ -87,11 +87,16 @@ export default function UniformPage() {
         title="Đồng phục"
         subtitle="Kết quả kiểm áo đồng phục ở lượt chấm vào đầu ca. Mục “cần xem lại” là máy chưa chắc — Nhân sự xem ảnh rồi quyết."
         actions={
-          can("uniform.manage") ? (
-            <a href="/admin/uniform/templates" className="btn btn-secondary">
-              <Icon name="settings" className="size-4" /> Mẫu áo
+          <div className="flex flex-wrap gap-2">
+            <a href={`/api/reports/uniform.xlsx${qs({ from, to, departmentId: dept })}`} className="btn btn-secondary" title="File Excel riêng, không trộn vào bảng công">
+              <Icon name="download" className="size-4" /> Xuất Excel
             </a>
-          ) : undefined
+            {can("uniform.manage") && (
+              <a href="/admin/uniform/templates" className="btn btn-secondary">
+                <Icon name="settings" className="size-4" /> Mẫu áo
+              </a>
+            )}
+          </div>
         }
       />
 
