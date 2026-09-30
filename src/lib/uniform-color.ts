@@ -45,6 +45,22 @@ export function grayWorldGains(px: Uint8Array | Uint8ClampedArray | number[], p 
   return [gain(mr), gain(mg), gain(mb)];
 }
 
+/**
+ * Áp hệ số cân bằng trắng thẳng vào điểm ảnh RGB thô.
+ *
+ * Dùng khi LẤY ẢNH MẪU TỪ MỘT LƯỢT CHẤM CÔNG: ảnh mẫu được lưu ở trạng thái đã cân bằng, nên sau này
+ * extractSampleFeature (vốn không cân bằng) vẫn ra đúng màu — hai bên cùng một hệ quy chiếu.
+ */
+export function applyGains(px: Uint8Array | Buffer, gains: [number, number, number]): Buffer {
+  const out = Buffer.allocUnsafe(px.length);
+  for (let i = 0; i < px.length; i += 3) {
+    out[i] = Math.min(255, Math.round(px[i] * gains[0]));
+    out[i + 1] = Math.min(255, Math.round(px[i + 1] * gains[1]));
+    out[i + 2] = Math.min(255, Math.round(px[i + 2] * gains[2]));
+  }
+  return out;
+}
+
 export function rgbToHsv({ r, g, b }: Rgb): { h: number; s: number; v: number } {
   const rr = r / 255;
   const gg = g / 255;

@@ -9,6 +9,7 @@ import { binaryReq, byCode, ctx, req, sessionCookie } from "./helpers";
 import * as templatesRoute from "@/app/api/uniform/templates/route";
 import * as templateRoute from "@/app/api/uniform/templates/[id]/route";
 import * as samplesRoute from "@/app/api/uniform/templates/[id]/samples/route";
+import * as fromCheckRoute from "@/app/api/uniform/templates/[id]/samples/from-check/route";
 import * as sampleRoute from "@/app/api/uniform/templates/[id]/samples/[sid]/route";
 import * as checksRoute from "@/app/api/uniform/checks/route";
 import * as checkRoute from "@/app/api/uniform/checks/[id]/route";
@@ -260,5 +261,126 @@ describe("bảng theo dõi và xác nhận", () => {
     expect((await (await listChecks(H, "&status=FAIL")).json()).rows.length).toBeGreaterThan(0);
     expect((await (await listChecks(H, "&status=PASS")).json()).rows.length).toBe(0);
     expect((await (await listChecks(H, "&mode=SHADOW")).json()).rows.length).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Lấy ảnh mẫu thẳng từ một lượt chấm công: cách lấy mẫu đúng điều kiện nhất.
+// ---------------------------------------------------------------------------
+describe("lấy ảnh mẫu từ lượt chấm công", () => {
+  const createdLogs: number[] = [];
+
+  /** Ảnh chấm công giả: tường, khuôn mặt, thân áo có logo — giống khung 1280×720 của kiosk. */
+  async function kioskSnapshot(shirt = { r: 30, g: 45, b: 95 }) {
+    const sharp = (await import("sharp")).default;
+    const W = 1280;
+    const H = 720;
+    const px = new Uint8Array(W * H * 3);
+    const noise = (i: number) => ((i * 2654435761) % 29) - 14;
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < W; x++) {
+        const i = (y * W + x) * 3;
+        let c = { r: 180, g: 178, b: 176 };
+        if (x >= 520 && x < 670 && y >= 330 && y < 520) c = { r: 205, g: 160, b: 135 };
+        else if (x >= 410 && x < 830 && y >= 520) c = shirt;
+        if (x >= 560 && x < 630 && y >= 600 && y < 650) c = { r: 235, g: 200, b: 60 };
+        const d = noise(i) + (y >= 520 ? Math.round(((y - 520) / 200) * 18) : 0);
+        px[i] = Math.max(0, Math.min(255, c.r + d));
+        px[i + 1] = Math.max(0, Math.min(255, c.g + d));
+        px[i + 2] = Math.max(0, Math.min(255, c.b + d));
+      }
+    }
+    return sharp(Buffer.from(px), { raw: { width: W, height: H, channels: 3 } }).jpeg({ quality: 88 }).toBuffer();
+  }
+
+  /** Dựng một lượt chấm công có ảnh thật + khung mặt, kèm bản ghi kiểm trỏ về nó. */
+  async function seedCheckWithLog(o: { employeeId: number; departmentId: number; faceBox?: string | null; snapshot?: boolean } = { employeeId: 0, departmentId: 0 }) {
+    const { saveSnapshot } = await import("@/lib/storage");
+    const url = o.snapshot === false ? null : await saveSnapshot(await kioskSnapshot());
+    const log = await prisma.attendanceLog.create({
+      data: { employeeId: o.employeeId, workDate: todayVN(), checkTime: new Date(), type: "IN", source: "KIOSK", snapshotUrl: url, faceBox: o.faceBox === undefined ? "[520,330,150,190]" : o.faceBox },
+    });
+    createdLogs.push(log.id);
+    const check = await prisma.uniformCheck.create({
+      data: { employeeId: o.employeeId, departmentId: o.departmentId, workDate: todayVN(), logId: log.id, checkTime: new Date(), machineStatus: "REVIEW", status: "REVIEW", reason: "AMBIGUOUS" },
+    });
+    return { log, check };
+  }
+
+  const fromCheck = (cookie: string, templateId: number, checkId: number) =>
+    fromCheckRoute.POST(req(`/api/uniform/templates/${templateId}/samples/from-check`, { method: "POST", cookie, body: { checkId } }), ctx({ id: String(templateId) }));
+
+  afterEach(async () => {
+    if (createdLogs.length) await prisma.attendanceLog.deleteMany({ where: { id: { in: createdLogs.splice(0) } } });
+  });
+
+  it("thêm được ảnh mẫu và tính lại đặc trưng ngay", async () => {
+    const id = await newTemplate(H, emp.departmentId, `${tag} TuCham`, 0);
+    const { check } = await seedCheckWithLog({ employeeId: emp.id, departmentId: emp.departmentId });
+    const res = await fromCheck(H, id, check.id);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.sampleCount).toBe(1);
+    expect(body.ready).toBe(true);
+    expect(body.colorHex).toMatch(/^#[0-9a-f]{6}$/i);
+    // Ảnh lấy từ lượt chấm công luôn ghi là "người mặc".
+    expect(body.sample.kind).toBe("WORN");
+  });
+
+  it("ảnh mẫu lấy ra KHÔNG chứa khuôn mặt (cắt dưới cằm)", async () => {
+    const id = await newTemplate(H, emp.departmentId, `${tag} KhongMat`, 0);
+    const { check } = await seedCheckWithLog({ employeeId: emp.id, departmentId: emp.departmentId });
+    await fromCheck(H, id, check.id);
+    const sample = await prisma.uniformSample.findFirstOrThrow({ where: { templateId: id } });
+    const { readTemplateSample } = await import("@/lib/uniform-storage");
+    const buf = await readTemplateSample(sample.fileKey);
+    const sharp = (await import("sharp")).default;
+    const raw = await sharp(buf!).removeAlpha().raw().toBuffer();
+    const { meanColorHex, skinRatio } = await import("@/lib/uniform-color");
+    // Vùng cắt nằm hẳn dưới khung mặt [520,330,150,190]: gần như không có màu da,
+    // và màu chủ đạo phải là màu ÁO (xanh navy) chứ không phải màu mặt (hồng).
+    expect(skinRatio(raw)).toBeLessThan(0.05);
+    const hex = meanColorHex(raw, [1, 1, 1]);
+    const [r, b] = [1, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+    expect(b).toBeGreaterThan(r);
+    expect(r).toBeLessThan(120); // màu mặt trong ảnh giả là r = 205
+  });
+
+  it("bản ghi của phòng khác → 400", async () => {
+    const id = await newTemplate(H, emp.departmentId, `${tag} KhacPhong`, 0);
+    const { check } = await seedCheckWithLog({ employeeId: admin.id, departmentId: admin.departmentId });
+    const res = await fromCheck(H, id, check.id);
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toContain("phòng khác");
+  });
+
+  it("lượt chấm công mất ảnh hoặc thiếu khung mặt → 400 kèm lý do", async () => {
+    const id = await newTemplate(H, emp.departmentId, `${tag} ThieuAnh`, 0);
+    const a = await seedCheckWithLog({ employeeId: emp.id, departmentId: emp.departmentId, snapshot: false });
+    expect((await fromCheck(H, id, a.check.id)).status).toBe(400);
+    await prisma.uniformCheck.deleteMany({ where: { id: a.check.id } });
+    const b = await seedCheckWithLog({ employeeId: emp.id, departmentId: emp.departmentId, faceBox: null });
+    const res = await fromCheck(H, id, b.check.id);
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toMatch(/ảnh|khung khuôn mặt/i);
+  });
+
+  it("Quản lý không có quyền quản lý mẫu áo → 403", async () => {
+    const id = await newTemplate(H, emp.departmentId, `${tag} QuyenQL`, 0);
+    const { check } = await seedCheckWithLog({ employeeId: emp.id, departmentId: emp.departmentId });
+    expect((await fromCheck(M, id, check.id)).status).toBe(403);
+  });
+
+  it("đủ 3 ảnh lấy từ lượt chấm công thì hết cảnh báo 'chưa đủ tin'", async () => {
+    const id = await newTemplate(H, emp.departmentId, `${tag} DuBa`, 0);
+    for (let i = 0; i < 3; i++) {
+      const { check } = await seedCheckWithLog({ employeeId: emp.id, departmentId: emp.departmentId });
+      expect((await fromCheck(H, id, check.id)).status).toBe(200);
+      await prisma.uniformCheck.deleteMany({ where: { id: check.id } });
+    }
+    const body = await (await listTemplates(H)).json();
+    const t = body.templates.find((x: { id: number }) => x.id === id);
+    expect(t.sampleCount).toBe(3);
+    expect(t.warning).toBeNull();
   });
 });

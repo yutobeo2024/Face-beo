@@ -18,6 +18,7 @@ import { useCan } from "../admin-nav";
 type Row = {
   id: number;
   workDate: string;
+  departmentId: number;
   employee: { id: number; code: string; name: string; department: string } | null;
   status: "PASS" | "FAIL" | "REVIEW" | "SKIPPED";
   machineStatus: string;
@@ -53,6 +54,8 @@ const FILTERS = [
 
 const pct = (v: number | null) => (v == null ? "—" : `${Math.round(v * 100)}%`);
 
+type Tpl = { id: number; departmentId: number; name: string; sampleCount: number };
+
 export default function UniformPage() {
   const can = useCan();
   const toast = useToast();
@@ -64,9 +67,25 @@ export default function UniformPage() {
   const [busy, setBusy] = useState(false);
 
   const { data, error, loading, reload } = useApi<{ rows: Row[] }>(`/api/uniform/checks${qs({ from, to, departmentId: dept, status })}`);
+  const manage = can("uniform.manage");
+  // Mẫu áo của các phòng, để Nhân sự lấy CHÍNH ảnh chấm công này làm ảnh mẫu (cùng camera, cùng đèn).
+  const tpl = useApi<{ templates: Tpl[] }>(manage ? "/api/uniform/templates" : null);
   const rows = data?.rows ?? [];
   const count = (s: Row["status"]) => rows.filter((r) => r.status === s).length;
   const checked = rows.filter((r) => r.status !== "SKIPPED").length;
+
+  async function takeAsSample(row: Row, templateId: number, templateName: string) {
+    setBusy(true);
+    try {
+      await api(`/api/uniform/templates/${templateId}/samples/from-check`, { body: { checkId: row.id } });
+      toast.success(`Đã thêm ảnh này vào mẫu áo “${templateName}”`);
+      void tpl.reload();
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function decide(row: Row, next: "PASS" | "FAIL") {
     setBusy(true);
@@ -185,6 +204,18 @@ export default function UniformPage() {
                         <p className="text-slate-600">
                           {r.decidedBy} đã xác nhận{r.note ? ` — ${r.note}` : ""}
                         </p>
+                      )}
+                      {manage && r.cropUrl && !!(tpl.data?.templates ?? []).filter((t) => t.departmentId === r.departmentId).length && (
+                        <div className="flex flex-wrap items-center gap-1.5 border-t border-slate-200 pt-2 text-xs text-slate-600">
+                          <span>Dùng ảnh này làm ảnh mẫu (đúng camera, đúng đèn):</span>
+                          {(tpl.data?.templates ?? [])
+                            .filter((t) => t.departmentId === r.departmentId)
+                            .map((t) => (
+                              <Button key={t.id} size="sm" variant="ghost" disabled={busy} onClick={() => takeAsSample(r, t.id, t.name)}>
+                                + {t.name} ({t.sampleCount})
+                              </Button>
+                            ))}
+                        </div>
                       )}
                       {can("uniform.decide") && (
                         <div className="flex gap-2 pt-1">

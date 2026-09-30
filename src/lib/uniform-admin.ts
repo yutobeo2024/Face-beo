@@ -116,3 +116,58 @@ export function templateWarning(t: { sampleCount: number; embedding: string | nu
   if (t.sampleCount < MIN_SAMPLES_TRUSTED) return `Mới có ${t.sampleCount} ảnh mẫu: máy vẫn chấm điểm nhưng luôn để "cần xem lại" cho tới khi đủ ${MIN_SAMPLES_TRUSTED} ảnh.`;
   return null;
 }
+
+/**
+ * Lấy ảnh mẫu THẲNG TỪ MỘT LƯỢT CHẤM CÔNG đã có (v1.20.0).
+ *
+ * Đây là cách lấy mẫu đúng nhất: ảnh sinh ra ở CHÍNH điều kiện sau này máy phải so — cùng camera, cùng đèn, cùng
+ * khoảng cách. Nhân viên chỉ việc chấm công bình thường, Nhân sự bấm một nút trên bảng theo dõi.
+ *
+ * Ảnh lưu lại đã được CÂN BẰNG TRẮNG (cùng phép cân bằng áp cho ảnh chấm công lúc so), nên tính lại đặc trưng bằng
+ * extractSampleFeature — vốn không cân bằng — vẫn ra đúng màu.
+ *
+ * Ảnh cắt nằm dưới cằm nên KHÔNG chứa khuôn mặt, giống hệt ảnh vùng áo trong bảng theo dõi.
+ */
+export async function addSampleFromCheck(templateId: number, checkId: number, createdById: number) {
+  const { readSnapshot } = await import("./storage");
+  const { chestRect, SHIRT_CROP } = await import("./uniform-crop");
+  const { applyGains, grayWorldGains } = await import("./uniform-color");
+  const { parseFaceBox } = await import("./uniform-service");
+
+  const t = await prisma.uniformTemplate.findUnique({ where: { id: templateId }, select: { id: true, departmentId: true, _count: { select: { samples: true } } } });
+  if (!t) throw notFound("Không có mẫu áo này");
+  if (t._count.samples >= MAX_SAMPLES_PER_TEMPLATE) throw badRequest(`Mỗi mẫu áo chỉ giữ tối đa ${MAX_SAMPLES_PER_TEMPLATE} ảnh`);
+
+  const check = await prisma.uniformCheck.findUnique({ where: { id: checkId }, select: { logId: true, departmentId: true } });
+  if (!check) throw notFound("Không có bản ghi kiểm này");
+  if (check.departmentId !== t.departmentId) throw badRequest("Bản ghi này thuộc phòng khác, không dùng làm mẫu cho mẫu áo này được");
+  if (check.logId == null) throw badRequest("Bản ghi này không gắn với lượt chấm công nào");
+
+  const log = await prisma.attendanceLog.findUnique({ where: { id: check.logId }, select: { snapshotUrl: true, faceBox: true } });
+  if (!log?.snapshotUrl || !log.faceBox) throw badRequest("Lượt chấm công này không còn ảnh hoặc thiếu khung khuôn mặt");
+  const box = parseFaceBox(log.faceBox);
+  if (!box) throw badRequest("Khung khuôn mặt của lượt chấm công không đọc được");
+
+  const jpeg = await readSnapshot(log.snapshotUrl.replace("/api/snapshots/", "").split("/"));
+  if (!jpeg) throw badRequest("Ảnh chấm công đã bị xóa theo hạn lưu, không lấy mẫu được nữa");
+
+  const { default: sharp } = await import("sharp");
+  const meta = await sharp(jpeg, { failOn: "none" }).metadata();
+  const crop = chestRect(meta.width ?? 0, meta.height ?? 0, box, SHIRT_CROP);
+  if (!crop.ok) throw badRequest("Ảnh chấm công này không thấy đủ vùng áo — chọn lượt khác");
+
+  // Cân bằng trắng tính trên TOÀN khung (có tường / da / tóc), y như lúc kiểm.
+  const whole = await sharp(jpeg, { failOn: "none" }).resize(64, 64, { fit: "fill" }).removeAlpha().raw().toBuffer();
+  const gains = grayWorldGains(whole);
+  const raw = await sharp(jpeg, { failOn: "none" }).extract(crop.rect).removeAlpha().raw().toBuffer();
+  const balanced = applyGains(raw, gains);
+  const out = await sharp(balanced, { raw: { width: crop.rect.width, height: crop.rect.height, channels: 3 } })
+    .resize(SAMPLE_SIZE, SAMPLE_SIZE, { fit: "cover" })
+    .jpeg({ quality: 88 })
+    .toBuffer();
+
+  const fileKey = await saveTemplateSample(templateId, out);
+  const sample = await prisma.uniformSample.create({ data: { templateId, fileKey, kind: "WORN", createdById } });
+  await recomputeTemplate(templateId);
+  return sample;
+}

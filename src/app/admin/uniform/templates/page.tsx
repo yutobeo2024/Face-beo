@@ -104,7 +104,12 @@ export default function UniformTemplatesPage() {
         <p className="mb-1 font-semibold text-slate-700">Cách khai cho đúng</p>
         <ul className="list-disc space-y-0.5 pl-5">
           <li>Mỗi mẫu áo nên có <b>ít nhất 3 ảnh</b>; dưới mức đó máy vẫn chấm điểm nhưng luôn để “cần xem lại”.</li>
-          <li>Ảnh tốt nhất là <b>nhân viên mặc áo, chụp ngay tại máy chấm công</b> — cùng ánh sáng với ảnh thật.</li>
+          <li>
+            Cách lấy ảnh mẫu <b>tốt nhất</b>: cho vài nhân viên mặc đúng áo <b>chấm công bình thường</b>, rồi sang{" "}
+            <a href="/admin/uniform" className="font-semibold text-brand-700 underline">bảng theo dõi</a>, mở dòng của họ và bấm{" "}
+            <b>“Dùng ảnh này làm ảnh mẫu”</b>. Ảnh sinh ra đúng camera, đúng đèn, đúng khoảng cách — không cần chụp tay.
+          </li>
+          <li>Ảnh chụp bằng điện thoại vẫn tải lên được, nhưng sáng hơn ảnh chấm công nhiều nên chỉ dùng tạm khi chưa có ảnh từ kiosk.</li>
           <li>Ảnh cần thấy rõ <b>logo trước ngực</b>: đó là dấu hiệu tách áo đồng phục khỏi áo thường cùng màu.</li>
           <li>Áo khoác đồng phục mặc ngoài cũng nên khai thành một mẫu riêng.</li>
         </ul>
@@ -249,7 +254,9 @@ export default function UniformTemplatesPage() {
           <Field label="Tên mẫu áo" hint="Ví dụ: Áo polo navy, Áo blouse trắng, Áo khoác đồng phục">
             {(id) => <input id={id} className="input" value={adding.name} maxLength={60} onChange={(e) => setAdding({ ...adding, name: e.target.value })} placeholder="Áo polo navy" />}
           </Field>
-          <p className="mt-2 text-xs text-slate-500">Thêm xong hãy tải ít nhất 3 ảnh mẫu, rồi bật mẫu áo lên.</p>
+          <p className="mt-2 text-xs text-slate-500">
+            Thêm xong hãy lấy ít nhất 3 ảnh mẫu — tốt nhất là bấm “Dùng ảnh này làm ảnh mẫu” ở bảng theo dõi — rồi bật mẫu áo lên.
+          </p>
         </Modal>
       )}
     </>

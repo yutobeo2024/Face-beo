@@ -46,6 +46,7 @@ export const GET = handle(async (req) => {
       return {
         id: r.id,
         workDate: r.workDate,
+        departmentId: r.departmentId,
         employee: e ? { id: e.id, code: e.code, name: e.name, department: e.department.name } : null,
         status: r.status,
         machineStatus: r.machineStatus,
