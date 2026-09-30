@@ -101,14 +101,18 @@ export default function UniformTemplatesPage() {
       <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={onFile} />
 
       <Card className="mb-3 p-3 text-sm text-slate-600">
-        <p className="mb-1 font-semibold text-slate-700">Cách khai cho đúng</p>
+        <p className="mb-1 font-semibold text-slate-700">Làm theo đúng thứ tự này</p>
+        <ol className="mb-3 list-decimal space-y-0.5 pl-5">
+          <li>Bấm <b>Thêm mẫu áo</b> cho phòng, đặt tên (ví dụ “Áo polo navy”). Mẫu mới chưa có ảnh nên chưa bật được — bình thường.</li>
+          <li>Đổi chế độ phòng sang <b>Chạy thử</b>. Chưa có mẫu áo vẫn chuyển được; máy sẽ chụp lại vùng áo mà chưa kết luận gì.</li>
+          <li>Cho vài nhân viên mặc đúng áo <b>chấm công bình thường</b>, đợi khoảng 5 phút.</li>
+          <li>Sang <a href="/admin/uniform" className="font-semibold text-brand-700 underline">bảng theo dõi</a>, mở dòng của họ, bấm <b>“Dùng ảnh này làm ảnh mẫu”</b> — đủ <b>3 ảnh</b>.</li>
+          <li>Quay lại đây bấm <b>Bật</b> cho mẫu áo. Chạy thử 2 tuần, đo ngưỡng, rồi mới chuyển phòng sang <b>Bật</b>.</li>
+        </ol>
+        <p className="mb-1 font-semibold text-slate-700">Vì sao làm vậy</p>
         <ul className="list-disc space-y-0.5 pl-5">
           <li>Mỗi mẫu áo nên có <b>ít nhất 3 ảnh</b>; dưới mức đó máy vẫn chấm điểm nhưng luôn để “cần xem lại”.</li>
-          <li>
-            Cách lấy ảnh mẫu <b>tốt nhất</b>: cho vài nhân viên mặc đúng áo <b>chấm công bình thường</b>, rồi sang{" "}
-            <a href="/admin/uniform" className="font-semibold text-brand-700 underline">bảng theo dõi</a>, mở dòng của họ và bấm{" "}
-            <b>“Dùng ảnh này làm ảnh mẫu”</b>. Ảnh sinh ra đúng camera, đúng đèn, đúng khoảng cách — không cần chụp tay.
-          </li>
+          <li>Ảnh lấy từ lượt chấm công sinh ra <b>đúng camera, đúng đèn, đúng khoảng cách</b> với lúc máy phải so — không cần chụp tay.</li>
           <li>Ảnh chụp bằng điện thoại vẫn tải lên được, nhưng sáng hơn ảnh chấm công nhiều nên chỉ dùng tạm khi chưa có ảnh từ kiosk.</li>
           <li>Ảnh cần thấy rõ <b>logo trước ngực</b>: đó là dấu hiệu tách áo đồng phục khỏi áo thường cùng màu.</li>
           <li>

@@ -182,16 +182,33 @@ async function evaluateOne(
     detail: JSON.stringify({ reasonText: UNIFORM_REASON_LABEL[reason], ...detail }),
   });
 
-  if (!templates.length) {
-    return { ...base, machineStatus: "SKIPPED", status: "SKIPPED", reason: "NO_TEMPLATE", detail: JSON.stringify({ reasonText: UNIFORM_REASON_LABEL.NO_TEMPLATE }) };
-  }
-
   const parts = c.snapshotUrl.replace("/api/snapshots/", "").split("/");
   const jpeg = await readSnapshot(parts);
   if (!jpeg) return review("SNAPSHOT_GONE");
 
   const box = parseFaceBox(c.faceBox);
   if (!box) return review("CROP_OUT_OF_FRAME");
+
+  // Phòng chưa khai mẫu áo: KHÔNG kết luận gì, nhưng vẫn cắt và lưu ảnh vùng áo — đó là nguồn để Nhân sự bấm
+  // "Dùng ảnh này làm ảnh mẫu". Không có bước này thì thành vòng luẩn quẩn: muốn có mẫu phải có ảnh, muốn có ảnh
+  // phải có mẫu. Bỏ qua mô hình AI vì chẳng có gì để so.
+  if (!templates.length) {
+    let cropUrl: string | null = null;
+    try {
+      const r = await extractShirtFeature(jpeg, box, { embedder: null, keepCrop });
+      if (r.ok && r.feature.cropJpeg) cropUrl = await saveCrop(r.feature.cropJpeg, c.checkTime);
+    } catch {
+      // không cắt được thì thôi, vẫn ghi nhận là BỎ QUA
+    }
+    return {
+      ...base,
+      machineStatus: "SKIPPED",
+      status: "SKIPPED",
+      reason: "NO_TEMPLATE",
+      cropUrl,
+      detail: JSON.stringify({ reasonText: UNIFORM_REASON_LABEL.NO_TEMPLATE }),
+    };
+  }
 
   let feature;
   try {

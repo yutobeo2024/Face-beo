@@ -190,6 +190,16 @@ describe("chế độ kiểm của phòng", () => {
     expect((await res.json()).error).toContain("mẫu áo");
   });
 
+  it("CHẠY THỬ bật được khi chưa có mẫu áo nào — nếu không thì thành vòng luẩn quẩn", async () => {
+    // Cách lấy ảnh mẫu đúng nhất là lấy từ chính lượt chấm công; muốn có lượt để lấy thì phòng phải đang chạy thử.
+    expect((await setMode(H, emp.departmentId, "SHADOW")).status).toBe(200);
+    expect((await prisma.department.findUniqueOrThrow({ where: { id: emp.departmentId } })).uniformMode).toBe("SHADOW");
+    // Còn BẬT thật thì vẫn phải có mẫu áo đang dùng.
+    const res = await setMode(H, emp.departmentId, "ON");
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toContain("mẫu áo");
+  });
+
   it("có mẫu áo rồi thì bật được, có ghi nhật ký", async () => {
     const id = await newTemplate(H, emp.departmentId, `${tag} Navy`, 3);
     await patchTemplate(H, id, { active: true });

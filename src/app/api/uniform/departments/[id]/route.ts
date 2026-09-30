@@ -27,9 +27,11 @@ export const PATCH = handle<{ id: string }>(async (req, ctx) => {
   if (!canManageDept(u, id)) throw forbidden("Ngoài phạm vi phòng ban của bạn");
   if (body.uniformMode === d.uniformMode) return json({ ok: true, uniformMode: d.uniformMode });
 
-  if (body.uniformMode !== "OFF") {
+  // Chỉ chế độ BẬT mới đòi có mẫu áo đang dùng. CHẠY THỬ phải bật được khi chưa có mẫu áo nào, vì cách lấy ảnh mẫu
+  // đúng nhất là lấy từ chính lượt chấm công — mà muốn có bản ghi để lấy thì phòng phải đang chạy thử trước.
+  if (body.uniformMode === "ON") {
     const ready = await prisma.uniformTemplate.count({ where: { departmentId: id, active: true } });
-    if (!ready) throw badRequest("Phòng chưa có mẫu áo nào đang bật — khai mẫu áo trước đã");
+    if (!ready) throw badRequest("Phòng chưa có mẫu áo nào đang bật — khai mẫu áo và bật lên trước đã");
   }
 
   await prisma.department.update({ where: { id }, data: { uniformMode: body.uniformMode } });

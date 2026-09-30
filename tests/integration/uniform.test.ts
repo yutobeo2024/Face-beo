@@ -215,14 +215,18 @@ describe("job kiểm đồng phục", () => {
     expect(await checkOf(emp.id)).toBeNull();
   });
 
-  it("phòng bật kiểm nhưng chưa khai mẫu áo → BỎ QUA kèm lý do", async () => {
+  it("phòng bật kiểm nhưng chưa khai mẫu áo → BỎ QUA kèm lý do, NHƯNG vẫn lưu ảnh vùng áo", async () => {
+    // Ảnh vùng áo chính là nguồn để Nhân sự bấm "Dùng ảnh này làm ảnh mẫu". Không lưu thì thành vòng luẩn quẩn:
+    // muốn có mẫu áo phải có ảnh, muốn có ảnh phải có mẫu áo.
     await prisma.department.update({ where: { id: emp.departmentId }, data: { uniformMode: "ON" } });
     const base = await enrollFake(emp.id, 7002);
-    await scan(emp, new Date(), base);
+    await scan(emp, new Date(), base, { snapshot: await shirtSnapshot() });
     await runJob("uniform-check");
     const c = await checkOf(emp.id);
     expect(c?.status).toBe("SKIPPED");
     expect(c?.reason).toBe("NO_TEMPLATE");
+    expect(c?.cropUrl).toBeTruthy();
+    expect(c?.logId).toBeTruthy(); // đủ để addSampleFromCheck cắt lại từ ảnh gốc
   });
 
   it("có mẫu áo → tạo bản ghi, lưu đủ điểm và ảnh vùng áo", async () => {
@@ -297,9 +301,11 @@ describe("job kiểm đồng phục", () => {
   it("mẫu áo đang tắt thì không dùng để so", async () => {
     await prisma.department.update({ where: { id: emp.departmentId }, data: { uniformMode: "ON" } });
     await makeTemplate(emp.departmentId, `${tag} Áo cũ`, { active: false });
-    await scan(emp, new Date(), await enrollFake(emp.id, 7009));
+    await scan(emp, new Date(), await enrollFake(emp.id, 7009), { snapshot: await shirtSnapshot() });
     await runJob("uniform-check");
-    expect((await checkOf(emp.id))?.reason).toBe("NO_TEMPLATE");
+    const c = await checkOf(emp.id);
+    expect(c?.reason).toBe("NO_TEMPLATE");
+    expect(c?.cropUrl).toBeTruthy(); // vẫn có ảnh để lấy làm mẫu cho mẫu áo đang chờ bật
   });
 
   it("chỉ kiểm phòng đã bật, phòng khác không bị đụng tới", async () => {
