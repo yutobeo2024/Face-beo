@@ -111,6 +111,10 @@ export default function UniformTemplatesPage() {
           </li>
           <li>Ảnh chụp bằng điện thoại vẫn tải lên được, nhưng sáng hơn ảnh chấm công nhiều nên chỉ dùng tạm khi chưa có ảnh từ kiosk.</li>
           <li>Ảnh cần thấy rõ <b>logo trước ngực</b>: đó là dấu hiệu tách áo đồng phục khỏi áo thường cùng màu.</li>
+          <li>
+            <b>Ảnh áo rời (trải phẳng) không dùng để kết luận được.</b> Đo trên ảnh thật: mẫu dựng từ áo trải phẳng chấm chính
+            người mặc đúng áo đó chỉ 0,35–0,40 — sẽ báo oan hàng loạt. Ảnh áo rời chỉ để người nhìn đối chiếu.
+          </li>
           <li>Áo khoác đồng phục mặc ngoài cũng nên khai thành một mẫu riêng.</li>
         </ul>
       </Card>
@@ -172,14 +176,14 @@ export default function UniformTemplatesPage() {
                           {t.colorHex && <span className="size-5 shrink-0 rounded ring-1 ring-slate-300" style={{ background: t.colorHex }} title={t.colorHex} />}
                           <span className="font-medium text-slate-800">{t.name}</span>
                           <Badge tone={t.active ? "ontime" : "neutral"}>{t.active ? "đang dùng" : "đang tắt"}</Badge>
-                          <span className="text-xs text-slate-500">{t.sampleCount} ảnh mẫu</span>
+                          <span className="text-xs text-slate-500">{t.sampleCount} ảnh người mặc</span>
                           {manage && (
                             <span className="ml-auto flex flex-wrap gap-1.5">
                               <Button size="sm" variant="secondary" disabled={busy} onClick={() => void pickFile(t.id, "WORN")}>
                                 + Ảnh người mặc
                               </Button>
-                              <Button size="sm" variant="secondary" disabled={busy} onClick={() => void pickFile(t.id, "SHIRT")}>
-                                + Ảnh áo
+                              <Button size="sm" variant="ghost" disabled={busy} title="Chỉ để đối chiếu bằng mắt — không dùng để kết luận" onClick={() => void pickFile(t.id, "SHIRT")}>
+                                + Ảnh áo rời
                               </Button>
                               <Button
                                 size="sm"
@@ -202,7 +206,9 @@ export default function UniformTemplatesPage() {
                               <li key={s.id} className="group relative">
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img src={`/api/uniform/templates/${t.id}/samples/${s.id}`} alt={t.name} className="size-20 rounded-lg object-cover ring-1 ring-slate-200" />
-                                <span className="absolute inset-x-0 bottom-0 rounded-b-lg bg-slate-900/55 text-center text-[10px] text-white">{s.kind === "WORN" ? "người mặc" : "áo"}</span>
+                                <span className="absolute inset-x-0 bottom-0 rounded-b-lg bg-slate-900/55 text-center text-[10px] text-white">
+                                  {s.kind === "WORN" ? "người mặc" : "áo rời · chỉ tham khảo"}
+                                </span>
                                 {manage && (
                                   <button
                                     type="button"

@@ -78,7 +78,7 @@ describe("chấm điểm với các mẫu áo của phòng", () => {
 
 describe("kết luận", () => {
   it("cả hai tín hiệu đều đạt → ĐẠT, kèm tên mẫu áo", () => {
-    const d = decideUniform({ scores: [sc({ embedScore: 0.8, colorScore: 0.9 })] });
+    const d = decideUniform({ scores: [sc({ embedScore: 0.9, colorScore: 0.9 })] });
     expect(d.status).toBe("PASS");
     expect(d.reason).toBeNull();
     expect(d.templateName).toBe("Áo navy");
@@ -91,8 +91,9 @@ describe("kết luận", () => {
   });
 
   it("hai tín hiệu lệch nhau → CẦN XEM LẠI, không kết luận bừa", () => {
-    expect(decideUniform({ scores: [sc({ embedScore: 0.8, colorScore: 0.2, score: 0.56 })] })).toMatchObject({ status: "REVIEW", reason: "AMBIGUOUS" });
-    expect(decideUniform({ scores: [sc({ embedScore: 0.2, colorScore: 0.8, score: 0.44 })] })).toMatchObject({ status: "REVIEW", reason: "AMBIGUOUS" });
+    // Một tín hiệu đạt, một tín hiệu không: không bao giờ kết luận, dù điểm gộp thế nào.
+    expect(decideUniform({ scores: [sc({ embedScore: 0.9, colorScore: 0.2, score: 0.55 })] })).toMatchObject({ status: "REVIEW", reason: "AMBIGUOUS" });
+    expect(decideUniform({ scores: [sc({ embedScore: 0.2, colorScore: 0.9, score: 0.55 })] })).toMatchObject({ status: "REVIEW", reason: "AMBIGUOUS" });
   });
 
   it("ảnh xấu thắng mọi điểm số: điểm cao vẫn CẦN XEM LẠI", () => {
@@ -119,13 +120,13 @@ describe("kết luận", () => {
 
   it("mô hình lỗi → chỉ dùng màu, đòi chắc chắn hơn mới kết luận", () => {
     const only = (colorScore: number) => decideUniform({ modelFailed: true, scores: [sc({ embedScore: null, colorScore, score: colorScore })] });
-    expect(only(0.7)).toMatchObject({ status: "PASS" }); // ≥ 0,55 + 0,10
+    expect(only(0.95)).toMatchObject({ status: "PASS" }); // ≥ passColor + 0,10
     expect(only(0.3)).toMatchObject({ status: "FAIL", reason: "LOW_SCORE" });
     expect(only(0.5)).toMatchObject({ status: "REVIEW", reason: "MODEL_ERROR" });
   });
 
   it("không có mô hình: màu giống nhưng ngực trơn vẫn phải CẦN XEM LẠI (logo là tín hiệu chính lúc này)", () => {
-    const s = [sc({ embedScore: null, colorScore: 0.8, score: 0.8, templatePattern: 0.2 })];
+    const s = [sc({ embedScore: null, colorScore: 0.95, score: 0.95, templatePattern: 0.2 })];
     expect(decideUniform({ modelFailed: true, scores: s, pattern: 0.18 })).toMatchObject({ status: "PASS" });
     expect(decideUniform({ modelFailed: true, scores: s, pattern: 0.003 })).toMatchObject({ status: "REVIEW", reason: "LOGO_MISSING" });
   });
@@ -136,13 +137,13 @@ describe("kết luận", () => {
   });
 
   it("nới ngưỡng thì một ca đang CẦN XEM LẠI thành ĐẠT (ngưỡng hiệu chỉnh được)", () => {
-    const s = [sc({ embedScore: 0.5, colorScore: 0.6, score: 0.54 })];
+    const s = [sc({ embedScore: 0.9, colorScore: 0.6, score: 0.75 })];
     expect(decideUniform({ scores: s })).toMatchObject({ status: "REVIEW" });
-    expect(decideUniform({ scores: s, th: { ...TH, passEmbed: 0.45 } })).toMatchObject({ status: "PASS" });
+    expect(decideUniform({ scores: s, th: { ...TH, passColor: 0.55 } })).toMatchObject({ status: "PASS" });
   });
 
   it("áo cùng màu nhưng ngực trơn (không có logo) → CẦN XEM LẠI chứ không cho ĐẠT", () => {
-    const khop = [sc({ embedScore: 0.8, colorScore: 0.9, templatePattern: 0.18 })];
+    const khop = [sc({ embedScore: 0.9, colorScore: 0.9, templatePattern: 0.18 })];
     // Ảnh có logo như mẫu → đạt
     expect(decideUniform({ scores: khop, pattern: 0.15 })).toMatchObject({ status: "PASS" });
     // Ảnh trơn hẳn (dưới 35% độ không trơn của mẫu) → nghi áo khác cùng màu
@@ -150,13 +151,13 @@ describe("kết luận", () => {
   });
 
   it("mẫu áo vốn trơn hoặc chưa đo được thì không suy diễn gì về logo", () => {
-    expect(decideUniform({ scores: [sc({ embedScore: 0.8, colorScore: 0.9, templatePattern: 0.02 })], pattern: 0.001 })).toMatchObject({ status: "PASS" });
-    expect(decideUniform({ scores: [sc({ embedScore: 0.8, colorScore: 0.9, templatePattern: null })], pattern: 0.001 })).toMatchObject({ status: "PASS" });
-    expect(decideUniform({ scores: [sc({ embedScore: 0.8, colorScore: 0.9, templatePattern: 0.2 })] })).toMatchObject({ status: "PASS" }); // ảnh chưa đo
+    expect(decideUniform({ scores: [sc({ embedScore: 0.9, colorScore: 0.9, templatePattern: 0.02 })], pattern: 0.001 })).toMatchObject({ status: "PASS" });
+    expect(decideUniform({ scores: [sc({ embedScore: 0.9, colorScore: 0.9, templatePattern: null })], pattern: 0.001 })).toMatchObject({ status: "PASS" });
+    expect(decideUniform({ scores: [sc({ embedScore: 0.9, colorScore: 0.9, templatePattern: 0.2 })] })).toMatchObject({ status: "PASS" }); // ảnh chưa đo
   });
 
   it("thiếu logo KHÔNG bao giờ tự thành KHÔNG ĐẠT", () => {
-    const d = decideUniform({ scores: [sc({ embedScore: 0.85, colorScore: 0.95, templatePattern: 0.2 })], pattern: 0 });
+    const d = decideUniform({ scores: [sc({ embedScore: 0.9, colorScore: 0.95, templatePattern: 0.2 })], pattern: 0 });
     expect(d.status).toBe("REVIEW");
     expect(d.status).not.toBe("FAIL");
   });

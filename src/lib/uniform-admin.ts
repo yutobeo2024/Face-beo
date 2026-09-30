@@ -37,9 +37,20 @@ export async function normalizeSample(buf: Uint8Array): Promise<Buffer> {
     .toBuffer();
 }
 
-/** Tính lại đặc trưng của cả mẫu áo từ các ảnh mẫu hiện có. Gọi sau mỗi lần thêm / xóa ảnh. */
+/**
+ * Tính lại đặc trưng của cả mẫu áo. Gọi sau mỗi lần thêm / xóa ảnh.
+ *
+ * CHỈ LẤY TRUNG BÌNH TỪ ẢNH NGƯỜI MẶC (kind = WORN). Đo trên ảnh thật của phòng khám: mẫu dựng từ ảnh ÁO RỜI
+ * (trải phẳng trên bàn) chấm chính người mặc đúng áo đó chỉ 0,35–0,40 — tức là sẽ báo oan hàng loạt. Áo trải phẳng
+ * khác hẳn áo đang mặc: nếp gấp, độ cong, ánh sáng, tỉ lệ logo đều khác.
+ *
+ * Ảnh áo rời vẫn giữ lại để người nhìn đối chiếu, và dùng tạm khi chưa có ảnh người mặc nào — nhưng khi đó
+ * `sampleCount = 0` nên máy luôn để "cần xem lại", không bao giờ kết luận.
+ */
 export async function recomputeTemplate(templateId: number): Promise<void> {
-  const samples = await prisma.uniformSample.findMany({ where: { templateId }, select: { id: true, fileKey: true, embedding: true, colorHist: true } });
+  const all = await prisma.uniformSample.findMany({ where: { templateId }, select: { id: true, fileKey: true, kind: true, embedding: true, colorHist: true } });
+  const worn = all.filter((s) => s.kind === "WORN");
+  const samples = worn.length ? worn : all;
   if (!samples.length) {
     await prisma.uniformTemplate.update({
       where: { id: templateId },
@@ -80,7 +91,8 @@ export async function recomputeTemplate(templateId: number): Promise<void> {
         embedding: vec ? JSON.stringify(vec) : null,
         embedVersion: vec ? UNIFORM_MODEL_VERSION : null,
         colorHex: hex,
-        sampleCount: hists.length,
+        // Chỉ ảnh NGƯỜI MẶC mới được tính là "đủ tin" (xem chú thích đầu hàm).
+        sampleCount: worn.length ? hists.length : 0,
       },
     });
   });
@@ -113,7 +125,8 @@ export async function canHardDelete(templateId: number): Promise<boolean> {
 /** Lời nhắc cho giao diện khi mẫu áo chưa đủ tin. */
 export function templateWarning(t: { sampleCount: number; embedding: string | null; colorHist: string | null }): string | null {
   if (!t.colorHist) return "Chưa có ảnh mẫu — mẫu áo này chưa dùng được.";
-  if (t.sampleCount < MIN_SAMPLES_TRUSTED) return `Mới có ${t.sampleCount} ảnh mẫu: máy vẫn chấm điểm nhưng luôn để "cần xem lại" cho tới khi đủ ${MIN_SAMPLES_TRUSTED} ảnh.`;
+  if (t.sampleCount === 0) return `Mới có ảnh áo rời: áo trải phẳng khác hẳn áo đang mặc nên KHÔNG kết luận được. Cần ${MIN_SAMPLES_TRUSTED} ảnh NGƯỜI MẶC — tốt nhất bấm "Dùng ảnh này làm ảnh mẫu" ở bảng theo dõi.`;
+  if (t.sampleCount < MIN_SAMPLES_TRUSTED) return `Mới có ${t.sampleCount} ảnh người mặc: máy vẫn chấm điểm nhưng luôn để "cần xem lại" cho tới khi đủ ${MIN_SAMPLES_TRUSTED} ảnh.`;
   return null;
 }
 

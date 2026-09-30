@@ -13,9 +13,19 @@ import { join } from "node:path";
 import type { InferenceSession } from "onnxruntime-node";
 
 /** Phiên bản ghi kèm mỗi mẫu áo: đổi mô hình ⇒ phải tính lại mẫu, không so lẫn lộn hai phiên bản. */
-export const UNIFORM_MODEL_VERSION = process.env.UNIFORM_MODEL_VERSION || "uniform-v1";
-/** Cạnh ảnh mô hình đòi. MobileCLIP-S0 (mô hình mặc định) dùng 256×256, ảnh chỉ chia 255 — không chuẩn hóa mean/std. */
-export const UNIFORM_INPUT_SIZE = Number(process.env.UNIFORM_INPUT_SIZE) || 256;
+export const UNIFORM_MODEL_VERSION = process.env.UNIFORM_MODEL_VERSION || "dinov2s-v1";
+/** Cạnh ảnh mô hình đòi. DINOv2-small (mô hình mặc định) dùng 224×224. */
+export const UNIFORM_INPUT_SIZE = Number(process.env.UNIFORM_INPUT_SIZE) || 224;
+/**
+ * Chuẩn hóa ảnh theo ImageNet — DINOv2 được huấn luyện với mức này, bỏ đi thì vector lệch hẳn.
+ * Đổi sang mô hình chỉ cần chia 255 thì đặt UNIFORM_MODEL_MEAN="0,0,0" và UNIFORM_MODEL_STD="1,1,1".
+ */
+const triple = (raw: string | undefined, fallback: [number, number, number]): [number, number, number] => {
+  const v = (raw ?? "").split(",").map(Number);
+  return v.length === 3 && v.every((x) => Number.isFinite(x)) ? (v as [number, number, number]) : fallback;
+};
+export const UNIFORM_MEAN = triple(process.env.UNIFORM_MODEL_MEAN, [0.485, 0.456, 0.406]);
+export const UNIFORM_STD = triple(process.env.UNIFORM_MODEL_STD, [0.229, 0.224, 0.225]);
 
 export const uniformModelPath = () => process.env.UNIFORM_MODEL_PATH || join(process.cwd(), "models", "uniform.onnx");
 
@@ -44,6 +54,22 @@ export type UniformEmbedder = {
   embed(rgb: Uint8Array, size: number): Promise<Float32Array | null>;
   available: boolean;
 };
+
+/**
+ * Gộp đầu ra về MỘT vector.
+ *
+ * Mô hình kiểu ViT (DINOv2) trả [1, số ô, số chiều]: lấy TRUNG BÌNH các ô ảnh (bỏ ô đầu là ô tổng hợp) —
+ * đo thực tế trên ảnh đồng phục thật, cách này tách đúng/sai áo tốt hơn dùng riêng ô tổng hợp.
+ * Mô hình trả thẳng [1, số chiều] thì giữ nguyên.
+ */
+function pool(raw: Float32Array, dims: readonly number[]): Float32Array {
+  if (dims.length !== 3) return Float32Array.from(raw);
+  const [, tokens, d] = dims;
+  if (tokens <= 1) return Float32Array.from(raw.slice(0, d));
+  const out = new Float32Array(d);
+  for (let t = 1; t < tokens; t++) for (let k = 0; k < d; k++) out[k] += raw[t * d + k] / (tokens - 1);
+  return out;
+}
 
 function normalize(v: Float32Array): Float32Array {
   let n = 0;
@@ -83,17 +109,17 @@ export async function withUniformModel<T>(fn: (m: UniformEmbedder) => Promise<T>
       available: true,
       async embed(rgb, size) {
         try {
-          const data = new Float32Array(3 * size * size);
-          // NCHW, giá trị 0…1 (chuẩn hóa mean/std nếu mô hình đòi thì sửa tại đây, nhớ áp cho cả ảnh mẫu).
-          for (let i = 0; i < size * size; i++) {
-            data[i] = rgb[i * 3] / 255;
-            data[size * size + i] = rgb[i * 3 + 1] / 255;
-            data[2 * size * size + i] = rgb[i * 3 + 2] / 255;
+          const n = size * size;
+          const data = new Float32Array(3 * n);
+          // NCHW, giá trị (0…1 − mean) / std. Ảnh mẫu đi qua CÙNG hàm này nên luôn cùng một hệ quy chiếu.
+          for (let i = 0; i < n; i++) {
+            data[i] = (rgb[i * 3] / 255 - UNIFORM_MEAN[0]) / UNIFORM_STD[0];
+            data[n + i] = (rgb[i * 3 + 1] / 255 - UNIFORM_MEAN[1]) / UNIFORM_STD[1];
+            data[2 * n + i] = (rgb[i * 3 + 2] / 255 - UNIFORM_MEAN[2]) / UNIFORM_STD[2];
           }
           const ort2 = await import("onnxruntime-node");
           const out = await session!.run({ [inputName]: new ort2.Tensor("float32", data, [1, 3, size, size]) });
-          const raw = out[outputName].data as Float32Array;
-          return normalize(Float32Array.from(raw));
+          return normalize(pool(out[outputName].data as Float32Array, out[outputName].dims as readonly number[]));
         } catch (e) {
           g.__uniformError = (e as Error).message;
           return null;

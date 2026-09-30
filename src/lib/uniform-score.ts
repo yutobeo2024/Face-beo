@@ -57,7 +57,14 @@ export type UniformThresholds = {
 export const LOGO_TEMPLATE_MIN = 0.04;
 export const LOGO_IMAGE_MIN = 0.015;
 
-export const DEFAULT_UNIFORM_THRESHOLDS: UniformThresholds = { passEmbed: 0.55, passColor: 0.55, failScore: 0.45, colorWeight: 0.4 };
+/**
+ * Ngưỡng mặc định — ĐO TRÊN ẢNH THẬT của phòng khám (6 ảnh mặc đúng đồng phục, 4 ảnh mặc sai), không phải số đoán:
+ *   mặc đúng : màu 0,919–0,958 · hình dáng 0,910–0,960
+ *   mặc sai  : màu 0,269–0,639 · hình dáng 0,650–0,808
+ * Mốc đặt ở giữa hai vùng đó. Ngưỡng 0,55 ban đầu quá lỏng — áo thun trắng vẫn lọt thành "đạt".
+ * Mỗi phòng vẫn nên chạy thử 2 tuần rồi đo lại bằng `npm run uniform:eval`.
+ */
+export const DEFAULT_UNIFORM_THRESHOLDS: UniformThresholds = { passEmbed: 0.85, passColor: 0.8, failScore: 0.7, colorWeight: 0.5 };
 
 /** Mẫu áo phải có ít nhất ngần này ảnh mẫu thì kết luận mới được coi là đáng tin. */
 export const MIN_SAMPLES_TRUSTED = 3;

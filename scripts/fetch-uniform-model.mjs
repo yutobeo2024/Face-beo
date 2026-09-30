@@ -1,17 +1,21 @@
 // Tải mô hình đặc trưng ảnh cho kiểm đồng phục (v1.20.0) và kiểm SHA-256.
 //
-// Mô hình: MobileCLIP-S0 — phần mã hóa ẢNH, bản lượng tử hóa int8 (~11,8 MB), vector 512 chiều.
-// Nguồn ONNX: https://huggingface.co/Xenova/mobileclip_s0 (chuyển đổi từ apple/ml-mobileclip, giấy phép Apple ASCL).
-// Tiền xử lý: ảnh RGB 256×256, chỉ chia 255 — KHÔNG chuẩn hóa mean/std (preprocessor_config.json: do_normalize=false).
+// Mô hình: DINOv2-small, bản lượng tử hóa int8 (~24 MB), vector 384 chiều (trung bình các ô ảnh).
+// Nguồn ONNX: https://huggingface.co/onnx-community/dinov2-small (chuyển đổi từ facebook/dinov2-small, Apache-2.0).
+// Tiền xử lý: ảnh RGB 224×224, chuẩn hóa theo ImageNet (mean/std trong src/lib/uniform-embed.ts).
+//
+// VÌ SAO LÀ DINOv2: đo trên ảnh thật của phòng khám (6 ảnh mặc đúng đồng phục, 4 ảnh mặc sai), MobileCLIP-S0 chấm
+// áo đen thường CAO HƠN áo đồng phục — nó chỉ nhận ra "người mặc áo sẫm", không phân biệt được áo. DINOv2 tách đúng
+// hướng (khoảng cách 0,103), gộp với tín hiệu màu thì khoảng cách lên ~0,26.
 //
 // Đây là TÍN HIỆU PHỤ: thiếu mô hình thì việc kiểm vẫn chạy bằng màu áo + logo, chỉ thận trọng hơn.
-// Đổi mô hình khác thì phải đổi cả UNIFORM_MODEL_VERSION (để mẫu áo được tính lại) và UNIFORM_INPUT_SIZE nếu khác 256.
+// Đổi mô hình khác thì phải đổi UNIFORM_MODEL_VERSION (mẫu áo sẽ được tính lại), UNIFORM_INPUT_SIZE và mean/std.
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
-const URL = "https://huggingface.co/Xenova/mobileclip_s0/resolve/main/onnx/vision_model_quantized.onnx";
-const SHA256 = "fcbd153d1aa1314fb72ea39b20c37e0572e7e7b05359b51f3efee5d682658472";
+const URL = "https://huggingface.co/onnx-community/dinov2-small/resolve/main/onnx/model_quantized.onnx";
+const SHA256 = "c179f8f7f592449c4c1bca4cd124a7538021428c5ffb89afde9503935b197efb";
 const dest = process.env.UNIFORM_MODEL_PATH || join(process.cwd(), "models", "uniform.onnx");
 const sha = (b) => createHash("sha256").update(b).digest("hex");
 

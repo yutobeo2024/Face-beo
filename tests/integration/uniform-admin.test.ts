@@ -44,11 +44,12 @@ async function putSample(cookie: string, id: number, kind = "SHIRT", img?: Buffe
   return samplesRoute.PUT(binaryReq(`/api/uniform/templates/${id}/samples?kind=${kind}`, body, { cookie }), ctx({ id: String(id) }));
 }
 
+/** Mẫu áo dùng được PHẢI dựng từ ảnh người mặc — ảnh áo rời không tính (xem recomputeTemplate). */
 async function newTemplate(cookie: string, deptId: number, name: string, samples = 3) {
   const res = await addTemplate(cookie, deptId, name);
   const { template } = await res.json();
   createdTemplates.push(template.id);
-  for (let i = 0; i < samples; i++) await putSample(cookie, template.id, i === 0 ? "WORN" : "SHIRT");
+  for (let i = 0; i < samples; i++) await putSample(cookie, template.id, "WORN");
   return template.id as number;
 }
 
@@ -86,12 +87,29 @@ describe("mẫu áo", () => {
     expect(row.colorHex).toMatch(/^#[0-9a-f]{6}$/);
     expect(row.embedding).toBeTruthy();
 
-    await putSample(H, id);
-    await putSample(H, id);
+    await putSample(H, id, "WORN");
+    await putSample(H, id, "WORN");
     row = await prisma.uniformTemplate.findUniqueOrThrow({ where: { id } });
     expect(row.sampleCount).toBe(3);
     const list = await (await listTemplates(H)).json();
     expect(list.templates.find((t: { id: number }) => t.id === id).warning).toBeNull();
+  });
+
+  it("chỉ có ảnh ÁO RỜI thì không kết luận được, dù tải bao nhiêu ảnh", async () => {
+    // Đo trên ảnh thật: mẫu dựng từ áo trải phẳng chấm chính người mặc đúng áo đó chỉ 0,35–0,40 ⇒ báo oan hàng loạt.
+    const id = await newTemplate(H, emp.departmentId, `${tag} AoRoi`, 0);
+    for (let i = 0; i < 4; i++) await putSample(H, id, "SHIRT");
+    const row = await prisma.uniformTemplate.findUniqueOrThrow({ where: { id } });
+    expect(row.colorHist).toBeTruthy(); // vẫn đo được màu để người nhìn đối chiếu
+    expect(row.sampleCount).toBe(0); // nhưng KHÔNG tính là ảnh mẫu đáng tin
+    const list = await (await listTemplates(H)).json();
+    const t = list.templates.find((x: { id: number }) => x.id === id);
+    expect(t.warning).toContain("áo rời");
+    expect(t.warning).toContain("NGƯỜI MẶC");
+
+    // Thêm ảnh người mặc vào thì đếm lại từ đó.
+    await putSample(H, id, "WORN");
+    expect((await prisma.uniformTemplate.findUniqueOrThrow({ where: { id } })).sampleCount).toBe(1);
   });
 
   it("mẫu áo dưới 3 ảnh thì báo rõ là chưa đủ tin", async () => {
