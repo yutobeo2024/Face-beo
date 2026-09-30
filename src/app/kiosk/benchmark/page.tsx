@@ -46,7 +46,7 @@ export default function BenchmarkPage() {
     const out: number[] = [];
     while (out.length < RUNS) {
       // Chờ mặt đạt cổng chất lượng
-      const g0 = checkGate((await human.detect(video)).face, video, scratchRef.current!, { minFace: 180, maxAngle: 20 });
+      const g0 = checkGate((await human.detect(video)).face, video, scratchRef.current!, { minFace: 180, maxAngle: 20, chestRoom: 0.9 });
       if (!g0.ok) {
         setStatus(`Lượt ${out.length + 1}/${RUNS}: ${g0.reason}`);
         continue;
@@ -54,7 +54,7 @@ export default function BenchmarkPage() {
       const t = performance.now();
       let n = 0;
       while (n < 5) {
-        const g = checkGate((await human.detect(video)).face, video, scratchRef.current!, { minFace: 180, maxAngle: 20 });
+        const g = checkGate((await human.detect(video)).face, video, scratchRef.current!, { minFace: 180, maxAngle: 20, chestRoom: 0.9 });
         if (g.ok) n++;
       }
       captureSnapshot(video, snapRef.current!);

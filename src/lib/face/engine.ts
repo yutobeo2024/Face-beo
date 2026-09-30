@@ -115,13 +115,17 @@ export function measureQuality(video: HTMLVideoElement, box: [number, number, nu
 }
 
 /**
- * Cổng chất lượng. Kiosk: mặt ≥180px, lệch ≤20°. Enroll: mặt ≥200px, đủ sáng, không nhòe.
+ * Cổng chất lượng. Kiosk: mặt ≥180px, lệch ≤20°, còn chỗ cho vùng áo. Enroll: mặt ≥200px, đủ sáng, không nhòe.
+ *
+ * `chestRoom` (v1.20.0): dưới cằm phải còn trống ít nhất ngần này lần CHIỀU CAO khuôn mặt thì ảnh mới lấy được
+ * phần áo (bố cục như ảnh thẻ 4×6, từ ngang ngực trở lên). Đứng quá sát camera thì mặt choán hết khung, ảnh chỉ
+ * còn thấy cổ áo — không kiểm được đồng phục. Tính theo chiều cao mặt nên tự co giãn theo khoảng cách đứng.
  */
 export function checkGate(
   faces: FaceResult[],
   video: HTMLVideoElement,
   scratch: HTMLCanvasElement,
-  opts: { minFace: number; maxAngle: number; checkLight?: boolean },
+  opts: { minFace: number; maxAngle: number; checkLight?: boolean; chestRoom?: number },
 ): Gate {
   const base = { ok: false, face: null, faceWidth: 0, yawDeg: 0, pitchDeg: 0, brightness: 0, sharpness: 0 };
   const real = faces.filter((f) => f.faceScore > 0.6 || f.score > 0.6);
@@ -134,6 +138,10 @@ export function checkGate(
   const q = opts.checkLight ? measureQuality(video, f.box, scratch) : { brightness: 128, sharpness: 999 };
   const r = { ...base, face: f, faceWidth, yawDeg, pitchDeg, ...q };
   if (faceWidth < opts.minFace) return { ...r, reason: "Lại gần camera hơn" };
+  if (opts.chestRoom) {
+    const below = (video.videoHeight || 720) - (f.box[1] + f.box[3]); // khoảng trống từ cằm xuống đáy khung hình
+    if (below < opts.chestRoom * f.box[3]) return { ...r, reason: "Lùi lại một bước" };
+  }
   if (Math.abs(yawDeg) > opts.maxAngle || Math.abs(pitchDeg) > opts.maxAngle) return { ...r, reason: "Nhìn thẳng vào camera" };
   if (opts.checkLight && q.brightness < 60) return { ...r, reason: "Thiếu sáng — bật thêm đèn" };
   if (opts.checkLight && q.brightness > 225) return { ...r, reason: "Quá chói — tránh ngược sáng" };
