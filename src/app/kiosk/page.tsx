@@ -3,6 +3,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { beep, boxToSnapshot, captureSnapshot, checkGate, engineInfo, landmarks5, landmarksToSnapshot, loadEngine, meshFlatness, openCamera, stopCamera } from "@/lib/face/engine";
 import { cooldownStep, startCooldown, type CooldownState } from "@/lib/face/cooldown";
+import { boxToRect, coverFit, rectToScreen } from "@/lib/face/overlay";
+import { chestRectRaw } from "@/lib/uniform-crop";
 import { DeviceRevokedError, NetworkError, queue, sendScan, type QueuedScan, type ScanResponse } from "@/lib/face/offline-queue";
 import { Icon } from "@/components/icons";
 import { cx, Spinner } from "@/components/ui";
@@ -63,6 +65,13 @@ export default function KioskPage() {
   const cooldownRef = useRef<CooldownState | null>(null);
   /** Khung mặt (tọa độ video) của lượt quét vừa gửi — dùng cho hồi chiêu. */
   const lastVideoBoxRef = useRef<[number, number, number, number] | null>(null);
+  // Lớp phủ "máy đang nhìn vào đâu" (v1.20.2): ghi thẳng style, KHÔNG qua state React — vòng nhận diện chạy liên tục,
+  // setState mỗi khung hình sẽ làm rớt khung.
+  const frameRef = useRef<HTMLDivElement>(null);
+  const staticGuideRef = useRef<HTMLDivElement>(null);
+  const liveGuideRef = useRef<HTMLDivElement>(null);
+  const faceBoxRef = useRef<HTMLDivElement>(null);
+  const shirtBoxRef = useRef<HTMLDivElement>(null);
 
   const go = (p: Phase) => {
     phaseRef.current = p;
@@ -196,6 +205,44 @@ export default function KioskPage() {
     [onRevoked, refreshCount],
   );
 
+  /**
+   * Vẽ ô khuôn mặt và dải vùng áo lên đúng vị trí người đang đứng.
+   * `box` null = chưa thấy mặt → ẩn lớp phủ, hiện khung tĩnh.
+   */
+  const paintGuide = useCallback((video: HTMLVideoElement, box: [number, number, number, number] | null, ok: boolean) => {
+    const live = liveGuideRef.current;
+    const still = staticGuideRef.current;
+    if (!live || !still) return;
+    // Viền khung ngoài đổi màu NGAY khi đạt cổng, không đợi sang giai đoạn thu khung.
+    if (frameRef.current) frameRef.current.style.borderColor = box && ok ? "rgb(52 211 153 / 0.7)" : "rgb(255 255 255 / 0.25)";
+    if (!box) {
+      live.style.opacity = "0";
+      still.style.opacity = "1";
+      return;
+    }
+    const el = video.getBoundingClientRect();
+    const fit = coverFit(video.videoWidth, video.videoHeight, el.width, el.height);
+    const put = (node: HTMLDivElement | null, r: { left: number; top: number; width: number; height: number }) => {
+      if (!node) return;
+      const s = rectToScreen(r, fit, el.width, true);
+      node.style.left = `${s.left}px`;
+      node.style.top = `${s.top}px`;
+      node.style.width = `${s.width}px`;
+      node.style.height = `${s.height}px`;
+    };
+    put(faceBoxRef.current, boxToRect(box));
+    // Vùng áo vẽ bản CHƯA kẹp vào khung hình: đứng quá sát thì dải tụt hẳn ra ngoài đáy — thấy ngay vì sao phải lùi.
+    put(shirtBoxRef.current, chestRectRaw(box));
+    const tone = ok ? "rgb(52 211 153)" : "rgb(251 191 36)"; // xanh lục khi đạt · vàng khi chưa
+    if (faceBoxRef.current) faceBoxRef.current.style.borderColor = tone;
+    if (shirtBoxRef.current) {
+      shirtBoxRef.current.style.borderColor = tone;
+      shirtBoxRef.current.style.backgroundColor = ok ? "rgb(52 211 153 / 0.18)" : "rgb(251 191 36 / 0.18)";
+    }
+    live.style.opacity = "1";
+    still.style.opacity = "0";
+  }, []);
+
   // Vòng lặp nhận diện.
   useEffect(() => {
     let stream: MediaStream | null = null;
@@ -227,6 +274,7 @@ export default function KioskPage() {
               box: faces.length === 1 ? (faces[0].box as [number, number, number, number]) : null,
               now: Date.now(),
             });
+            paintGuide(video, null, false); // đang chờ người tiếp theo: không vẽ bám ai
             cooldownRef.current = step.state;
             if (step.done) {
               cooldownRef.current = null;
@@ -239,6 +287,7 @@ export default function KioskPage() {
           }
           // chestRoom 1.1: dưới cằm còn ≥ 1,1 lần chiều cao mặt → ảnh lấy trọn vùng ngực, nơi có logo áo đồng phục (v1.20.0).
           const g = checkGate(res.face, video, scratchRef.current!, { minFace: 180, maxAngle: 20, chestRoom: 1.1 });
+          paintGuide(video, g.face ? (g.face.box as [number, number, number, number]) : null, g.ok);
           if (!g.ok) {
             stable = 0;
             frames = [];
@@ -292,7 +341,7 @@ export default function KioskPage() {
       stop = true;
       stopCamera(stream);
     };
-  }, [submit]);
+  }, [submit, paintGuide]);
 
   function fullscreen() {
     const el = document.documentElement;
@@ -311,20 +360,39 @@ export default function KioskPage() {
         <video ref={videoRef} className="absolute inset-0 size-full -scale-x-100 object-cover" playsInline muted />
         <canvas ref={snapRef} className="hidden" />
         <canvas ref={scratchRef} className="hidden" />
+        {/*
+          Lớp phủ "máy đang nhìn vào đâu" (v1.20.2): ô bám theo khuôn mặt và dải tô sáng ĐÚNG vùng áo mà máy chủ
+          sẽ cắt (cùng hằng số SHIRT_CROP). Vị trí do paintGuide ghi thẳng vào style mỗi khung hình.
+        */}
+        <div ref={liveGuideRef} className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-200">
+          <div ref={faceBoxRef} className="absolute rounded-2xl border-[3px] transition-colors duration-200" style={{ borderColor: "rgb(251 191 36)" }} />
+          <div ref={shirtBoxRef} className="absolute rounded-xl border-2 border-dashed transition-colors duration-200" style={{ borderColor: "rgb(251 191 36)" }}>
+            <span className="absolute inset-x-0 top-1/2 -translate-y-1/2 text-center text-sm font-semibold tracking-wide text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
+              vùng áo
+            </span>
+          </div>
+        </div>
         {/* Khung hướng dẫn đặt mặt (chữ nhật bo góc + 4 góc đánh dấu) */}
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
           <div
+            ref={frameRef}
             className={cx(
               // Tỉ lệ ảnh thẻ 4×6 (2:3): đứng đúng khung thì ảnh có cả mặt lẫn phần áo (v1.20.0).
               "relative aspect-[2/3] h-[76%] rounded-3xl border-2 transition-colors duration-300",
               phase === "collecting" || phase === "sending"
-                ? "border-emerald-400/70 shadow-[0_0_0_9999px_rgb(2_6_23/0.45)]"
-                : "border-white/25 shadow-[0_0_0_9999px_rgb(2_6_23/0.55)]",
+                ? "shadow-[0_0_0_9999px_rgb(2_6_23/0.45)]"
+                : "shadow-[0_0_0_9999px_rgb(2_6_23/0.55)]",
             )}
+            style={{ borderColor: "rgb(255 255 255 / 0.25)" }}
           >
-            {/* Vạch gợi ý: đặt đầu trong phần trên, vai/ngực chạm vạch dưới */}
-            <span className="absolute inset-x-6 top-[58%] border-t border-dashed border-white/35" />
-            <span className="absolute left-1/2 top-[58%] -translate-x-1/2 translate-y-1 text-[11px] font-medium tracking-wide text-white/60">ngang ngực</span>
+            {/* Khung tĩnh: chỉ hiện khi CHƯA thấy mặt; thấy mặt rồi thì lớp phủ bên trên vẽ bám theo người. */}
+            <div ref={staticGuideRef} className="absolute inset-0 transition-opacity duration-200">
+              <span className="absolute inset-x-[22%] top-[10%] h-[42%] rounded-[50%] border-2 border-dashed border-white/40" />
+              <span className="absolute inset-x-0 top-[28%] text-center text-base font-bold tracking-[0.2em] text-white/70">ĐẦU</span>
+              <span className="absolute inset-x-4 top-[58%] bottom-[8%] rounded-2xl border-2 border-dashed border-white/30 bg-white/5" />
+              <span className="absolute inset-x-0 top-[64%] text-center text-base font-bold tracking-[0.15em] text-white/70">ÁO ĐỒNG PHỤC</span>
+              <span className="absolute inset-x-0 top-[71%] text-center text-xs font-medium text-white/50">để hở logo trước ngực</span>
+            </div>
             {(["top-0 left-0 border-t-[6px] border-l-[6px] rounded-tl-3xl", "top-0 right-0 border-t-[6px] border-r-[6px] rounded-tr-3xl", "bottom-0 left-0 border-b-[6px] border-l-[6px] rounded-bl-3xl", "bottom-0 right-0 border-b-[6px] border-r-[6px] rounded-br-3xl"] as const).map((pos) => (
               <span
                 key={pos}

@@ -586,6 +586,20 @@ mặt choán gần hết khung, chỉ còn thấy cổ áo. Thay vì viết lu�
 - Khung ngắm kiosk đổi `aspect-[4/5]` → **`aspect-[2/3]`** (tỉ lệ ảnh thẻ 4×6), thêm vạch gợi ý "ngang ngực".
 - `minFace: 180` giữ nguyên nên chất lượng nhận diện khuôn mặt không đổi. Cập nhật kiosk = tải lại trang, **không** enroll lại.
 
+**Lớp phủ "máy đang nhìn vào đâu" (v1.20.2).** Vạch nét đứt cố định ở 58% chiều cao khung không tự giải thích được
+(*"vai phải ngay đường đó hay sao?"*) và **không phản ánh luật máy dùng**: khung 2:3 vẽ bằng CSS trên thẻ `<video>` đang
+`object-cover`, tức là video đã bị cắt bớt, nên khung vẽ không trùng vùng `checkGate` thật sự đo (`video.videoHeight`).
+
+Thay bằng vẽ đúng thứ máy nhìn:
+- **Chưa thấy mặt** → khung tĩnh hai vùng có nhãn đọc được từ xa: vòng bầu dục **ĐẦU**, dải **ÁO ĐỒNG PHỤC**.
+- **Thấy mặt** → ô bám theo khuôn mặt + dải tô sáng đúng vùng áo, **xanh lục** khi đạt cổng, **vàng** khi chưa; viền
+  khung ngoài cũng đổi màu ngay, không đợi sang giai đoạn thu khung.
+- Dải vùng áo dùng `chestRectRaw()` — **cùng hằng số `SHIRT_CROP`** với chỗ máy chủ cắt thật, nên hình vẽ không bao giờ
+  lệch; và vẽ bản **chưa kẹp vào khung hình** để người đứng quá sát thấy dải tụt hẳn ra ngoài đáy, tự hiểu phải lùi.
+- Đổi toạ độ ở `src/lib/face/overlay.ts` (`coverFit` + `rectToScreen`, hàm thuần, có test): tính ngược `object-cover`
+  và `-scale-x-100`. Vị trí ghi **thẳng vào `style`**, không qua state React — vòng nhận diện chạy liên tục, `setState`
+  mỗi khung hình sẽ làm rớt khung. Thuần hiển thị, không đụng `captureSnapshot`/`submit`/nhánh quyết định nào.
+
 ### 32.2 Máy quyết định thế nào
 
 Cắt vùng ngực từ khung mặt (`src/lib/uniform-crop.ts`, `SHIRT_CROP`): rộng `1,6·w`, cao `0,9·h`, bắt đầu từ `y + 1,3·h`.

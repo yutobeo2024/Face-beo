@@ -36,18 +36,30 @@ export type CropOptions = {
 export const SHIRT_CROP: CropOptions = { widthFactor: 1.6, heightFactor: 0.9, topOffset: 1.3, minCoverage: 0.6, minSidePx: 96 };
 
 /**
+ * Vùng áo MONG MUỐN theo khung mặt, số thực và CHƯA kẹp vào khung hình.
+ *
+ * Kiosk vẽ đúng vùng này lên màn hình (v1.20.2): đứng quá sát thì người thấy dải tụt hẳn ra ngoài đáy khung — tự hiểu
+ * vì sao máy bảo lùi lại. Dùng chung hằng số với `chestRect` nên hình vẽ không bao giờ lệch với chỗ máy chủ cắt thật.
+ */
+export function chestRectRaw(faceBox: FaceBox, opts: CropOptions = SHIRT_CROP): { left: number; top: number; width: number; height: number } {
+  const [fx, fy, fw, fh] = faceBox;
+  if (!(fw > 0 && fh > 0)) throw new Error("Khung mặt không hợp lệ");
+  const width = opts.widthFactor * fw;
+  const height = opts.heightFactor * fh;
+  return { left: fx + fw / 2 - width / 2, top: fy + opts.topOffset * fh, width, height };
+}
+
+/**
  * Vùng áo trong ảnh `imgW × imgH` theo khung mặt `faceBox`.
  * Ví dụ: ảnh 1280×720, mặt [540, 170, 200, 250] → vùng mong muốn rộng 320, cao 212, bắt đầu ở (480, 482).
  */
 export function chestRect(imgW: number, imgH: number, faceBox: FaceBox, opts: CropOptions = SHIRT_CROP): CropResult {
-  const [fx, fy, fw, fh] = faceBox;
   if (!(imgW > 0 && imgH > 0)) throw new Error("Kích thước ảnh không hợp lệ");
-  if (!(fw > 0 && fh > 0)) throw new Error("Khung mặt không hợp lệ");
-
-  const wantW = opts.widthFactor * fw;
-  const wantH = opts.heightFactor * fh;
-  const wantLeft = fx + fw / 2 - wantW / 2;
-  const wantTop = fy + opts.topOffset * fh;
+  const want = chestRectRaw(faceBox, opts);
+  const wantW = want.width;
+  const wantH = want.height;
+  const wantLeft = want.left;
+  const wantTop = want.top;
 
   const left = Math.round(Math.max(0, wantLeft));
   const top = Math.round(Math.max(0, wantTop));
