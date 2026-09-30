@@ -6,7 +6,6 @@ import { addDays, todayVN } from "@/lib/attendance";
 import { invalidatePermissionCache } from "@/lib/permissions";
 import { byCode, ctx, req, sessionCookie } from "./helpers";
 import { buildUniformReport, uniformToXlsx } from "@/lib/uniform-report";
-import { employeeScopeWhere } from "@/lib/auth";
 
 import * as uniformXlsx from "@/app/api/reports/uniform.xlsx/route";
 import * as attendanceXlsx from "@/app/api/reports/attendance.xlsx/route";

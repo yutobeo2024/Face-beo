@@ -231,3 +231,82 @@ const round = (v: number | null | undefined) => (v == null ? null : Math.round(v
 
 /** Dùng cho trang theo dõi: ngày hôm nay theo giờ VN. */
 export const todayForUniform = () => todayVN();
+
+// ---------------------------------------------------------------------------
+// Tin Zalo tổng hợp cuối ngày (job `uniform-digest`, 18:00)
+// ---------------------------------------------------------------------------
+
+/** Tối đa số dòng trong một tin; dư thì ghi "… và N người nữa". */
+export const DIGEST_MAX_ROWS = 15;
+
+const DIGEST_LABEL: Record<string, string> = { FAIL: "không đúng đồng phục", REVIEW: "cần xem lại" };
+
+/**
+ * Gom kết quả đồng phục trong ngày thành MỘT tin cho quản lý mỗi (phòng | ngày | ca).
+ *
+ * Luật khóa cứng:
+ *   - Chỉ bản ghi chế độ ON: bản chạy thử chỉ để đo ngưỡng, không làm phiền ai.
+ *   - Cả nhóm đều đạt thì KHÔNG gửi tin (vẫn đánh dấu đã gom để hôm sau không lặp).
+ *   - Không kèm lý do cá nhân; chỉ tên, mã và mức kết luận.
+ */
+export async function runUniformDigest(now = new Date()) {
+  const { sendZaloMessage } = await import("./zalo-oa");
+  const { approversFor, fmtDate } = await import("./notify");
+
+  const workDate = vnDate(now);
+  const rows = await prisma.uniformCheck.findMany({
+    where: { workDate, mode: "ON", digestAt: null },
+    orderBy: [{ departmentId: "asc" }, { shiftId: "asc" }, { id: "asc" }],
+  });
+  if (!rows.length) return { groups: 0, sent: 0, skipped: 0 };
+
+  const employees = new Map(
+    (await prisma.employee.findMany({ where: { id: { in: [...new Set(rows.map((r) => r.employeeId))] } }, select: { id: true, code: true, name: true } })).map((e) => [e.id, e]),
+  );
+  const depts = new Map(
+    (await prisma.department.findMany({ where: { id: { in: [...new Set(rows.map((r) => r.departmentId))] } }, select: { id: true, name: true, managerId: true } })).map((d) => [d.id, d]),
+  );
+  const shifts = new Map((await prisma.shift.findMany({ select: { id: true, name: true } })).map((s) => [s.id, s.name]));
+
+  type Group = { deptId: number; shiftId: number | null; items: { name: string; code: string; note: string }[]; total: number };
+  const groups = new Map<string, Group>();
+  for (const r of rows) {
+    const key = `${r.departmentId}|${r.shiftId ?? 0}`;
+    const g = groups.get(key) ?? { deptId: r.departmentId, shiftId: r.shiftId, items: [], total: 0 };
+    g.total++;
+    const e = employees.get(r.employeeId);
+    if (e && (r.status === "FAIL" || r.status === "REVIEW")) g.items.push({ name: e.name, code: e.code, note: DIGEST_LABEL[r.status] });
+    groups.set(key, g);
+  }
+
+  let sent = 0;
+  let skipped = 0;
+  for (const g of groups.values()) {
+    if (!g.items.length) {
+      skipped++; // cả nhóm đều đạt: không làm phiền quản lý
+      continue;
+    }
+    const dept = depts.get(g.deptId);
+    const recipients = dept?.managerId ? [dept.managerId] : await approversFor(-1);
+    for (const to of recipients) {
+      const suffix = dept?.managerId ? "" : `:${to}`;
+      const r = await sendZaloMessage({
+        toEmployeeId: to,
+        messageType: "UNIFORM_DIGEST",
+        dedupeKey: `uniform-digest:${g.deptId}:${workDate}:${g.shiftId ?? 0}${suffix}`,
+        data: {
+          departmentName: dept?.name ?? "",
+          dateText: fmtDate(workDate),
+          shiftName: (g.shiftId != null && shifts.get(g.shiftId)) || "",
+          total: g.total,
+          items: g.items.slice(0, DIGEST_MAX_ROWS),
+          more: Math.max(0, g.items.length - DIGEST_MAX_ROWS),
+        },
+      });
+      if (r.status !== "DUPLICATE") sent++;
+    }
+  }
+
+  await prisma.uniformCheck.updateMany({ where: { id: { in: rows.map((r) => r.id) } }, data: { digestAt: now } });
+  return { groups: groups.size, sent, skipped };
+}

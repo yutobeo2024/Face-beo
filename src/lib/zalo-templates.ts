@@ -8,6 +8,7 @@ export type MessageType =
   | "LATE_REMINDER"
   | "ABSENT_WARNING"
   | "ABSENT_DIGEST"
+  | "UNIFORM_DIGEST"
   | "GROUP_EVENT"
   | "GROUP_STAFF"
   | "CORRECTION_READY"
@@ -124,6 +125,21 @@ export const zaloTemplates: Record<MessageType, (d: Data) => string> = {
       .join("\n"),
   // Tin về một nhân viên vào nhóm nhân viên (chấm công, đơn từ): chỉ trạng thái, không lý do.
   GROUP_STAFF: (d) => [`${s(d.icon)} ${s(d.employeeName)} (${s(d.employeeCode)}) — ${s(d.departmentName)}`, s(d.text), `🕒 ${s(d.atText)}`].join("\n"),
+  // Tổng hợp đồng phục cuối ngày cho quản lý phòng: chỉ tên + mức kết luận, KHÔNG kèm lý do cá nhân.
+  UNIFORM_DIGEST: (d) => {
+    const rows = (d.items as { name: string; code: string; note?: string }[]) ?? [];
+    const more = Number(d.more ?? 0);
+    return [
+      `👕 Đồng phục — ${s(d.shiftName) ? `ca ${s(d.shiftName)} ` : ""}ngày ${s(d.dateText)} (${s(d.departmentName)})`,
+      `Đã kiểm ${s(d.total)} người, cần lưu ý ${rows.length + more} người:`,
+      ...rows.map((r, i) => `${i + 1}. ${r.name} (${r.code})${r.note ? ` — ${r.note}` : ""}`),
+      more > 0 ? `… và ${more} người nữa` : "",
+      `“Cần xem lại” là máy chưa chắc — Nhân sự xem ảnh rồi mới kết luận.`,
+      `Xem chi tiết: ${link("/admin/uniform")}`,
+    ]
+      .filter(Boolean)
+      .join("\n");
+  },
   ABSENT_DIGEST: (d) => {
     const rows = (d.items as { name: string; code: string; note?: string }[]) ?? [];
     return [

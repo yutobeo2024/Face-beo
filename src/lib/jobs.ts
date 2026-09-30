@@ -4,7 +4,7 @@ import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { DateTime } from "luxon";
 import { prisma } from "./db";
-import { runUniformCheck } from "./uniform-service";
+import { runUniformCheck, runUniformDigest } from "./uniform-service";
 import { cropDir } from "./uniform-storage";
 import { addDays, decideAbsence, shiftInterval, shiftWindow, summarizeDay, TZ, vnDate, vnTime, type DayPlan, type RequestLite } from "./attendance";
 import { buildPlanner, loadRequests } from "./attendance-service";
@@ -28,7 +28,7 @@ import { clearProfilePhoto } from "./profile-photo";
 import { medinetCheck } from "./medinet-check";
 import { TRACKED_WHERE } from "./attendance-scope";
 
-export const JOBS = ["absence-check", "missing-checkout", "zalo-token-refresh", "snapshot-cleanup", "db-backup", "roster-reminder", "roster-report", "request-overdue", "credential-check", "medinet-check", "uniform-check"] as const;
+export const JOBS = ["absence-check", "missing-checkout", "zalo-token-refresh", "snapshot-cleanup", "db-backup", "roster-reminder", "roster-report", "request-overdue", "credential-check", "medinet-check", "uniform-check", "uniform-digest"] as const;
 export type JobName = (typeof JOBS)[number];
 
 type DigestItem = { name: string; code: string; note?: string };
@@ -462,5 +462,7 @@ export async function runJob(name: JobName, now = new Date()) {
       return medinetCheck(now);
     case "uniform-check":
       return runUniformCheck(now);
+    case "uniform-digest":
+      return runUniformDigest(now);
   }
 }
