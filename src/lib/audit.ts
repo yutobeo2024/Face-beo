@@ -30,6 +30,10 @@ export type AuditAction =
   | "HOLIDAY_UPDATE"
   | "INFOLINK_UPDATE"
   | "CHATBOT_ACCESS"
+  // v1.20.0 — kiểm đồng phục
+  | "UNIFORM_TEMPLATE"
+  | "UNIFORM_MODE"
+  | "UNIFORM_DECIDE"
   | "EMPLOYEE_CREATE"
   | "EMPLOYEE_UPDATE"
   | "EMPLOYEE_DELETE"

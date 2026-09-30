@@ -65,6 +65,35 @@ export async function idParam(ctx: RouteCtx<{ id: string }>): Promise<number> {
   return n;
 }
 
+/**
+ * Đọc thân yêu cầu nhưng dừng ngay khi vượt giới hạn: không tin Content-Length, không nạp hết tệp lớn vào bộ nhớ.
+ * Dùng cho các đường tải ảnh lên (ảnh đại diện, ảnh mẫu áo).
+ */
+export async function readLimitedBody(req: Request, limit: number, tooBigMessage: string): Promise<Uint8Array> {
+  if (Number(req.headers.get("content-length") ?? 0) > limit) throw badRequest(tooBigMessage);
+  if (!req.body) return new Uint8Array();
+  const reader = req.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.length;
+    if (size > limit) {
+      await reader.cancel().catch(() => {});
+      throw badRequest(tooBigMessage);
+    }
+    chunks.push(value);
+  }
+  const out = new Uint8Array(size);
+  let off = 0;
+  for (const c of chunks) {
+    out.set(c, off);
+    off += c.length;
+  }
+  return out;
+}
+
 export function json(data: unknown, init?: ResponseInit) {
   return NextResponse.json(data, init);
 }

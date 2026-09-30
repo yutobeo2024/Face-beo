@@ -6,6 +6,7 @@ import { Avatar, Badge, Button, Card, CardHeader, EmptyState, ErrorBox, Field, L
 import { useToast } from "@/components/toast";
 import { DeptSelect } from "@/components/dept-select";
 import { Icon } from "@/components/icons";
+import { useCan } from "../admin-nav";
 
 type Summary = {
   employeeId: number;
@@ -26,6 +27,7 @@ type Summary = {
 const monthStart = () => todayStr().slice(0, 8) + "01";
 
 export default function ReportsPage() {
+  const can = useCan();
   const [from, setFrom] = useState(monthStart());
   const [to, setTo] = useState(todayStr());
   const [dept, setDept] = useState("");
@@ -64,6 +66,16 @@ export default function ReportsPage() {
             >
               <Icon name="clock" /> Xuất giờ vào/ra
             </a>
+            {can("uniform.view") && (
+              <a
+                href={valid ? `/api/reports/uniform.xlsx${params}` : undefined}
+                aria-disabled={!valid}
+                title="Kết quả kiểm áo đồng phục — file riêng, không trộn vào bảng công"
+                className="inline-flex h-11 items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 text-[15px] font-semibold text-slate-700 hover:bg-slate-50 aria-disabled:pointer-events-none aria-disabled:opacity-50"
+              >
+                <Icon name="shirt" /> Xuất đồng phục
+              </a>
+            )}
             <a
               href={valid ? `/api/reports/attendance.xlsx${params}` : undefined}
               aria-disabled={!valid}

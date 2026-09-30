@@ -22,6 +22,38 @@ Ghi lại những điểm đã phát hiện trong quá trình làm và test, c�
   tạo lại OA Secret Key webhook (nếu Zalo cho), dán lại vào `/opt/facebeo/.env`, `up -d --force-recreate`.
 - **Trạng thái:** chờ chủ dự án thao tác.
 
+## Đã chốt v1.20.0 (30/09/2026) — Kiểm áo đồng phục
+
+Bảy quyết định chủ dự án đã chốt trước khi làm:
+
+| Điểm | Quyết định |
+|---|---|
+| Cách nhận biết | **Mô hình AI chạy trên VPS**, không gửi ảnh ra dịch vụ ngoài |
+| Mẫu áo | Khác **màu rõ rệt**, 2–3 mẫu mỗi phòng, mặc mẫu nào cũng đạt |
+| Phạm vi | **Theo từng phòng**: mẫu áo riêng, bật/tắt riêng |
+| Lúc kiểm | Chỉ **lượt chấm VÀO đầu ca**, một lần mỗi người mỗi ngày |
+| Khi máy không chắc | **CẦN XEM LẠI** → Nhân sự xác nhận; không bao giờ ghi vi phạm oan |
+| Zalo | **Một tin tổng hợp cuối ngày cho quản lý phòng**, không kèm lý do cá nhân |
+| Khung hình | **Sửa khung ngắm kiosk** để ảnh luôn lấy từ ngang ngực trở lên (tỉ lệ ảnh thẻ 4×6), thay vì viết luật chịu đựng ảnh thiếu |
+
+Ba quyết định phát sinh **từ số đo trên ảnh thật** của phòng khám (6 ảnh mặc đúng đồng phục, 4 ảnh mặc sai, chạy qua đúng mã
+sản phẩm — xem `scripts/fetch-uniform-model.mjs` phần "VÌ SAO LÀ DINOv2"):
+
+1. **Đổi mô hình sang DINOv2-small.** Mô hình đầu tiên (MobileCLIP-S0) chấm áo đen thường **0,741** — cao hơn cả áo đồng phục
+   thật (**0,459**). Nó chỉ nhận ra "người mặc áo sẫm màu". DINOv2 tách đúng hướng: mặc đúng 0,91–0,96 · mặc sai 0,65–0,81.
+2. **Siết ngưỡng mặc định** từ 0,55/0,55/0,45 (số đoán) lên **màu ≥ 0,80 · hình dáng ≥ 0,85 · trượt ≤ 0,70 · trọng số màu 0,50**.
+   Với ngưỡng cũ, áo thun trắng vẫn được chấm "đạt". Số đo thật: màu 0,919–0,958 (đúng) vs 0,269–0,639 (sai).
+3. **Ảnh áo rời không dùng làm mẫu được.** Lấy ảnh áo trải phẳng làm mẫu rồi chấm chính 6 người đang mặc đúng cái áo đó thì
+   **cả 6 đều "không đạt"** (0,35–0,40). Mẫu áo chỉ lấy trung bình từ **ảnh người mặc**; chỉ có ảnh áo rời thì `sampleCount = 0`
+   nên máy luôn để "cần xem lại". Cách lấy mẫu chuẩn: nhân viên chấm công bình thường → Nhân sự bấm "Dùng ảnh này làm ảnh mẫu".
+
+**Kết quả cổng thử:** 6/6 mặc đúng → Đạt · 3/4 mặc sai → Không đạt · 1 → Cần xem lại (ảnh cắt trúng cổ). Báo oan **0 %**.
+Khoảng cách điểm đúng/sai **0,270** (cổng đòi ≥ 0,150).
+
+**Còn phải làm khi vận hành:** ảnh dùng cho cổng thử là ảnh điện thoại, sáng hơn ảnh kiosk (độ sáng vùng áo thật chỉ 0,16–0,28).
+Ngưỡng hiện tại là điểm khởi đầu; mỗi phòng vẫn phải chạy **chế độ thử 2 tuần** rồi đo lại bằng `npm run uniform:eval`
+(ràng buộc **báo oan ≤ 2 %**) trước khi bật thật.
+
 ## Đã chốt v1.19.0 (25/09/2026)
 
 - **Bảng gợi ý của chat bot chia theo mảng tài liệu**, không theo chuyên khoa nữa: 4 mục lớn (TRA CỨU MÃ ICD, CHUYÊN MÔN Y TẾ,

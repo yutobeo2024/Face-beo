@@ -181,6 +181,7 @@ Nhân viên có thể tự rút đồng ý ở `/me`. Khi đó mẫu khuôn mặ
 
 ```bash
 npm run models:liveness      # tải models/MiniFASNetV2.onnx (1,7 MB) và kiểm tra SHA-256
+# npm run models:uniform     # (khác mục đích) tải models/uniform.onnx cho kiểm đồng phục — xem mục Kiểm áo đồng phục
 # trong .env:
 LIVENESS_SERVER=true
 # LIVENESS_MODEL_PATH=...    # tùy chọn, mặc định models/MiniFASNetV2.onnx
@@ -337,11 +338,17 @@ Chạy `npm audit` trước mỗi lần phát hành. Mục tiêu là **0 lỗ h�
 - Chạy `npx prisma migrate deploy` mỗi lần cập nhật. SQLite được bật `journal_mode=WAL` và `busy_timeout=5000` khi khởi động.
 - Cookie session dùng cờ `secure` trong production. Nếu thử nghiệm trong LAN qua HTTP, đặt `INSECURE_COOKIES=true` (không dùng khi chạy thật).
 - Mô hình Human được phục vụ từ `public/models` (do `npm install` chép vào). Nếu chép lại mô hình sau khi build, phải khởi động lại `next start`.
+- Kiểm áo đồng phục (v1.20.0): chỉ ở **lượt chấm vào đầu ca**, chạy trong job nền `uniform-check` (*/5) nên không làm chậm kiosk.
+  Ba tín hiệu — màu áo (thuần TS, cân bằng trắng Shades-of-Gray trên toàn khung) · logo trước ngực (`patternRatio`) · DINOv2-small
+  ONNX (`npm run models:uniform`, 24 MB, nạp rồi giải phóng theo lô). Ba mức Đạt / Không đạt / **Cần xem lại**; ảnh thiếu hay mô
+  hình hỏng **luôn** ra "cần xem lại", không bao giờ thành vi phạm. Mẫu áo chỉ lấy trung bình từ **ảnh người mặc** (ảnh áo rời
+  chấm sai hẳn — đo thật 0,35–0,40 với chính người mặc đúng áo đó). Bảng theo dõi `/admin/uniform`, Excel riêng
+  `DongPhuc_*.xlsx`, tin Zalo 18:00 cho quản lý phòng. Đo ngưỡng: `npm run uniform:eval`.
 - Chat bot tra cứu y khoa (v1.17.0; trả lời theo luồng từ v1.18.0; bảng gợi ý chia 4 mục ICD / chuyên môn / quy chế / mô tả công việc từ v1.19.0): `/me/chatbot` + `src/lib/chatbot.ts`; gọi dự án medichat qua mạng docker kèm khóa `X-Chat-Key` (`/api/v1/chat/stream`, chữ hiện dần); cấp quyền theo phòng / từng người (`chatbot.grant`); không lưu nội dung, chỉ đếm lượt.
 - Tốc độ (v1.16.0): đi thẳng qua Caddy trên VPS thay vì vòng Cloudflare (`deploy/caddy-face.conf`, `deploy/vn-ip-refresh.sh`); `useApi` nhớ dữ liệu theo URL; ảnh đại diện cache 10 phút; bỏ luxon ở client; thêm chỉ mục DB.
 - Trang Cấu hình (v1.15.0): chia 5 tab (`?tab=`), mã ở `src/app/admin/settings/sections/`. Nhóm Zalo xóa được (DELETE `/api/settings/zalo/groups/[groupId]`) — báo vào nhóm rồi gỡ; webhook có thể thêm lại nhóm ở trạng thái không nhận tin.
 - Cài thành app (v1.14.0): `public/manifest.webmanifest` + `public/sw.js` (không lưu đệm gì ngoài `offline.html`), nút cài ở khung menu; kiosk giữ `public/kiosk.webmanifest`. Icon: `npm run icons`.
-- Sao lưu ra ngoài máy chủ (v1.10.4): service `backup` đẩy bản DB mới nhất + `data/credentials/` + `data/avatars/` + `data/photos/` lên **Cloudflare R2**, mã hóa, mỗi ngày 03:30,
+- Sao lưu ra ngoài máy chủ (v1.10.4): service `backup` đẩy bản DB mới nhất + `data/credentials/` + `data/avatars/` + `data/photos/` + `data/uniforms/` lên **Cloudflare R2**, mã hóa, mỗi ngày 03:30,
   giữ 30 ngày; khôi phục bằng `deploy/restore-offsite.sh` (xem `docs/DEPLOY-VPS.md` mục Sao lưu). Cất bản `.env` ra ngoài máy chủ.
 - Khi vượt khoảng 500 nhân viên hoặc cần nhiều máy chủ: đổi `provider` sang `postgresql`.
 

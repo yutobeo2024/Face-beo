@@ -223,7 +223,7 @@ export async function buildAttendanceReport(where: object, from: string, to: str
 }
 
 /** Thêm một sheet từ danh sách object (dòng đầu là tiêu đề), kèm độ rộng cột. */
-function addSheet(wb: ExcelJS.Workbook, name: string, rows: Record<string, string | number>[], widths: number[], headers?: string[]) {
+export function addSheet(wb: ExcelJS.Workbook, name: string, rows: Record<string, string | number>[], widths: number[], headers?: string[]) {
   const ws = wb.addWorksheet(name);
   const cols = headers ?? Object.keys(rows[0] ?? {});
   ws.columns = cols.map((h, i) => ({ header: h, key: h, width: widths[i] ?? 12 }));

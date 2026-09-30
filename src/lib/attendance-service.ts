@@ -204,6 +204,8 @@ export type ScanInput = {
   livenessScore?: number | null;
   matchScore?: number | null;
   verified3D?: boolean;
+  /** Khung mặt JSON "[x,y,w,h]" theo pixel ảnh đã lưu — job kiểm đồng phục cắt vùng áo từ đây (v1.20.0). */
+  faceBox?: string | null;
   note?: string | null;
   createdById?: number | null;
   sourceRequestId?: number | null;
@@ -254,6 +256,7 @@ export async function recordScan(input: ScanInput, db?: Prisma.TransactionClient
         livenessScore: input.livenessScore ?? null,
         matchScore: input.matchScore ?? null,
         verified3D: input.verified3D ?? false,
+        faceBox: input.faceBox ?? null,
         note: input.note ?? (a.outOfShift ? "Ngoài ca" : null),
         createdById: input.createdById ?? null,
         sourceRequestId: input.sourceRequestId ?? null,

@@ -237,7 +237,8 @@ export default function KioskPage() {
             }
             continue;
           }
-          const g = checkGate(res.face, video, scratchRef.current!, { minFace: 180, maxAngle: 20 });
+          // chestRoom 1.1: dưới cằm còn ≥ 1,1 lần chiều cao mặt → ảnh lấy trọn vùng ngực, nơi có logo áo đồng phục (v1.20.0).
+          const g = checkGate(res.face, video, scratchRef.current!, { minFace: 180, maxAngle: 20, chestRoom: 1.1 });
           if (!g.ok) {
             stable = 0;
             frames = [];
@@ -314,12 +315,16 @@ export default function KioskPage() {
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
           <div
             className={cx(
-              "relative aspect-[4/5] h-[62%] rounded-3xl border-2 transition-colors duration-300",
+              // Tỉ lệ ảnh thẻ 4×6 (2:3): đứng đúng khung thì ảnh có cả mặt lẫn phần áo (v1.20.0).
+              "relative aspect-[2/3] h-[76%] rounded-3xl border-2 transition-colors duration-300",
               phase === "collecting" || phase === "sending"
                 ? "border-emerald-400/70 shadow-[0_0_0_9999px_rgb(2_6_23/0.45)]"
                 : "border-white/25 shadow-[0_0_0_9999px_rgb(2_6_23/0.55)]",
             )}
           >
+            {/* Vạch gợi ý: đặt đầu trong phần trên, vai/ngực chạm vạch dưới */}
+            <span className="absolute inset-x-6 top-[58%] border-t border-dashed border-white/35" />
+            <span className="absolute left-1/2 top-[58%] -translate-x-1/2 translate-y-1 text-[11px] font-medium tracking-wide text-white/60">ngang ngực</span>
             {(["top-0 left-0 border-t-[6px] border-l-[6px] rounded-tl-3xl", "top-0 right-0 border-t-[6px] border-r-[6px] rounded-tr-3xl", "bottom-0 left-0 border-b-[6px] border-l-[6px] rounded-bl-3xl", "bottom-0 right-0 border-b-[6px] border-r-[6px] rounded-br-3xl"] as const).map((pos) => (
               <span
                 key={pos}

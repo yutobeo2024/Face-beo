@@ -29,6 +29,13 @@ export function req(path: string, init: { method?: string; cookie?: string; body
   });
 }
 
+/** Yêu cầu có thân NHỊ PHÂN (tải ảnh lên): ảnh đại diện, ảnh mẫu áo. */
+export function binaryReq(path: string, body: Uint8Array, init: { method?: string; cookie?: string } = {}) {
+  const headers: Record<string, string> = { "content-type": "application/octet-stream" };
+  if (init.cookie) headers.cookie = init.cookie;
+  return new NextRequest(new URL(path, BASE), { method: init.method ?? "PUT", headers, body: new Uint8Array(body) });
+}
+
 export const ctx = <P extends Record<string, string | string[]>>(params: P = {} as P) => ({ params: Promise.resolve(params) });
 
 export async function byCode(code: string) {
@@ -58,6 +65,8 @@ export async function enrollFake(employeeId: number, seed: number) {
 
 /** Snapshot JPEG mẫu (ảnh có sẵn trong gói Human) + 5 điểm mốc giả — đủ để qua validator. */
 export const SAMPLE_LANDMARKS: [number, number][] = [[560, 400], [620, 400], [590, 440], [565, 480], [615, 480]];
+/** Khung mặt khớp với bộ điểm mốc trên, còn chỗ bên dưới cho vùng áo. */
+export const SAMPLE_FACE_BOX: [number, number, number, number] = [520, 330, 150, 190];
 export const sampleJpegDataUrl = () =>
   "data:image/jpeg;base64," + readFileSync(join(process.cwd(), "node_modules", "@vladmandic", "human", "assets", "samples.jpg")).toString("base64");
 
@@ -65,9 +74,11 @@ export const sampleJpegDataUrl = () =>
  * Body quét kiosk giả lập: mô hình nhận diện được thay bằng hook trả về `embedding` cho mọi snapshot.
  * (Bài test nghiệp vụ chấm công không phụ thuộc mô hình ONNX.)
  */
-export function scanPayload(embedding: number[] | null) {
+export function scanPayload(embedding: number[] | null, opts: { faceBox?: [number, number, number, number] | null } = {}) {
   __setFaceEmbedTestHook(embedding ? () => Float32Array.from(embedding) : null);
-  return { landmarks: SAMPLE_LANDMARKS, snapshot: sampleJpegDataUrl() };
+  // Kiosk thật luôn gửi kèm khung mặt (bắt buộc khi bật L2); job kiểm đồng phục cắt vùng áo từ đây.
+  const faceBox = opts.faceBox === undefined ? SAMPLE_FACE_BOX : opts.faceBox;
+  return { landmarks: SAMPLE_LANDMARKS, snapshot: sampleJpegDataUrl(), ...(faceBox ? { faceBox } : {}) };
 }
 
 export async function pairedDevice(name = "Kiosk test") {

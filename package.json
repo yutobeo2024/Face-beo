@@ -20,7 +20,9 @@
     "admin:create": "tsx scripts/create-admin.ts",
     "models:liveness": "node scripts/fetch-liveness-model.mjs",
     "postinstall": "prisma generate && node scripts/copy-models.mjs",
-    "models:face": "node scripts/fetch-face-model.mjs"
+    "models:face": "node scripts/fetch-face-model.mjs",
+    "models:uniform": "node scripts/fetch-uniform-model.mjs",
+    "uniform:eval": "tsx scripts/uniform-eval.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",

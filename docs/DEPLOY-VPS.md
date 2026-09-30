@@ -8,7 +8,7 @@ Caddy / ufw / container khác.
 ```
 /opt/facebeo/
   .env        # cấu hình + bí mật (chmod 600) — KHÔNG commit
-  data/       # facebeo.db, snapshots/, backups/, credentials/, avatars/, photos/
+  data/       # facebeo.db, snapshots/, backups/, credentials/, avatars/, photos/, uniforms/, uniform-crops/
   models/     # w600k_r50.onnx, MiniFASNetV2.onnx
   src/        # git clone của repo
 ```
@@ -55,7 +55,7 @@ git clone https://github.com/yutobeo2024/Face-beo.git /opt/facebeo/src
 cd /opt/facebeo/src
 alias fb='docker compose -f deploy/docker-compose.yml -p facebeo --env-file /opt/facebeo/.env'
 fb build app
-fb run --rm --entrypoint "" app sh -c "npm run models:face && npm run models:liveness"   # bỏ qua nếu đã chép .onnx
+fb run --rm --entrypoint "" app sh -c "npm run models:face && npm run models:liveness && npm run models:uniform"   # bỏ qua nếu đã chép .onnx
 fb up -d
 docker logs --tail 50 facebeo-app-1        # phải có "[cron] đã lên lịch" và "Ready"
 docker logs --tail 20 facebeo-cloudflared-1 # phải có "Registered tunnel connection"
@@ -98,7 +98,7 @@ image cũ vẫn phục vụ; gián đoạn chỉ vài giây lúc đổi containe
 
 - Job `db-backup` (03:00) ghi `VACUUM INTO` vào `/opt/facebeo/data/backups/`, giữ 14 bản — **vẫn nằm trên VPS**.
 - **Ra ngoài VPS — Cloudflare R2 (v1.10.4)**: service `backup` (image `rclone/rclone`, `deploy/backup.sh`) mỗi ngày **03:30** nén bản DB mới
-  nhất trong `backups/` + `credentials/` + `avatars/` + `photos/` → **mã hóa** (rclone crypt) → bucket R2 `facebeo-backup`, thư mục `facebeo/daily/`,
+  nhất trong `backups/` + `credentials/` + `avatars/` + `photos/` + `uniforms/` → **mã hóa** (rclone crypt) → bucket R2 `facebeo-backup`, thư mục `facebeo/daily/`,
   giữ **30 ngày**. Không đưa `snapshots/` (ảnh quét tự xóa sau 90 ngày) và **không đưa `.env`** lên R2.
   - Biến trong `/opt/facebeo/.env`: `R2_ACCOUNT_ID`, `R2_BUCKET`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` (token R2 chỉ quyền Object Read & Write
     trên đúng bucket), `BACKUP_CRYPT_PASSWORD`, `BACKUP_CRYPT_SALT` (tạo ngẫu nhiên trên VPS).
