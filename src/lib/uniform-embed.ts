@@ -14,7 +14,8 @@ import type { InferenceSession } from "onnxruntime-node";
 
 /** Phiên bản ghi kèm mỗi mẫu áo: đổi mô hình ⇒ phải tính lại mẫu, không so lẫn lộn hai phiên bản. */
 export const UNIFORM_MODEL_VERSION = process.env.UNIFORM_MODEL_VERSION || "uniform-v1";
-export const UNIFORM_INPUT_SIZE = Number(process.env.UNIFORM_INPUT_SIZE) || 224;
+/** Cạnh ảnh mô hình đòi. MobileCLIP-S0 (mô hình mặc định) dùng 256×256, ảnh chỉ chia 255 — không chuẩn hóa mean/std. */
+export const UNIFORM_INPUT_SIZE = Number(process.env.UNIFORM_INPUT_SIZE) || 256;
 
 export const uniformModelPath = () => process.env.UNIFORM_MODEL_PATH || join(process.cwd(), "models", "uniform.onnx");
 

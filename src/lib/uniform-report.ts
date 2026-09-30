@@ -12,16 +12,12 @@ import { vnTime } from "./attendance";
 import { addSheet } from "./reports";
 import { getSettings } from "./settings";
 import { UNIFORM_MODEL_VERSION } from "./uniform-embed";
-import { UNIFORM_REASON_LABEL, type UniformReason } from "./uniform-score";
+import { UNIFORM_REASON_LABEL, UNIFORM_STATUS_LABEL, type UniformReason } from "./uniform-score";
 
-export const UNIFORM_STATUS_LABEL: Record<string, string> = {
-  PASS: "Đạt",
-  FAIL: "Không đạt",
-  REVIEW: "Cần xem lại",
-  SKIPPED: "Bỏ qua",
-};
 
 const MODE_LABEL: Record<string, string> = { ON: "Kiểm thật", SHADOW: "Chạy thử" };
+
+const statusLabel = (v: string) => UNIFORM_STATUS_LABEL[v as keyof typeof UNIFORM_STATUS_LABEL] ?? v;
 
 /** Phần trăm làm tròn 1 chữ số. */
 const pct1 = (num: number, den: number) => (den ? Math.round((num / den) * 1000) / 10 : 0);
@@ -111,8 +107,8 @@ export async function buildUniformReport(where: object, from: string, to: string
       department: e.department.name,
       shift: (c.shiftId != null && shifts.get(c.shiftId)) || "",
       inTime: vnTime(c.checkTime),
-      status: UNIFORM_STATUS_LABEL[c.status] ?? c.status,
-      machineStatus: UNIFORM_STATUS_LABEL[c.machineStatus] ?? c.machineStatus,
+      status: statusLabel(c.status),
+      machineStatus: statusLabel(c.machineStatus),
       template: (c.templateId != null && templates.get(c.templateId)) || "",
       score: c.score,
       colorScore: c.colorScore,

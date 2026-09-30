@@ -11,11 +11,11 @@
  */
 import { SHIRT_CROP, centerBand, chestRect, type CropRect, type FaceBox } from "./uniform-crop";
 import { brightnessStats, colorHistogram, grayWorldGains, meanColorHex, patternRatio, skinRatio } from "./uniform-color";
-import { UNIFORM_MODEL_VERSION, type UniformEmbedder } from "./uniform-embed";
+import { UNIFORM_INPUT_SIZE, UNIFORM_MODEL_VERSION, type UniformEmbedder } from "./uniform-embed";
 import { decideUniform, scoreTemplates, type TemplateScore, type UniformDecision, type UniformQuality, type UniformThresholds, type UniformTemplateRef } from "./uniform-score";
 
-/** Cạnh ảnh đưa vào mô hình AI. */
-export const EMBED_SIZE = 224;
+/** Cạnh ảnh đưa vào mô hình AI — theo mô hình đang dùng (đổi mô hình thì đặt UNIFORM_INPUT_SIZE). */
+export const EMBED_SIZE = UNIFORM_INPUT_SIZE;
 
 export type ShirtFeature = {
   rect: CropRect;
