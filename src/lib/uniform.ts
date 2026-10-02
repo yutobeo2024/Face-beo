@@ -12,7 +12,7 @@
 import { SHIRT_CROP, centerBand, chestRect, type CropRect, type FaceBox } from "./uniform-crop";
 import { brightnessStats, colorHistogram, grayWorldGains, meanColorHex, patternRatio, skinRatio } from "./uniform-color";
 import { UNIFORM_INPUT_SIZE, UNIFORM_MODEL_VERSION, type UniformEmbedder } from "./uniform-embed";
-import { decideUniform, scoreTemplates, type TemplateScore, type UniformDecision, type UniformQuality, type UniformThresholds, type UniformTemplateRef } from "./uniform-score";
+import { decideUniform, QUALITY_LIMITS, scoreTemplates, type TemplateScore, type UniformDecision, type UniformQuality, type UniformThresholds, type UniformTemplateRef } from "./uniform-score";
 
 /** Cạnh ảnh đưa vào mô hình AI — theo mô hình đang dùng (đổi mô hình thì đặt UNIFORM_INPUT_SIZE). */
 export const EMBED_SIZE = UNIFORM_INPUT_SIZE;
@@ -57,8 +57,10 @@ export async function extractShirtFeature(
 
   const region = await sharp(jpeg, { failOn: "none" }).extract(crop.rect).removeAlpha().raw().toBuffer();
   const quality: UniformQuality = { ...statsOf(region), skin: skinRatio(region) };
-  if (quality.brightness < 0.1) return { ok: false, reason: "TOO_DARK" };
-  if (quality.contrast < 0.02) return { ok: false, reason: "LOW_CONTRAST" };
+  // Dùng CHUNG hằng với bảng quyết định — viết cứng số ở đây từng làm hạ ngưỡng trong uniform-score.ts không có tác
+  // dụng gì, 5/13 ảnh vẫn bị loại oan vì chỗ này vẫn giữ 0,1 (v1.21.2).
+  if (quality.brightness < QUALITY_LIMITS.minBrightness) return { ok: false, reason: "TOO_DARK" };
+  if (quality.contrast < QUALITY_LIMITS.minContrast) return { ok: false, reason: "LOW_CONTRAST" };
 
   // Màu: chỉ lấy dải giữa để tường / người đứng sau không lẫn vào.
   const bandRect = centerBand(crop.rect);
