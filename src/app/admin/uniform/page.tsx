@@ -54,6 +54,17 @@ const FILTERS = [
 
 const pct = (v: number | null) => (v == null ? "—" : `${Math.round(v * 100)}%`);
 
+/** Lý do không cắt được ảnh vùng áo — job ghi vào `detail` kể cả khi bỏ qua (v1.21.1). */
+function cropIssue(detail: string | null): string | null {
+  if (!detail) return null;
+  try {
+    const d = JSON.parse(detail) as { cropReasonText?: string };
+    return d.cropReasonText ?? null;
+  } catch {
+    return null;
+  }
+}
+
 type Tpl = { id: number; departmentId: number; name: string; sampleCount: number };
 
 export default function UniformPage() {
@@ -185,7 +196,9 @@ export default function UniformPage() {
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={r.cropUrl} alt="Vùng áo" className="size-40 rounded-xl object-cover ring-1 ring-slate-200" />
                     ) : (
-                      <div className="grid size-40 place-items-center rounded-xl bg-slate-100 text-xs text-slate-500">Không có ảnh</div>
+                      <div className="grid size-40 place-items-center rounded-xl bg-slate-100 p-2 text-center text-xs text-slate-500">
+                        {cropIssue(r.detail) ?? "Không có ảnh"}
+                      </div>
                     )}
                     <div className="space-y-2 text-sm">
                       <p className="text-slate-600">

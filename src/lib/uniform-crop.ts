@@ -29,11 +29,25 @@ export type CropOptions = {
 };
 
 /**
- * Tỉ lệ mặc định: vùng từ 0,3 đến 1,2 lần chiều cao khuôn mặt tính từ cằm — ôm trọn chỗ đặt LOGO trước ngực áo
- * (áo đồng phục của phòng khám luôn có logo ở đây, đó là dấu hiệu không đổi theo ánh sáng).
- * Hiệu chỉnh lại sau đợt chạy thử nếu bố cục thực tế lệch.
+ * Tỉ lệ mặc định — ĐO TRÊN ẢNH THẬT của phòng khám (13 lượt chấm công 01–02/10/2026), không phải số đoán.
+ *
+ * Bộ dò khuôn mặt (BlazeFace) phát ra khung **vuông** (202×202, 258×258… — đo thật, lệch ≤ 1 px), nên `h` ở đây xấp xỉ
+ * BỀ NGANG mặt chứ không phải chiều cao mặt. Bản đầu đặt `topOffset = 1,3` vì tưởng khung cao hơn rộng ⇒ vùng cắt bắt
+ * đầu quá thấp và **đi qua mất logo**: 3/6 ảnh ngày 02/10 không thấy logo. Cắt từ NGAY DƯỚI CẰM thì cả 3 đều hiện logo.
+ *
+ * `topOffset = 1,05` (không phải 1,0) để chừa biên dưới cằm, giữ bất biến "ảnh vùng áo không chứa khuôn mặt" kể cả khi
+ * làm tròn số thực. `heightFactor = 1,05` phủ hết vùng ngực nơi đặt logo.
  */
-export const SHIRT_CROP: CropOptions = { widthFactor: 1.6, heightFactor: 0.9, topOffset: 1.3, minCoverage: 0.6, minSidePx: 96 };
+export const SHIRT_CROP: CropOptions = { widthFactor: 1.6, heightFactor: 1.05, topOffset: 1.05, minCoverage: 0.6, minSidePx: 96 };
+
+/**
+ * Khoảng trống DƯỚI CẰM mà vùng áo cần, tính theo lần chiều cao khung mặt.
+ *
+ * Cổng chất lượng của kiosk (`checkGate`, tham số `chestRoom`) phải dùng ĐÚNG hằng này. Trước đây cổng ghi tay 1,1
+ * trong khi vùng cắt cần 1,2 ⇒ 5/13 ảnh bị cắt hụt đáy khung hình. Suy ra từ chính `SHIRT_CROP` nên hai bên không bao
+ * giờ lệch lại được, và đúng với mọi camera / mọi tỉ lệ khung hình.
+ */
+export const CHEST_ROOM_NEEDED = SHIRT_CROP.topOffset + SHIRT_CROP.heightFactor - 1;
 
 /**
  * Vùng áo MONG MUỐN theo khung mặt, số thực và CHƯA kẹp vào khung hình.
@@ -51,7 +65,7 @@ export function chestRectRaw(faceBox: FaceBox, opts: CropOptions = SHIRT_CROP): 
 
 /**
  * Vùng áo trong ảnh `imgW × imgH` theo khung mặt `faceBox`.
- * Ví dụ: ảnh 1280×720, mặt [540, 170, 200, 250] → vùng mong muốn rộng 320, cao 212, bắt đầu ở (480, 482).
+ * Ví dụ: ảnh 1280×720, mặt [540, 170, 200, 200] → vùng mong muốn rộng 320, cao 210, bắt đầu ở (480, 380).
  */
 export function chestRect(imgW: number, imgH: number, faceBox: FaceBox, opts: CropOptions = SHIRT_CROP): CropResult {
   if (!(imgW > 0 && imgH > 0)) throw new Error("Kích thước ảnh không hợp lệ");

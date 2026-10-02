@@ -5,7 +5,7 @@ import { beep, boxToSnapshot, captureSnapshot, checkGate, engineInfo, landmarks5
 import { cooldownStep, startCooldown, type CooldownState } from "@/lib/face/cooldown";
 import { isIdle, phaseAfterResult } from "@/lib/face/standby";
 import { boxToRect, coverFit, rectToScreen } from "@/lib/face/overlay";
-import { chestRectRaw } from "@/lib/uniform-crop";
+import { CHEST_ROOM_NEEDED, chestRectRaw } from "@/lib/uniform-crop";
 import { DeviceRevokedError, NetworkError, queue, sendScan, type QueuedScan, type ScanResponse } from "@/lib/face/offline-queue";
 import { Icon } from "@/components/icons";
 import { cx, Spinner } from "@/components/ui";
@@ -325,8 +325,8 @@ export default function KioskPage() {
             }
             continue;
           }
-          // chestRoom 1.1: dưới cằm còn ≥ 1,1 lần chiều cao mặt → ảnh lấy trọn vùng ngực, nơi có logo áo đồng phục (v1.20.0).
-          const g = checkGate(res.face, video, scratchRef.current!, { minFace: 180, maxAngle: 20, chestRoom: 1.1 });
+          // chestRoom suy từ chính SHIRT_CROP (v1.21.1) — viết tay số 1.1 ở đây từng làm 5/13 ảnh bị cắt hụt đáy.
+          const g = checkGate(res.face, video, scratchRef.current!, { minFace: 180, maxAngle: 20, chestRoom: CHEST_ROOM_NEEDED });
           paintGuide(video, g.face ? (g.face.box as [number, number, number, number]) : null, g.ok);
           if (!g.ok) {
             stable = 0;

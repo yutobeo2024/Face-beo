@@ -1,18 +1,56 @@
 // v1.20.0: cắt vùng áo từ khung mặt — hàm thuần, không cần ảnh thật.
 import { describe, expect, it } from "vitest";
-import { chestRect, centerBand, SHIRT_CROP, type FaceBox } from "@/lib/uniform-crop";
+import { CHEST_ROOM_NEEDED, chestRect, centerBand, SHIRT_CROP, type FaceBox } from "@/lib/uniform-crop";
 
 const IMG_W = 1280;
 const IMG_H = 720;
 
 describe("cắt vùng áo", () => {
   it("mặt chuẩn giữa khung → vùng áo nằm trọn trong ảnh, đúng tỉ lệ", () => {
-    const r = chestRect(IMG_W, IMG_H, [540, 170, 200, 250]);
+    // Khung mặt THẬT từ bộ dò là hình vuông (đo trên 13 lượt chấm công thật), nên ca mẫu dùng khung vuông.
+    const r = chestRect(IMG_W, IMG_H, [540, 170, 200, 200]);
     expect(r.ok).toBe(true);
     if (!r.ok) return;
-    // rộng 1,6×200 = 320; cao 0,9×250 = 225; trái = 640 − 160 = 480; trên = 170 + 1,3×250 = 495
-    expect(r.rect).toEqual({ left: 480, top: 495, width: 320, height: 225 });
-    expect(r.coverage).toBeCloseTo(1, 2); // làm tròn pixel nên hụt chưa tới 0,3 %
+    // rộng 1,6×200 = 320; cao 1,05×200 = 210; trái = 640 − 160 = 480; trên = 170 + 1,05×200 = 380
+    expect(r.rect).toEqual({ left: 480, top: 380, width: 320, height: 210 });
+    expect(r.coverage).toBeCloseTo(1, 2);
+  });
+
+  it("CHEST_ROOM_NEEDED luôn đúng bằng chỗ vùng áo cần dưới cằm — cổng kiosk dùng chính số này", () => {
+    expect(CHEST_ROOM_NEEDED).toBeCloseTo(SHIRT_CROP.topOffset + SHIRT_CROP.heightFactor - 1, 10);
+    // Đủ chỗ theo cổng ⇒ cắt được trọn vẹn. Trước v1.21.1 cổng đòi 1,1 mà vùng cắt cần 1,2 nên 5/13 ảnh bị cắt hụt đáy.
+    for (const h of [180, 200, 230, 258, 300]) {
+      const y = Math.floor(IMG_H - (1 + CHEST_ROOM_NEEDED) * h); // vừa đủ chỗ theo cổng
+      const r = chestRect(IMG_W, IMG_H, [540, y, h, h]);
+      expect(r.ok).toBe(true);
+      if (!r.ok) return;
+      expect(r.coverage).toBeGreaterThan(0.99); // không bị kẹp đáy
+    }
+  });
+
+  it("13 khung mặt THẬT của phòng khám (01–02/10/2026) đều cắt trọn, không tràn đáy", () => {
+    const that: FaceBox[] = [
+      [538, 286, 202, 202], [512, 230, 211, 211], [543, 122, 249, 249], [507, 282, 186, 186],
+      [583, 155, 258, 258], [489, 140, 258, 258], [528, 160, 231, 232], [514, 214, 222, 222],
+      [525, 163, 255, 255], [535, 173, 223, 222], [513, 190, 243, 244], [570, 202, 241, 241],
+      [539, 182, 228, 228],
+    ];
+    for (const box of that) {
+      const r = chestRect(IMG_W, IMG_H, box);
+      expect(r.ok).toBe(true);
+      if (!r.ok) return;
+      expect(r.coverage).toBeGreaterThan(0.99);
+      expect(r.rect.top + r.rect.height).toBeLessThanOrEqual(IMG_H);
+      expect(r.rect.top).toBeGreaterThanOrEqual(box[1] + box[3]); // vẫn dưới cằm
+    }
+  });
+
+  it("khung hình DỌC (tablet 720×1280) cũng đúng luật, dư chỗ hơn hẳn khung ngang", () => {
+    const r = chestRect(720, 1280, [250, 300, 220, 220]);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.coverage).toBeCloseTo(1, 2);
+    expect(r.rect.top).toBeGreaterThanOrEqual(520); // dưới cằm
   });
 
   it("mặt sát đáy khung → không đủ chỗ cho áo, báo CROP_OUT_OF_FRAME", () => {

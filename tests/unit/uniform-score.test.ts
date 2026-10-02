@@ -96,9 +96,22 @@ describe("kết luận", () => {
     expect(decideUniform({ scores: [sc({ embedScore: 0.2, colorScore: 0.9, score: 0.55 })] })).toMatchObject({ status: "REVIEW", reason: "AMBIGUOUS" });
   });
 
+  it("ảnh TỐI THẬT của kiosk vẫn dùng được, không bị loại oan", () => {
+    // Đo thật trên webcam kiosk (13 lượt 01–02/10/2026): sáng 0,063–0,192 · tương phản 0,144–0,299.
+    // Mốc 0,10 cũ loại oan 5/13 ảnh hoàn toàn nhìn rõ áo.
+    const d = decideUniform({ scores: [sc({ embedScore: 0.9, colorScore: 0.9 })], quality: { brightness: 0.07, contrast: 0.15, skin: 0.12 } });
+    expect(d.status).toBe("PASS");
+    expect(d.reason).toBeNull();
+  });
+
+  it("tối hẳn (khung hình mù) thì vẫn chặn — tương phản mới là thứ phân biệt", () => {
+    expect(decideUniform({ scores: [sc({ embedScore: 0.9, colorScore: 0.9 })], quality: { brightness: 0.02, contrast: 0.15, skin: 0 } })).toMatchObject({ reason: "TOO_DARK" });
+    expect(decideUniform({ scores: [sc({ embedScore: 0.9, colorScore: 0.9 })], quality: { brightness: 0.07, contrast: 0.005, skin: 0 } })).toMatchObject({ reason: "LOW_CONTRAST" });
+  });
+
   it("ảnh xấu thắng mọi điểm số: điểm cao vẫn CẦN XEM LẠI", () => {
     const cao = [sc({ embedScore: 0.95, colorScore: 0.95, score: 0.95 })];
-    expect(decideUniform({ scores: cao, quality: { brightness: 0.05, contrast: 0.2, skin: 0 } })).toMatchObject({ status: "REVIEW", reason: "TOO_DARK" });
+    expect(decideUniform({ scores: cao, quality: { brightness: 0.02, contrast: 0.2, skin: 0 } })).toMatchObject({ status: "REVIEW", reason: "TOO_DARK" });
     expect(decideUniform({ scores: cao, quality: { brightness: 0.97, contrast: 0.2, skin: 0 } })).toMatchObject({ status: "REVIEW", reason: "TOO_BRIGHT" });
     expect(decideUniform({ scores: cao, quality: { brightness: 0.5, contrast: 0.001, skin: 0 } })).toMatchObject({ status: "REVIEW", reason: "LOW_CONTRAST" });
     expect(decideUniform({ scores: cao, quality: { brightness: 0.5, contrast: 0.2, skin: 0.8 } })).toMatchObject({ status: "REVIEW", reason: "SKIN_DOMINANT" });

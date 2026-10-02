@@ -70,8 +70,16 @@ export const DEFAULT_UNIFORM_THRESHOLDS: UniformThresholds = { passEmbed: 0.85, 
 export const MIN_SAMPLES_TRUSTED = 3;
 
 export type UniformQuality = { brightness: number; contrast: number; skin: number };
-/** Ngưỡng chất lượng ảnh: ảnh chấm công vốn tối (đo thật 0,16–0,28) nên mốc "quá tối" đặt thấp. */
-export const QUALITY_LIMITS = { minBrightness: 0.1, maxBrightness: 0.92, minContrast: 0.02, maxSkin: 0.5 };
+/**
+ * Ngưỡng chất lượng ảnh vùng áo.
+ *
+ * `minBrightness` ĐO THEO TỪNG CAMERA. Webcam máy tính đang dùng cho kiosk: **0,063–0,192** (13 lượt thật 01–02/10/2026)
+ * — mốc 0,10 ban đầu (lấy từ 60 ảnh của máy cũ, 0,16–0,28) đã loại oan 5/13 ảnh dùng được. Đổi camera thì đo lại.
+ *
+ * Thứ thật sự phân biệt "ảnh tối nhưng dùng được" với "khung hình mù" là `minContrast`: đo thật 0,144–0,299, gấp 7–15
+ * lần ngưỡng — nên hạ `minBrightness` không làm lọt ảnh hỏng.
+ */
+export const QUALITY_LIMITS = { minBrightness: 0.04, maxBrightness: 0.92, minContrast: 0.02, maxSkin: 0.5 };
 
 export function cosine(a: ArrayLike<number>, b: ArrayLike<number>): number {
   const n = Math.min(a.length, b.length);

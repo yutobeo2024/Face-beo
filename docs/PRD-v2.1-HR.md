@@ -602,7 +602,20 @@ Thay bằng vẽ đúng thứ máy nhìn:
 
 ### 32.2 Máy quyết định thế nào
 
-Cắt vùng ngực từ khung mặt (`src/lib/uniform-crop.ts`, `SHIRT_CROP`): rộng `1,6·w`, cao `0,9·h`, bắt đầu từ `y + 1,3·h`.
+Cắt vùng ngực từ khung mặt (`src/lib/uniform-crop.ts`, `SHIRT_CROP`): rộng `1,6·w`, cao `1,05·h`, bắt đầu từ `y + 1,05·h`.
+
+> **Hiệu chỉnh v1.21.1 theo 13 lượt chấm công thật (01–02/10/2026).** Bộ dò BlazeFace phát ra khung mặt **vuông**
+> (202×202, 258×258…, lệch ≤ 1 px), nên `h` xấp xỉ bề ngang mặt. Tỉ lệ đầu (`topOffset 1,3` · `heightFactor 0,9`) chọn
+> khi tưởng khung cao hơn rộng ⇒ vùng cắt bắt đầu quá thấp và **đi qua mất logo**: 3/6 ảnh không thấy logo. Sau khi sửa:
+> **6/6 thấy logo**, số ảnh cắt được **8/13 → 12/13** (ca còn lại là tay che camera, chặn đúng).
+>
+> `CHEST_ROOM_NEEDED = topOffset + heightFactor − 1` được xuất từ cùng tệp và kiosk dùng chính hằng này cho `chestRoom`.
+> Trước đây cổng ghi tay `1,1` trong khi vùng cắt cần `1,2` ⇒ 5/13 ảnh bị cắt hụt đáy khung hình. Suy ra từ `SHIRT_CROP`
+> nên hai bên không lệch lại được, đúng với mọi camera và mọi tỉ lệ khung hình (đã có ca test khung dọc 720×1280).
+>
+> `QUALITY_LIMITS.minBrightness` hạ `0,10 → 0,04`: số cũ lấy từ máy cũ (0,16–0,28), còn webcam kiosk hiện tại cho
+> **0,063–0,192** nên loại oan 5/13 ảnh nhìn rõ áo. **Ngưỡng này gắn với từng camera — đổi camera thì đo lại.**
+> `minContrast` giữ `0,02` vì đó mới là thứ phân biệt "tối nhưng dùng được" (đo thật 0,144–0,299) với "khung hình mù".
 Vùng này **không bao giờ giao với khung mặt** → ảnh lưu lại không chứa khuôn mặt (có test tính chất trên 200 khung ngẫu nhiên).
 
 | Tín hiệu | Cách tính | Tệp |

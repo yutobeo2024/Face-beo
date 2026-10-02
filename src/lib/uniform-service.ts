@@ -194,20 +194,25 @@ async function evaluateOne(
   // phải có mẫu. Bỏ qua mô hình AI vì chẳng có gì để so.
   if (!templates.length) {
     let cropUrl: string | null = null;
+    // Ghi lại VÌ SAO không cắt được, kể cả khi bỏ qua: trước đây nuốt mất lý do nên nhìn bảng theo dõi không biết tại
+    // sao thiếu ảnh, phải vào tận máy chủ mới tìm ra (v1.21.1).
+    const info: Record<string, unknown> = { reasonText: UNIFORM_REASON_LABEL.NO_TEMPLATE };
     try {
       const r = await extractShirtFeature(jpeg, box, { embedder: null, keepCrop });
-      if (r.ok && r.feature.cropJpeg) cropUrl = await saveCrop(r.feature.cropJpeg, c.checkTime);
-    } catch {
-      // không cắt được thì thôi, vẫn ghi nhận là BỎ QUA
+      if (r.ok) {
+        info.quality = { brightness: round(r.feature.quality.brightness), contrast: round(r.feature.quality.contrast), skin: round(r.feature.quality.skin) };
+        info.rect = r.feature.rect;
+        info.pattern = round(r.feature.pattern);
+        if (r.feature.cropJpeg) cropUrl = await saveCrop(r.feature.cropJpeg, c.checkTime);
+      } else {
+        info.cropReason = r.reason;
+        info.cropReasonText = UNIFORM_REASON_LABEL[r.reason];
+      }
+    } catch (e) {
+      info.cropReason = "MODEL_ERROR";
+      info.cropReasonText = (e as Error).message;
     }
-    return {
-      ...base,
-      machineStatus: "SKIPPED",
-      status: "SKIPPED",
-      reason: "NO_TEMPLATE",
-      cropUrl,
-      detail: JSON.stringify({ reasonText: UNIFORM_REASON_LABEL.NO_TEMPLATE }),
-    };
+    return { ...base, machineStatus: "SKIPPED", status: "SKIPPED", reason: "NO_TEMPLATE", cropUrl, detail: JSON.stringify(info) };
   }
 
   let feature;
