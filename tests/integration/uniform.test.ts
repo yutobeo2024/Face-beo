@@ -115,8 +115,30 @@ async function templateFromImage(departmentId: number, name: string, color: { r:
 }
 const checkOf = (employeeId: number, workDate = todayVN()) => prisma.uniformCheck.findUnique({ where: { employeeId_workDate: { employeeId, workDate } } });
 
+/**
+ * Giờ quét CỐ ĐỊNH: 09:00 giờ VN hôm nay, mỗi lượt lệch nhau vài phút.
+ * Dùng `new Date()` thì test chỉ xanh khi chạy trong cửa sổ chấm công của ca hôm đó — chạy chiều thứ Bảy là đỏ
+ * (ca "Sáng thứ Bảy" đóng cửa sổ lúc 16:00). Lệch phút còn để tránh luật "quét lại trong 120 giây là trùng".
+ */
+const at = (minute: number) => new Date(`${todayVN()}T02:${String(minute).padStart(2, "0")}:00.000Z`);
+
+/** Lịch cố định cho hai nhân viên test: một ca rộng, đủ cả 7 ngày — không phụ thuộc hôm nay là thứ mấy. */
+let savedSchedule: { id: number; scheduleType: string; workPatternId: number | null }[] = [];
+let testPatternId = 0;
+
 beforeAll(async () => {
   [emp, other] = await Promise.all([byCode("NV007"), byCode("NV009")]);
+  const wide = await prisma.shift.findFirstOrThrow({ where: { startTime: "07:00" } });
+  const pattern = await prisma.workPattern.create({
+    data: {
+      name: `Test dong phuc ${tag}`,
+      monShiftId: wide.id, tueShiftId: wide.id, wedShiftId: wide.id, thuShiftId: wide.id,
+      friShiftId: wide.id, satShiftId: wide.id, sunShiftId: wide.id,
+    },
+  });
+  testPatternId = pattern.id;
+  savedSchedule = await prisma.employee.findMany({ where: { id: { in: [emp.id, other.id] } }, select: { id: true, scheduleType: true, workPatternId: true } });
+  await prisma.employee.updateMany({ where: { id: { in: [emp.id, other.id] } }, data: { scheduleType: "FIXED", workPatternId: pattern.id } });
   const paired = await pairedDevice(`Kiosk ${tag}`);
   cookie = paired.cookie;
   deviceId = paired.device.id;
@@ -156,6 +178,8 @@ afterEach(async () => {
 afterAll(async () => {
   __setUniformEmbedTestHook(null);
   await prisma.kioskDevice.deleteMany({ where: { id: deviceId } });
+  for (const e of savedSchedule) await prisma.employee.update({ where: { id: e.id }, data: { scheduleType: e.scheduleType, workPatternId: e.workPatternId } });
+  if (testPatternId) await prisma.workPattern.deleteMany({ where: { id: testPatternId } });
 });
 
 describe("chọn lượt chấm vào đầu ca", () => {
@@ -210,7 +234,7 @@ describe("chọn lượt chấm vào đầu ca", () => {
 describe("job kiểm đồng phục", () => {
   it("phòng tắt kiểm → không tạo bản ghi nào", async () => {
     const base = await enrollFake(emp.id, 7001);
-    await scan(emp, new Date(), base);
+    await scan(emp, at(1), base);
     await runJob("uniform-check");
     expect(await checkOf(emp.id)).toBeNull();
   });
@@ -220,7 +244,7 @@ describe("job kiểm đồng phục", () => {
     // muốn có mẫu áo phải có ảnh, muốn có ảnh phải có mẫu áo.
     await prisma.department.update({ where: { id: emp.departmentId }, data: { uniformMode: "ON" } });
     const base = await enrollFake(emp.id, 7002);
-    await scan(emp, new Date(), base, { snapshot: await shirtSnapshot() });
+    await scan(emp, at(2), base, { snapshot: await shirtSnapshot() });
     await runJob("uniform-check");
     const c = await checkOf(emp.id);
     expect(c?.status).toBe("SKIPPED");
@@ -233,7 +257,7 @@ describe("job kiểm đồng phục", () => {
     await prisma.department.update({ where: { id: emp.departmentId }, data: { uniformMode: "ON" } });
     await makeTemplate(emp.departmentId, `${tag} Áo navy`);
     const base = await enrollFake(emp.id, 7003);
-    const { log } = await scan(emp, new Date(), base, { snapshot: await shirtSnapshot() });
+    const { log } = await scan(emp, at(3), base, { snapshot: await shirtSnapshot() });
     const r = (await runJob("uniform-check")) as { created: number; scanned: number };
     expect(r.created).toBe(1);
     const c = await checkOf(emp.id);
@@ -250,7 +274,7 @@ describe("job kiểm đồng phục", () => {
   it("chạy job hai lần không tạo bản ghi trùng", async () => {
     await prisma.department.update({ where: { id: emp.departmentId }, data: { uniformMode: "ON" } });
     await makeTemplate(emp.departmentId, `${tag} Áo navy`);
-    await scan(emp, new Date(), await enrollFake(emp.id, 7004));
+    await scan(emp, at(4), await enrollFake(emp.id, 7004));
     await runJob("uniform-check");
     const r2 = (await runJob("uniform-check")) as { created: number };
     expect(r2.created).toBe(0);
@@ -260,7 +284,7 @@ describe("job kiểm đồng phục", () => {
   it("chế độ chạy thử: vẫn chấm điểm nhưng đánh dấu SHADOW", async () => {
     await prisma.department.update({ where: { id: emp.departmentId }, data: { uniformMode: "SHADOW" } });
     await makeTemplate(emp.departmentId, `${tag} Áo navy`);
-    await scan(emp, new Date(), await enrollFake(emp.id, 7005));
+    await scan(emp, at(5), await enrollFake(emp.id, 7005));
     await runJob("uniform-check");
     const c = await checkOf(emp.id);
     expect(c?.mode).toBe("SHADOW");
@@ -272,7 +296,7 @@ describe("job kiểm đồng phục", () => {
     await makeTemplate(emp.departmentId, `${tag} Áo navy`);
     await prisma.employee.update({ where: { id: emp.id }, data: { attendanceExempt: true } });
     try {
-      await scan(emp, new Date(), await enrollFake(emp.id, 7006));
+      await scan(emp, at(6), await enrollFake(emp.id, 7006));
       await runJob("uniform-check");
       expect(await checkOf(emp.id)).toBeNull();
     } finally {
@@ -283,7 +307,7 @@ describe("job kiểm đồng phục", () => {
   it("lượt quét thiếu khung mặt → không kiểm được, không tạo bản ghi", async () => {
     await prisma.department.update({ where: { id: emp.departmentId }, data: { uniformMode: "ON" } });
     await makeTemplate(emp.departmentId, `${tag} Áo navy`);
-    await scan(emp, new Date(), await enrollFake(emp.id, 7007), { faceBox: null });
+    await scan(emp, at(7), await enrollFake(emp.id, 7007), { faceBox: null });
     await runJob("uniform-check");
     expect(await checkOf(emp.id)).toBeNull();
   });
@@ -291,7 +315,7 @@ describe("job kiểm đồng phục", () => {
   it("mẫu áo còn ít ảnh → luôn CẦN XEM LẠI, không kết luận", async () => {
     await prisma.department.update({ where: { id: emp.departmentId }, data: { uniformMode: "ON" } });
     await makeTemplate(emp.departmentId, `${tag} Áo mới`, { samples: 1 });
-    await scan(emp, new Date(), await enrollFake(emp.id, 7008), { snapshot: await shirtSnapshot() });
+    await scan(emp, at(8), await enrollFake(emp.id, 7008), { snapshot: await shirtSnapshot() });
     await runJob("uniform-check");
     const c = await checkOf(emp.id);
     expect(c?.status).toBe("REVIEW");
@@ -301,7 +325,7 @@ describe("job kiểm đồng phục", () => {
   it("mẫu áo đang tắt thì không dùng để so", async () => {
     await prisma.department.update({ where: { id: emp.departmentId }, data: { uniformMode: "ON" } });
     await makeTemplate(emp.departmentId, `${tag} Áo cũ`, { active: false });
-    await scan(emp, new Date(), await enrollFake(emp.id, 7009), { snapshot: await shirtSnapshot() });
+    await scan(emp, at(9), await enrollFake(emp.id, 7009), { snapshot: await shirtSnapshot() });
     await runJob("uniform-check");
     const c = await checkOf(emp.id);
     expect(c?.reason).toBe("NO_TEMPLATE");
@@ -311,8 +335,8 @@ describe("job kiểm đồng phục", () => {
   it("chỉ kiểm phòng đã bật, phòng khác không bị đụng tới", async () => {
     await prisma.department.update({ where: { id: emp.departmentId }, data: { uniformMode: "ON" } });
     await makeTemplate(emp.departmentId, `${tag} Áo navy`);
-    await scan(emp, new Date(), await enrollFake(emp.id, 7010));
-    await scan(other, new Date(), await enrollFake(other.id, 7011));
+    await scan(emp, at(10), await enrollFake(emp.id, 7010));
+    await scan(other, at(11), await enrollFake(other.id, 7011));
     await runJob("uniform-check");
     expect(await checkOf(emp.id)).not.toBeNull();
     expect(await checkOf(other.id)).toBeNull();
@@ -321,7 +345,7 @@ describe("job kiểm đồng phục", () => {
   it("tháng đã chốt công → không kiểm (số liệu tháng đó đã khóa)", async () => {
     await prisma.department.update({ where: { id: emp.departmentId }, data: { uniformMode: "ON" } });
     await makeTemplate(emp.departmentId, `${tag} Áo navy`);
-    await scan(emp, new Date(), await enrollFake(emp.id, 7012));
+    await scan(emp, at(12), await enrollFake(emp.id, 7012));
     const month = todayVN().slice(0, 7);
     const lock = await prisma.payrollLock.create({ data: { month, lockedById: emp.id } });
     try {
@@ -335,7 +359,7 @@ describe("job kiểm đồng phục", () => {
   it("mô hình lỗi → vẫn chạy bằng màu, không ném lỗi ra job", async () => {
     await prisma.department.update({ where: { id: emp.departmentId }, data: { uniformMode: "ON" } });
     await makeTemplate(emp.departmentId, `${tag} Áo navy`);
-    await scan(emp, new Date(), await enrollFake(emp.id, 7013));
+    await scan(emp, at(13), await enrollFake(emp.id, 7013));
     __setUniformEmbedTestHook(() => {
       throw new Error("mô hình hỏng");
     });
@@ -365,7 +389,7 @@ describe("kết luận đúng trên ảnh có áo thật", () => {
   async function chay(anh: { shirt?: { r: number; g: number; b: number }; logo?: boolean }, mau = NAVY, mauLogo = true) {
     await prisma.department.update({ where: { id: emp.departmentId }, data: { uniformMode: "ON" } });
     await templateFromImage(emp.departmentId, `${tag} Áo đồng phục`, mau, mauLogo);
-    await scan(emp, new Date(), await enrollFake(emp.id, 7100 + Math.floor(Math.random() * 800)), { snapshot: await shirtSnapshot(anh) });
+    await scan(emp, at(14), await enrollFake(emp.id, 7100 + Math.floor(Math.random() * 800)), { snapshot: await shirtSnapshot(anh) });
     await runJob("uniform-check");
     return checkOf(emp.id);
   }
@@ -395,7 +419,7 @@ describe("không làm chậm lượt chấm công", () => {
     const base = await enrollFake(emp.id, 7020);
     const đo = async () => {
       const t0 = performance.now();
-      await scan(emp, new Date(), base);
+      await scan(emp, at(15), base);
       return performance.now() - t0;
     };
     await prisma.department.update({ where: { id: emp.departmentId }, data: { uniformMode: "OFF" } });
@@ -408,13 +432,13 @@ describe("không làm chậm lượt chấm công", () => {
   });
 
   it("khung mặt được ghi vào log để job dùng lại", async () => {
-    const { log } = await scan(emp, new Date(), await enrollFake(emp.id, 7021));
+    const { log } = await scan(emp, at(16), await enrollFake(emp.id, 7021));
     expect(log?.faceBox).toBeTruthy();
     expect(JSON.parse(log!.faceBox!)).toHaveLength(4);
   });
 
   it("vẫn quét được khi kiosk đời cũ không gửi khung mặt", async () => {
-    const { result, log } = await scan(emp, new Date(), await enrollFake(emp.id, 7022), { faceBox: null });
+    const { result, log } = await scan(emp, at(17), await enrollFake(emp.id, 7022), { faceBox: null });
     expect(result).toBe("OK");
     expect(log?.faceBox).toBeNull();
   });
