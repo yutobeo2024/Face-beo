@@ -412,3 +412,31 @@ describe("lấy ảnh mẫu từ lượt chấm công", () => {
     expect(t.warning).toBeNull();
   });
 });
+
+// ---------------------------------------------------------------------------
+// Ngưỡng kiểm đồng phục đặt được trên web (v1.21.3) — trước đây tài liệu ghi là có mà giao diện chưa làm.
+// ---------------------------------------------------------------------------
+describe("ngưỡng trong Cấu hình", () => {
+  it("Quản trị đổi được 4 ngưỡng; giá trị ngoài 0–1 bị chặn", async () => {
+    const settingsRoute = await import("@/app/api/settings/route");
+    const put = (body: unknown) => settingsRoute.PUT(req("/api/settings", { method: "PUT", cookie: A, body }), ctx());
+    expect((await put({ uniformPassEmbed: 1.5 })).status).toBe(400);
+    expect((await put({ uniformColorWeight: -0.1 })).status).toBe(400);
+
+    const res = await put({ uniformPassColor: 0.78, uniformPassEmbed: 0.81, uniformFailScore: 0.66, uniformColorWeight: 0.45 });
+    expect(res.status).toBe(200);
+    expect((await res.json()).settings).toMatchObject({ uniformPassColor: 0.78, uniformPassEmbed: 0.81, uniformFailScore: 0.66, uniformColorWeight: 0.45 });
+
+    // Ngưỡng mới có hiệu lực ngay cho lượt kiểm sau: điểm 0,82 trượt vạch cũ 0,85 nhưng qua vạch mới 0,81.
+    const { getSettings } = await import("@/lib/settings");
+    const s = await getSettings();
+    expect(s.uniformPassEmbed).toBe(0.81);
+
+    await put({ uniformPassColor: 0.8, uniformPassEmbed: 0.85, uniformFailScore: 0.7, uniformColorWeight: 0.5 });
+  });
+
+  it("Nhân sự KHÔNG đổi được ngưỡng (chỉ Quản trị)", async () => {
+    const settingsRoute = await import("@/app/api/settings/route");
+    expect((await settingsRoute.PUT(req("/api/settings", { method: "PUT", cookie: H, body: { uniformPassEmbed: 0.5 } }), ctx())).status).toBe(403);
+  });
+});

@@ -37,6 +37,10 @@ export type Settings = {
   credentialWarnDays: number;
   kioskIdleSeconds: number;
   kioskAwakeSeconds: number;
+  uniformPassColor: number;
+  uniformPassEmbed: number;
+  uniformFailScore: number;
+  uniformColorWeight: number;
 };
 export type SettingsField = { key: keyof Settings; label: string; hint: string; step: number };
 export type SystemInfo = {

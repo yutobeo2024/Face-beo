@@ -33,6 +33,32 @@ const KIOSK_FIELDS: SettingsField[] = [
     step: 5,
   },
 ];
+const UNIFORM_FIELDS: SettingsField[] = [
+  {
+    key: "uniformPassColor",
+    label: "Màu áo — vạch đạt",
+    hint: "Điểm giống nhau về màu tối thiểu để tín hiệu màu coi là khớp (0–1). Đo trên phòng khám: mặc đúng áo cho 0,92–0,99.",
+    step: 0.01,
+  },
+  {
+    key: "uniformPassEmbed",
+    label: "Hình dáng — vạch đạt",
+    hint: "Điểm giống nhau về vân vải / kiểu áo tối thiểu (0–1). Đo trên phòng khám: mặc đúng áo cho 0,85–0,91. PHẢI cả hai tín hiệu cùng vượt vạch mới ra Đạt.",
+    step: 0.01,
+  },
+  {
+    key: "uniformFailScore",
+    label: "Vạch trượt — dưới mức này là Không đạt",
+    hint: "Cả hai tín hiệu đều dưới vạch đạt VÀ điểm gộp ≤ mức này thì mới kết luận Không đạt. Ở giữa hai vạch là “cần xem lại”.",
+    step: 0.01,
+  },
+  {
+    key: "uniformColorWeight",
+    label: "Trọng số màu trong điểm gộp",
+    hint: "0,5 = màu và hình dáng tính ngang nhau. Tăng lên nếu các mẫu áo của phòng khác màu rõ rệt.",
+    step: 0.05,
+  },
+];
 const CME_FIELDS: SettingsField[] = [
   { key: "cmeTwoYearHours", label: "CME tối thiểu 2 năm (tiết)", hint: "TT 32/2023: ≥ 48 tiết trong 2 năm liên tiếp.", step: 1 },
   { key: "cmeCycleHours", label: "CME tối thiểu mỗi chu kỳ (tiết)", hint: "≥ 120 tiết / chu kỳ để gia hạn GPHN; chu kỳ trước không cộng sang.", step: 1 },
@@ -123,6 +149,16 @@ export function ThresholdsSection({ busy, run }: SectionProps) {
         saved={saved}
       />
       <NumberCard title="Tính công & lưu ảnh" fields={WORK_FIELDS} form={form} setForm={setForm} busy={busy} run={run} saved={saved} />
+      <NumberCard
+        title="Ngưỡng kiểm đồng phục"
+        hint="ĐỪNG đoán: chạy chế độ thử 2 tuần, Nhân sự bấm Đạt / Không đạt mỗi ngày (cần cả ca mặc SAI áo), rồi chạy npm run uniform:eval để công cụ đề xuất ngưỡng với ràng buộc báo oan ≤ 2 %."
+        fields={UNIFORM_FIELDS}
+        form={form}
+        setForm={setForm}
+        busy={busy}
+        run={run}
+        saved={saved}
+      />
       <NumberCard
         title="Chế độ chờ của máy chấm công"
         hint="Camera chỉ bật khi có người chạm màn hình. Đi ngang lúc đang chờ thì không thể bị ghi lượt quét, và camera không chạy suốt."
