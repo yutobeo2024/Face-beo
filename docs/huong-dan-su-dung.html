@@ -107,7 +107,7 @@ footer{color:var(--muted);font-size:.85rem;text-align:center;padding:10px}
 <div class="layout">
 <nav class="toc" id="toc">
   <div class="brand">📘 Cẩm nang Face Beo</div>
-  <div class="sub">Hướng dẫn sử dụng · bản v1.20</div>
+  <div class="sub">Hướng dẫn sử dụng · bản v1.21</div>
   <button class="menu-mobile" onclick="document.getElementById('toc').classList.toggle('open')">☰ Mục lục</button>
   <ol>
     <li class="grp">Bắt đầu</li>
@@ -874,9 +874,33 @@ sequenceDiagram
     <li>Đặt phòng về <b>Chạy thử</b>, để chạy <b>2 tuần</b>.</li>
     <li>Nhân sự vào bảng theo dõi bấm Đạt / Không đạt cho các ngày — đây là "đáp án" để đo ngưỡng.</li>
     <li>Quản trị chạy <code>npm run uniform:eval</code> kèm khoảng ngày; công cụ đề xuất ngưỡng với ràng buộc <b>báo oan ≤ 2 %</b>.</li>
-    <li>Đặt ngưỡng trong <b>Cấu hình → Chấm công</b>, rồi chuyển phòng sang <b>Bật</b>.</li>
+    <li>Đặt ngưỡng trong <b>Cấu hình → Chấm công → Ngưỡng kiểm đồng phục</b>, rồi chuyển phòng sang <b>Bật</b>.</li>
     <li>Theo dõi 1 tuần, ổn thì mở rộng sang phòng khác.</li>
   </ol>
+
+  <div class="callout bad"><b>Bắt buộc: phải có cả ca mặc SAI áo</b>
+    <p>Trong 2 tuần chạy thử, nếu <b>không ai mặc sai áo lần nào</b> thì không đo được ngưỡng — máy mới chỉ biết áo
+    <i>đúng</i> rơi vào khoảng nào, chưa biết áo <i>sai</i> rơi vào đâu, nên không có cách nào đặt vạch cho an toàn.</p>
+    <p>Hãy sắp xếp <b>2–3 người mặc áo thường</b> đi làm, rải ra <b>4–5 hôm khác nhau</b>, cho đủ khoảng
+    <b>10–15 lượt</b>. Nhớ có cả <b>áo sẫm màu gần giống đồng phục</b> — đó là ca khó nhất và chính nó quyết định
+    vạch đặt ở đâu. Nhân sự xem ảnh rồi bấm <b>Không đạt</b>.</p>
+  </div>
+
+  <h3>11.5.10 Bốn ngưỡng và ý nghĩa</h3>
+  <p><span class="pill a">Quản trị</span> <b>Cấu hình → Chấm công → Ngưỡng kiểm đồng phục</b>. Mỗi tín hiệu cho một
+  <b>điểm giống nhau từ 0 đến 1</b>; ngưỡng là cái vạch — đạt hoặc vượt vạch thì tín hiệu đó coi là khớp.</p>
+  <div class="tw"><table>
+    <tr><th>Ngưỡng</th><th>Mặc định</th><th>Số đo thật tại phòng khám (mặc đúng áo)</th></tr>
+    <tr><td>Màu áo — vạch đạt</td><td>0,80</td><td>0,92 – 0,99</td></tr>
+    <tr><td>Hình dáng — vạch đạt</td><td>0,85</td><td>0,85 – 0,91</td></tr>
+    <tr><td>Vạch trượt</td><td>0,70</td><td>cả hai tín hiệu đều dưới vạch đạt <b>và</b> điểm gộp ≤ mức này mới là "không đạt"</td></tr>
+    <tr><td>Trọng số màu</td><td>0,50</td><td>màu và hình dáng tính ngang nhau</td></tr>
+  </table></div>
+  <p><b>Phải cả hai tín hiệu cùng vượt vạch</b> mới ra "Đạt". Một tín hiệu qua một tín hiệu không thì ra "cần xem lại".</p>
+  <div class="callout warn"><b>Đừng tự chỉnh ngưỡng theo cảm tính</b>
+    <p>Hạ vạch mà không biết áo sai nằm ở mức nào thì có thể hạ qua luôn vùng của áo sai — lúc đó máy cho qua hết,
+    tính năng thành vô dụng. Luôn chạy <code>npm run uniform:eval</code> trên dữ liệu đã gắn nhãn rồi mới đặt.</p>
+  </div>
 
   <div class="callout warn"><b>Người đứng quá sát camera</b>
     <p>Nếu ảnh không thấy đủ vùng áo, máy nhắc ngay tại kiosk <b>"Lùi lại một bước"</b> và không nhận lượt quét đó. Khung ngắm trên màn hình kiosk đã đổi sang tỉ lệ <b>ảnh thẻ 4×6</b> kèm vạch "ngang ngực" để nhân viên tự đứng đúng chỗ.</p>

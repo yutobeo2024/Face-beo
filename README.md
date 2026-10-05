@@ -338,12 +338,20 @@ Chạy `npm audit` trước mỗi lần phát hành. Mục tiêu là **0 lỗ h�
 - Chạy `npx prisma migrate deploy` mỗi lần cập nhật. SQLite được bật `journal_mode=WAL` và `busy_timeout=5000` khi khởi động.
 - Cookie session dùng cờ `secure` trong production. Nếu thử nghiệm trong LAN qua HTTP, đặt `INSECURE_COOKIES=true` (không dùng khi chạy thật).
 - Mô hình Human được phục vụ từ `public/models` (do `npm install` chép vào). Nếu chép lại mô hình sau khi build, phải khởi động lại `next start`.
+- Máy chấm công có **chế độ chờ** (v1.21.0): camera TẮT tới khi có người chạm màn hình, chấm xong tự về chờ, vắng quá
+  `kioskIdleSeconds` cũng về chờ. Chặn chấm nhầm khi đi ngang (chặn trùng chỉ 120 giây, mà lượt sớm nhất = VÀO, mọi lượt
+  sau = RA) và camera không chạy suốt. Quyết định thuần ở `src/lib/face/standby.ts`; hai số đặt trong Cấu hình → Chấm công,
+  trả kèm `/api/kiosk/ping`. Kiosk còn vẽ ô bám theo khuôn mặt + dải vùng áo đúng chỗ máy sẽ cắt (`src/lib/face/overlay.ts`).
 - Kiểm áo đồng phục (v1.20.0): chỉ ở **lượt chấm vào đầu ca**, chạy trong job nền `uniform-check` (*/5) nên không làm chậm kiosk.
   Ba tín hiệu — màu áo (thuần TS, cân bằng trắng Shades-of-Gray trên toàn khung) · logo trước ngực (`patternRatio`) · DINOv2-small
   ONNX (`npm run models:uniform`, 24 MB, nạp rồi giải phóng theo lô). Ba mức Đạt / Không đạt / **Cần xem lại**; ảnh thiếu hay mô
   hình hỏng **luôn** ra "cần xem lại", không bao giờ thành vi phạm. Mẫu áo chỉ lấy trung bình từ **ảnh người mặc** (ảnh áo rời
   chấm sai hẳn — đo thật 0,35–0,40 với chính người mặc đúng áo đó). Bảng theo dõi `/admin/uniform`, Excel riêng
   `DongPhuc_*.xlsx`, tin Zalo 18:00 cho quản lý phòng. Đo ngưỡng: `npm run uniform:eval`.
+  Tỉ lệ cắt và ngưỡng chất lượng **đo trên ảnh thật** (v1.21.1–v1.21.2): khung mặt của bộ dò là hình **vuông** nên vùng
+  áo bắt đầu **ngay dưới cằm** (`topOffset 1,05`), `CHEST_ROOM_NEEDED` suy từ `SHIRT_CROP` để cổng kiosk không lệch, và
+  `QUALITY_LIMITS` là nguồn duy nhất của ngưỡng chất lượng. `minBrightness` gắn với từng camera — đổi camera thì đo lại.
+  Bốn ngưỡng sửa ở Cấu hình → Chấm công → Ngưỡng kiểm đồng phục (v1.21.3).
 - Chat bot tra cứu y khoa (v1.17.0; trả lời theo luồng từ v1.18.0; bảng gợi ý chia 4 mục ICD / chuyên môn / quy chế / mô tả công việc từ v1.19.0): `/me/chatbot` + `src/lib/chatbot.ts`; gọi dự án medichat qua mạng docker kèm khóa `X-Chat-Key` (`/api/v1/chat/stream`, chữ hiện dần); cấp quyền theo phòng / từng người (`chatbot.grant`); không lưu nội dung, chỉ đếm lượt.
 - Tốc độ (v1.16.0): đi thẳng qua Caddy trên VPS thay vì vòng Cloudflare (`deploy/caddy-face.conf`, `deploy/vn-ip-refresh.sh`); `useApi` nhớ dữ liệu theo URL; ảnh đại diện cache 10 phút; bỏ luxon ở client; thêm chỉ mục DB.
 - Trang Cấu hình (v1.15.0): chia 5 tab (`?tab=`), mã ở `src/app/admin/settings/sections/`. Nhóm Zalo xóa được (DELETE `/api/settings/zalo/groups/[groupId]`) — báo vào nhóm rồi gỡ; webhook có thể thêm lại nhóm ở trạng thái không nhận tin.

@@ -122,12 +122,18 @@ const checkOf = (employeeId: number, workDate = todayVN()) => prisma.uniformChec
  */
 const at = (minute: number) => new Date(`${todayVN()}T02:${String(minute).padStart(2, "0")}:00.000Z`);
 
-/** Lịch cố định cho hai nhân viên test: một ca rộng, đủ cả 7 ngày — không phụ thuộc hôm nay là thứ mấy. */
-let savedSchedule: { id: number; scheduleType: string; workPatternId: number | null }[] = [];
+/**
+ * Phòng ban, mẫu tuần và nhân viên RIÊNG cho bộ test này.
+ *
+ * Trước đây dùng chung NV007 / NV009 rồi sửa lịch của họ — nhưng hai người đó có mặt trong 10 file test khác, mà vitest
+ * chạy các file SONG SONG trên cùng `data/test.db`, nên sửa dữ liệu dùng chung làm đỏ file khác. Tự dựng dữ liệu riêng
+ * thì vừa cố định được lịch (ca rộng, đủ 7 ngày) vừa không đụng ai: kể cả `uniformMode` cũng chỉ đổi trên phòng của mình.
+ */
+const testDeptIds: number[] = [];
 let testPatternId = 0;
+const createdEmployees: number[] = [];
 
 beforeAll(async () => {
-  [emp, other] = await Promise.all([byCode("NV007"), byCode("NV009")]);
   const wide = await prisma.shift.findFirstOrThrow({ where: { startTime: "07:00" } });
   const pattern = await prisma.workPattern.create({
     data: {
@@ -137,8 +143,28 @@ beforeAll(async () => {
     },
   });
   testPatternId = pattern.id;
-  savedSchedule = await prisma.employee.findMany({ where: { id: { in: [emp.id, other.id] } }, select: { id: true, scheduleType: true, workPatternId: true } });
-  await prisma.employee.updateMany({ where: { id: { in: [emp.id, other.id] } }, data: { scheduleType: "FIXED", workPatternId: pattern.id } });
+  // HAI phòng riêng: có ca test đòi "phòng khác không bị đụng tới" khi bật kiểm cho phòng của emp.
+  const mk = async (suffix: string) => {
+    const dept = await prisma.department.create({ data: { name: `Test dong phuc ${suffix} ${tag}` } });
+    testDeptIds.push(dept.id);
+    return prisma.employee.create({
+      data: {
+        code: `TDP${suffix}${tag}`,
+        name: `Test dong phuc ${suffix}`,
+        departmentId: dept.id,
+        role: "EMPLOYEE",
+        scheduleType: "FIXED",
+        workPatternId: pattern.id,
+        defaultShiftId: wide.id,
+        passwordHash: "x",
+        active: true,
+      },
+    });
+  };
+  // Tạo tuần tự: hai phòng phải có id khác nhau và test dựa vào thứ tự tạo.
+  emp = (await mk("A")) as unknown as E;
+  other = (await mk("B")) as unknown as E;
+  createdEmployees.push(emp.id, other.id);
   const paired = await pairedDevice(`Kiosk ${tag}`);
   cookie = paired.cookie;
   deviceId = paired.device.id;
@@ -178,8 +204,12 @@ afterEach(async () => {
 afterAll(async () => {
   __setUniformEmbedTestHook(null);
   await prisma.kioskDevice.deleteMany({ where: { id: deviceId } });
-  for (const e of savedSchedule) await prisma.employee.update({ where: { id: e.id }, data: { scheduleType: e.scheduleType, workPatternId: e.workPatternId } });
+  await prisma.faceTemplate.deleteMany({ where: { employeeId: { in: createdEmployees } } });
+  await prisma.attendanceLog.deleteMany({ where: { employeeId: { in: createdEmployees } } });
+  await prisma.uniformCheck.deleteMany({ where: { employeeId: { in: createdEmployees } } });
+  await prisma.employee.deleteMany({ where: { id: { in: createdEmployees } } });
   if (testPatternId) await prisma.workPattern.deleteMany({ where: { id: testPatternId } });
+  if (testDeptIds.length) await prisma.department.deleteMany({ where: { id: { in: testDeptIds } } });
 });
 
 describe("chọn lượt chấm vào đầu ca", () => {

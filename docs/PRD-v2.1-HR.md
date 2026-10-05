@@ -736,3 +736,52 @@ bằng cửa khác hoặc quên chấm ra) sẽ thành **"về sớm" oan**. Mà
 - Mở camera lỗi lúc chạm (chương trình khác đang chiếm) → báo lý do và **ở lại `standby`** để chạm lại, không rơi vào
   `fatal`. Hàng đợi ngoại tuyến nằm ở effect riêng nên vẫn đồng bộ bình thường lúc đang chờ.
 - Không đụng `checkGate`, `captureSnapshot`, `submit` hay bất kỳ nhánh quyết định nào của việc chấm công.
+
+## 34. Hiệu chỉnh kiểm đồng phục bằng dữ liệu thật (v1.21.1 – v1.21.4, 02–05/10/2026)
+
+Ngày đầu chạy thử, chủ dự án báo **ảnh cắt không đủ, có tấm không thấy logo, có người không có ảnh**. Đọc thẳng
+`UniformCheck` + `AttendanceLog.faceBox` + ảnh chấm công trên VPS, đo ra **ba lỗi độc lập** — xem mục 32.2 cho phần
+`SHIRT_CROP` và `CHEST_ROOM_NEEDED`.
+
+### 34.1 Một nguồn duy nhất cho ngưỡng chất lượng
+
+`extractShirtFeature` từng **viết cứng** `0.1` / `0.02` thay vì dùng `QUALITY_LIMITS`, nên v1.21.1 hạ
+`minBrightness` xuống 0,04 mà **không có tác dụng gì** — quét lại dữ liệu thật mới lộ ra: 5 ảnh vẫn bị loại, đúng những
+ảnh có độ sáng 0,063–0,097, ranh giới rơi vào 0,10 chứ không phải 0,04.
+
+Từ v1.21.2 `uniform.ts` dùng `QUALITY_LIMITS`; `tests/unit/uniform-dark.test.ts` dựng ảnh tối đúng dải đo thật rồi chạy
+qua **cả hai cổng** (trích đặc trưng và bảng quyết định) để không tái diễn việc sửa một nơi quên nơi kia.
+
+**Bài học ghi lại:** cải tiến chỉ được coi là xong khi **quét lại dữ liệu thật và đối chiếu từng con số**. Nhìn
+"8/13, khá hơn trước rồi" là bỏ lọt lỗi.
+
+### 34.2 Mẫu áo: số lượng và độ đa dạng
+
+Đo trên phòng Kế toán: tăng từ **3 lên 7 ảnh người mặc** (đa dạng tư thế, độ sáng, có ảnh thấy cổ áo / cổ tay trắng) làm
+điểm hình dáng của ca thấp nhất **tăng +0,051** và vượt ngưỡng, trong khi các ca vốn đã khớp gần như không đổi (±0,004).
+
+⇒ Lấy đủ ảnh mẫu **ngay từ đầu rồi dừng**. Thêm rải rác giữa kỳ chạy thử làm thước đo thay đổi giữa chừng, dữ liệu gắn
+nhãn sẽ trộn nhiều thang điểm và `uniform:eval` đo ra kết quả nhiễu. Giới hạn 10 ảnh mỗi mẫu (`MAX_SAMPLES_PER_TEMPLATE`).
+
+### 34.3 Ngưỡng đặt được trên web (v1.21.3)
+
+Thẻ **Ngưỡng kiểm đồng phục** ở `src/app/admin/settings/sections/thresholds.tsx`, tab **Chấm công**, chỉ Quản trị:
+`uniformPassColor` · `uniformPassEmbed` · `uniformFailScore` · `uniformColorWeight`. Mỗi ô ghi kèm **dải số đo thật** để
+người đọc biết vạch đang nằm đâu so với thực tế. Từ v1.20.0 cẩm nang và PRD đã ghi "đặt trong Cấu hình" nhưng giao diện
+chưa bao giờ có — chỉ sửa được qua API.
+
+Số đo thật phòng khám (03–05/10/2026, mặc đúng áo): **màu 0,92–0,99 · hình dáng 0,85–0,91**. Vạch hình dáng `0,85` đang
+nằm **giữa đám** nên lác đác ra "cần xem lại" dù áo đúng.
+
+**Không chỉnh tay.** Phải chạy thử 2 tuần → Nhân sự gắn nhãn → `npm run uniform:eval` (ràng buộc **báo oan ≤ 2 %**).
+Phép đo **bắt buộc có nhóm mặc SAI áo** (10–15 lượt, gồm áo sẫm gần giống đồng phục): chỉ biết áo đúng nằm ở đâu thì
+không có cách nào đặt vạch an toàn.
+
+### 34.4 Test có chấm công phải cố định thời gian (v1.21.4)
+
+`tests/integration/uniform.test.ts` dùng `new Date()` làm giờ quét nên **đỏ theo giờ chạy và thứ trong tuần**: chạy
+17:02 chiều thứ Bảy thì lượt quét nằm ngoài cửa sổ ca "Sáng thứ Bảy 08:00–12:00" ⇒ `shiftId = null` ⇒ job bỏ qua ⇒ 11 ca
+đỏ, dù sản phẩm không có lỗi.
+
+Sửa: giờ quét **cố định 09:00 giờ VN** (mỗi lượt lệch một phút, tránh luôn luật trùng 120 giây) và gán cho nhân viên test
+một **mẫu tuần đủ 7 ngày** với ca rộng, trả lại lịch cũ ở `afterAll`. Áp dụng cho mọi test có chấm công về sau.

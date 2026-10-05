@@ -22,6 +22,66 @@ Ghi lại những điểm đã phát hiện trong quá trình làm và test, c�
   tạo lại OA Secret Key webhook (nếu Zalo cho), dán lại vào `/opt/facebeo/.env`, `up -d --force-recreate`.
 - **Trạng thái:** chờ chủ dự án thao tác.
 
+## Đã chốt v1.21.x (30/09 – 05/10/2026) — Kiosk và hiệu chỉnh đồng phục bằng dữ liệu thật
+
+### Kiosk: chạm rồi mới chấm (v1.21.0)
+
+| Điểm | Quyết định |
+|---|---|
+| Chống chấm nhầm khi đi ngang | **Chế độ chờ — camera TẮT tới khi chạm màn hình**. Chấm xong tự về chờ |
+| Tự tắt camera | **Sau vài phút không thấy ai** (`kioskIdleSeconds`, mặc định 120 giây) |
+| Giờ cao điểm | `kioskAwakeSeconds` mặc định **0** = chấm xong về chờ ngay. Thấy chậm thì đặt 30 |
+
+Vì sao: chặn quét trùng chỉ có **120 giây**, mà lượt sớm nhất trong ngày là VÀO còn **mọi lượt sau đều là RA** — nên một
+lượt đi ngang lỡ là lượt cuối ngày sẽ thành **"về sớm" oan**. Màn hình cũng hiện tên và giờ cho người đứng gần thấy.
+Chủ dự án chọn phương án an toàn nhất dù phải chạm thêm một cái.
+
+### Chỉ dẫn trên kiosk: vẽ đúng chỗ máy đang nhìn (v1.20.2)
+
+Vạch nét đứt "ngang ngực" cố định ở 58% **không tự giải thích được** và tệ hơn: khung 2:3 vẽ bằng CSS trên thẻ `<video>`
+đang `object-cover` nên **không trùng** vùng `checkGate` thật sự đo. Thay bằng ô bám theo khuôn mặt + dải tô sáng đúng
+vùng áo sẽ cắt (dùng chung hằng `SHIRT_CROP`), xanh khi đạt cổng.
+
+### Ba lỗi đo ra từ 13 ảnh chấm công thật (v1.21.1 – v1.21.2)
+
+Ngày đầu chạy thử phòng Hành chính báo "ảnh cắt không đủ, có tấm không thấy logo, có người không có ảnh". Đọc thẳng
+dữ liệu trên VPS, đo ra **ba lỗi độc lập** — đều là lỗi thiết kế:
+
+1. **Mất logo (3/6).** Bộ dò BlazeFace phát ra khung mặt **vuông** (202×202, 258×258…, lệch ≤ 1 px) nên `h` ≈ bề ngang
+   mặt. Tỉ lệ đầu (`topOffset 1,3`) chọn khi tưởng khung cao hơn rộng ⇒ vùng cắt bắt đầu quá thấp, **đi qua mất logo**.
+   Logo nằm **ngay dưới cằm**. Sửa thành `topOffset 1,05 · heightFactor 1,05`.
+2. **Cắt hụt đáy (5/13).** Cổng kiosk viết tay `chestRoom = 1,1` trong khi vùng cắt cần `1,2`. Giờ suy ra từ chính
+   `SHIRT_CROP` qua `CHEST_ROOM_NEEDED`, hai bên không lệch lại được.
+3. **Không có ảnh (5/13).** `minBrightness = 0,10` lấy từ máy cũ (0,16–0,28); webcam kiosk hiện tại cho **0,063–0,192**.
+   Hạ xuống 0,04. Lần đầu sửa hụt vì `extractShirtFeature` **viết cứng số 0,1** thay vì dùng `QUALITY_LIMITS` — quét lại
+   dữ liệu thật mới phát hiện (v1.21.2).
+
+Kết quả: cắt được **8/13 → 12/13**, logo **3/6 → 6/6**, hết cắt hụt đáy. Ca còn trượt là người đưa tay che camera.
+
+### Mẫu áo: chỉ lấy từ ảnh người mặc, và nên đa dạng
+
+Đo thật: mẫu dựng từ **ảnh áo rời trải phẳng** chấm chính 6 người đang mặc đúng cái áo đó chỉ **0,35–0,40** ⇒ báo oan
+hàng loạt. Nên `recomputeTemplate` chỉ lấy trung bình từ **ảnh người mặc** (`kind = WORN`).
+
+Thêm nữa: tăng mẫu từ 3 lên 7 ảnh đa dạng làm điểm hình dáng của ca thấp nhất **tăng +0,051** và vượt ngưỡng, trong khi
+các ca vốn đã khớp gần như không đổi (±0,004). Nên **lấy đủ ảnh mẫu ngay từ đầu rồi dừng** — thêm rải rác giữa kỳ chạy
+thử sẽ làm dữ liệu đo ngưỡng bị trộn nhiều thước đo.
+
+### Ngưỡng: đo, không đoán — và phải có cả ca mặc SAI áo
+
+Ngưỡng mặc định hiện tại đo trên **ảnh điện thoại**; số thật trên kiosk cho mặc đúng áo là **màu 0,92–0,99 ·
+hình dáng 0,85–0,91**, tức vạch `0,85` đang nằm **giữa đám**. Sửa được ở **Cấu hình → Chấm công → Ngưỡng kiểm đồng phục**
+(v1.21.3 — tài liệu ghi có từ v1.20.0 mà giao diện chưa làm).
+
+**Chốt cách làm:** không chỉnh tay. Chạy thử 2 tuần, Nhân sự gắn nhãn, rồi `npm run uniform:eval` tìm vạch với ràng buộc
+**báo oan ≤ 2 %**. Phép đo **bắt buộc có nhóm mặc SAI áo** (10–15 lượt, gồm cả áo sẫm gần giống navy) — chỉ biết áo đúng
+nằm ở đâu thì không đặt được vạch.
+
+### Còn mở
+
+- **Camera cho kiosk**: máy tính webcam ngang (đang dùng) hay tablet camera dọc. Khung dọc dư chỗ hơn hẳn cho vùng ngực;
+  đổi thì phải đo lại `minBrightness` vì đó là đặc tính của từng camera.
+
 ## Đã chốt v1.20.0 (30/09/2026) — Kiểm áo đồng phục
 
 Bảy quyết định chủ dự án đã chốt trước khi làm:

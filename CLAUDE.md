@@ -7,7 +7,7 @@
   MiniFASNetV2 phía server), đơn từ, tính công/chốt công tháng, xuất Excel, thông báo Zalo OA (nhiều nhóm theo loại tin: minh bạch / chấm công / đơn từ + tin riêng).
 - Stack: Next.js 15 App Router, Prisma 6 (SQLite WAL), zod 4, luxon, exceljs, node-cron, jose JWT (HS256, 7 ngày, `sessionVersion`),
   vitest 4 (test tích hợp gọi thẳng route handler, DB `data/test.db`).
-- Phiên bản hiện tại: **v1.20.0** (tag GitHub `v1.20.0`, repo `yutobeo2024/Face-beo`). Phiên bản ghi trong prose (README, PRD,
+- Phiên bản hiện tại: **v1.21.4** (tag GitHub `v1.21.4`, repo `yutobeo2024/Face-beo`). Phiên bản ghi trong prose (README, PRD,
   OPEN-DECISIONS), không có CHANGELOG; `package.json` version không dùng để đánh số.
 
 ## Lệnh
@@ -92,6 +92,11 @@ chạy cron / khóa Zalo thật song song với VPS (refresh token Zalo dùng m�
   với `categories: []`).
 - PWA (v1.14.0): manifest app nhân sự là file TĨNH `public/manifest.webmanifest` (layout con mới đè được), kiosk dùng `public/kiosk.webmanifest`;
   `public/sw.js` KHÔNG được lưu đệm gì ngoài `offline.html` (tránh chạy bản cũ / lộ dữ liệu có quyền). Luật hiện nút cài ở `src/lib/pwa.ts`.
+- Kiosk có **chế độ chờ** (v1.21.0, `src/lib/face/standby.ts`): camera TẮT tới khi có người chạm màn hình — đi ngang lúc
+  chờ thì không thể bị ghi lượt quét (chặn trùng chỉ có 120 giây, mà lượt sớm nhất = VÀO, mọi lượt sau = RA nên một lượt
+  đi ngang lỡ là lượt cuối ngày sẽ thành "về sớm" oan). Mô hình nạp khi mở trang nhưng KHÔNG mở camera; `standby` nằm
+  ngoài danh sách giai đoạn hoạt động nên vòng lặp không gọi `human.detect` lúc chờ. `kioskIdleSeconds` /
+  `kioskAwakeSeconds` trả kèm `/api/kiosk/ping`, đổi là có hiệu lực trong 20 giây.
 - Đồng phục (v1.20.0, `src/lib/uniform*.ts`): CHỈ kiểm **lượt chấm VÀO đầu ca** (log sớm nhất có `shiftId`, đừng dùng `type === "IN"`),
   một bản ghi mỗi người mỗi ngày. Toàn bộ xử lý ảnh nằm ở job nền `uniform-check` — **không** gọi sharp/ONNX trong
   `api/kiosk/scan` (route chỉ lưu thêm `faceBox`; có test đo tốc độ giữ điều này). Ảnh thiếu / xấu / mô hình hỏng / mẫu áo
@@ -102,12 +107,28 @@ chạy cron / khóa Zalo thật song song với VPS (refresh token Zalo dùng m�
   (`uniformPass*`/`uniformFailScore`/`uniformColorWeight`) đo bằng `npm run uniform:eval` sau 2 tuần chạy thử, đừng đoán.
   Đổi mô hình thì phải đổi `UNIFORM_MODEL_VERSION` (mẫu cũ tự thành "cần tính lại"), `UNIFORM_INPUT_SIZE` và mean/std.
   File Excel đồng phục TÁCH HẲN khỏi bảng công (tháng đã chốt là bất biến, kết luận đồng phục thì sửa được sau).
+- Đồng phục — những gì ĐO ĐƯỢC trên camera thật (v1.21.1–v1.21.2, đừng chỉnh lại theo cảm tính):
+  - Bộ dò BlazeFace phát ra khung mặt **VUÔNG** (`h` ≈ bề ngang mặt, không phải chiều cao). `SHIRT_CROP` để
+    `topOffset 1,05 · heightFactor 1,05 · widthFactor 1,6` — logo nằm **ngay dưới cằm**, cắt thấp hơn là mất logo.
+  - `CHEST_ROOM_NEEDED = topOffset + heightFactor − 1` xuất từ `uniform-crop.ts`; kiosk PHẢI dùng hằng này cho
+    `chestRoom`, **đừng viết tay số** (viết tay 1,1 trong khi vùng cắt cần 1,2 đã làm 5/13 ảnh cắt hụt đáy).
+  - `QUALITY_LIMITS` là nguồn DUY NHẤT của ngưỡng chất lượng — `extractShirtFeature` phải dùng nó, **đừng viết số
+    trong `uniform.ts`** (viết cứng 0,1 ở đó từng làm việc hạ ngưỡng thành vô tác dụng). `minBrightness` gắn với
+    TỪNG camera: webcam kiosk hiện tại cho 0,063–0,192, đổi camera thì đo lại; `minContrast` mới là thứ phân biệt
+    "tối nhưng dùng được" (0,144–0,299) với "khung hình mù".
+  - Số đo thật của phòng khám: mặc đúng áo cho **màu 0,92–0,99 · hình dáng 0,85–0,91**. Ngưỡng sửa ở
+    **Cấu hình → Chấm công → Ngưỡng kiểm đồng phục** (v1.21.3), nhưng **phải đo bằng `npm run uniform:eval`** sau
+    2 tuần chạy thử — và phép đo cần **cả ca mặc SAI áo**, không có thì không đo được gì.
+- Test có chấm công: **đừng dùng `new Date()` làm giờ quét** — lượt quét ngoài cửa sổ ca sẽ có `shiftId = null` và job
+  đồng phục bỏ qua, test đỏ theo giờ chạy / thứ trong tuần. Đặt giờ cố định + gán mẫu tuần đủ 7 ngày cho nhân viên test
+  (xem `tests/integration/uniform.test.ts`).
 - zod 4: schema PATCH không được có `.default()` (`.partial()` vẫn áp default → xóa dữ liệu). Cột JSON trong SQLite lưu chuỗi.
 
-## Việc còn mở (30/09/2026)
-- **Đồng phục**: chọn phòng chạy thử → khai mẫu áo → lấy 3 ảnh người mặc bằng nút "Dùng ảnh này làm ảnh mẫu" ở `/admin/uniform`
-  → chế độ **Chạy thử 2 tuần** → Nhân sự gắn nhãn → `npm run uniform:eval` đo ngưỡng (báo oan ≤ 2 %) → **Bật**. Ngưỡng mặc
-  định hiện tại đo trên ảnh điện thoại (sáng hơn ảnh kiosk), phải đo lại bằng dữ liệu kiosk thật.
+## Việc còn mở (05/10/2026)
+- **Đồng phục — đang chạy thử phòng Kế toán** (từ 03/10/2026): mẫu áo "Áo polo navy" đã bật, 7 ảnh người mặc lấy từ
+  chính lượt chấm công. Mỗi ngày Nhân sự bấm Đạt / Không đạt. **Thiếu nhóm mặc SAI áo** — cần 10–15 lượt (có cả áo sẫm
+  gần giống navy) thì `npm run uniform:eval` mới tìm được vạch. Hẹn đo khoảng **17/10/2026**, xong mới chuyển sang **Bật**.
+  Chưa chốt dùng máy tính webcam ngang hay tablet camera dọc — đổi camera thì phải đo lại `minBrightness`.
 - Chạy thử một phòng. Dữ liệu hiện có (máy cũ và seed demo) chỉ là mockup; máy mới/vận hành thật bắt đầu sạch theo `docs/HANDOFF.md`
   mục 1b: `db:deploy` → `db:seed:base` → `admin:create` (v1.5.4, logic ở `src/lib/bootstrap.ts`). Rà lại hệ số ca, ngày lễ trong năm.
 - Sao lưu ngoài VPS: service `backup` → Cloudflare R2 mã hóa 03:30 (v1.10.4, `deploy/backup.sh`, khôi phục `deploy/restore-offsite.sh`). D7 đổi token tunnel + OA Secret Key webhook (đã lộ trong ảnh chụp 21/09/2026).

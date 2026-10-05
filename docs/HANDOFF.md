@@ -1,6 +1,6 @@
 # Bàn giao / chuyển máy làm việc
 
-Cập nhật 30/09/2026, phiên bản **v1.20.0**. Ngữ cảnh cho Claude Code nằm ở `CLAUDE.md` (gốc repo) — máy mới mở Claude Code trong thư mục
+Cập nhật 05/10/2026, phiên bản **v1.21.4**. Ngữ cảnh cho Claude Code nằm ở `CLAUDE.md` (gốc repo) — máy mới mở Claude Code trong thư mục
 dự án là đọc được ngay. Lịch sử hội thoại và memory của Claude Code **không** nằm trong repo.
 
 ## 0. Máy chủ thật đã ở VPS (từ 21/09/2026)
@@ -113,7 +113,7 @@ tổ chức → v1.5.2 Excel giờ vào/ra → v1.5.3 xóa tài khoản tạo nh
 v1.9.0 hồ sơ hành nghề (GPHN, CME) → v1.10.0 ảnh đại diện → v1.10.1 đóng gói Docker, triển khai VPS qua Cloudflare Tunnel, chuyển dữ liệu →
 v1.10.2 webhook Zalo trên face.ydsg.website (xác thực domain bằng tệp HTML, OA Secret Key).
 
-## 6. Mốc 22–30/09/2026 (v1.10.4 → v1.20.0)
+## 6. Mốc 22/09 – 05/10/2026 (v1.10.4 → v1.21.4)
 
 | Bản | Nội dung |
 |---|---|
@@ -129,6 +129,12 @@ v1.10.2 webhook Zalo trên face.ydsg.website (xác thực domain bằng tệp HT
 | v1.18.0 | Chat bot **trả lời theo luồng** (chữ hiện dần), giao diện chat làm lại: bảng bên đóng/mở, nút Dừng, ba chấm nhấp nháy |
 | v1.19.0 | Bảng gợi ý chia **4 mục tra cứu**: TRA CỨU MÃ ICD · CHUYÊN MÔN Y TẾ · QUY CHẾ – QUY ĐỊNH · MÔ TẢ CÔNG VIỆC (hai mục sau chờ nạp tài liệu, cờ `ready` trong `src/app/me/chatbot/knowledge.ts`) |
 | v1.20.0 | **Kiểm áo đồng phục** ở lượt chấm vào đầu ca: 3 tín hiệu (màu · logo ngực · DINOv2), 3 mức Đạt / Không đạt / Cần xem lại, bảng theo dõi, Excel riêng `DongPhuc_*.xlsx`, tin Zalo 18:00 cho quản lý phòng. Khung ngắm kiosk đổi sang tỉ lệ ảnh thẻ 4×6 + nhắc "Lùi lại một bước" |
+| v1.20.1 | Gỡ vòng luẩn quẩn khi khai mẫu áo lần đầu: chỉ chế độ **Bật** mới đòi mẫu áo đang dùng; phòng chưa khai mẫu vẫn **lưu ảnh vùng áo** để Nhân sự lấy làm mẫu |
+| v1.20.2 | Kiosk **vẽ đúng chỗ máy đang nhìn**: ô bám theo khuôn mặt + dải vùng áo (cùng hằng `SHIRT_CROP`), xanh khi đạt cổng. Vạch nét đứt cũ chỉ là hình trang trí, không khớp luật máy |
+| v1.21.0 | Kiosk có **chế độ chờ**: camera TẮT tới khi chạm màn hình — chặn chấm nhầm khi đi ngang, camera không chạy suốt. `kioskIdleSeconds` / `kioskAwakeSeconds` trong Cấu hình |
+| v1.21.1–v1.21.2 | **Sửa vùng cắt áo theo 13 ảnh thật**: khung mặt của bộ dò là hình VUÔNG nên tỉ lệ cũ cắt quá thấp, mất logo. Cắt được 8/13 → 12/13, logo 3/6 → 6/6, hết cắt hụt đáy. `CHEST_ROOM_NEEDED` và `QUALITY_LIMITS` thành nguồn duy nhất, hết cảnh sửa một nơi quên nơi kia |
+| v1.21.3 | Thêm **ô nhập 4 ngưỡng đồng phục** vào Cấu hình → Chấm công (tài liệu ghi có từ v1.20.0 mà giao diện chưa làm) |
+| v1.21.4 | Test chấm công hết phụ thuộc giờ chạy / thứ trong tuần (giờ quét cố định + mẫu tuần đủ 7 ngày cho nhân viên test) |
 
 ## 7. Việc đang chờ chủ dự án
 
@@ -136,6 +142,11 @@ v1.10.2 webhook Zalo trên face.ydsg.website (xác thực domain bằng tệp HT
 - **Khóa Gemini**: một khóa đã hết tiền trả trước (lỗi 402), nạp lại ở AI Studio hoặc gỡ khỏi `GEMINI_API_KEY` của medichat.
 - **D7** trong `docs/OPEN-DECISIONS.md`: đổi token tunnel + OA Secret Key đã lộ trong ảnh chụp 21/09/2026.
 - Chạy thử một phòng với dữ liệu thật (hiện vẫn là dữ liệu mẫu).
-- **Đồng phục**: chọn phòng chạy thử, khai mẫu áo rồi lấy **3 ảnh người mặc** bằng nút "Dùng ảnh này làm ảnh mẫu" ở
-  `/admin/uniform`; để chế độ **Chạy thử 2 tuần**, Nhân sự gắn nhãn, rồi `npm run uniform:eval -- --from=… --to=…` để đo ngưỡng
-  (báo oan ≤ 2 %) trước khi chuyển sang **Bật**. Ngưỡng hiện tại đo trên ảnh điện thoại, sáng hơn ảnh kiosk.
+- **Đồng phục — phòng Kế toán đang chạy thử** từ 03/10/2026. Mẫu áo "Áo polo navy" đã bật với **7 ảnh người mặc** lấy
+  từ chính lượt chấm công. Số đo 2 ngày đầu: mặc đúng áo cho **màu 0,92–0,99 · hình dáng 0,85–0,91**.
+  - Mỗi ngày Nhân sự vào `/admin/uniform` bấm **Đạt / Không đạt** cho mọi dòng — đó là đáp án để đo ngưỡng.
+  - **Đang thiếu nhóm mặc SAI áo.** Cần 10–15 lượt, rải nhiều hôm, có cả **áo sẫm gần giống navy**. Không có nhóm này
+    thì `npm run uniform:eval` không tìm được vạch, vì chỉ biết áo đúng nằm ở đâu.
+  - Hẹn đo khoảng **17/10/2026** → đặt ngưỡng ở **Cấu hình → Chấm công → Ngưỡng kiểm đồng phục** → chuyển sang **Bật**.
+- **Chưa chốt camera cho kiosk**: máy tính webcam ngang (đang dùng) hay tablet camera dọc. Khung dọc dư chỗ hơn hẳn cho
+  vùng ngực. Đổi camera thì phải **đo lại `minBrightness`** (số hiện tại là của webcam máy tính).
