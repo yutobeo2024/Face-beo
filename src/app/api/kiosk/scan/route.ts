@@ -63,6 +63,7 @@ export const POST = handle(async (req) => {
     serverThreshold: settings.livenessServerThreshold,
     snapshot: snapshotBuf,
     faceBox: body.faceBox ?? null,
+    cropScale: settings.livenessCropScale,
   });
   if (live.server.status === "unavailable") {
     // Không hạ xuống điểm L1 của kiosk: trả 503 để kiosk giữ lần quét trong hàng đợi và gửi lại khi mô hình chạy (giờ quét giữ nguyên).
@@ -82,6 +83,10 @@ export const POST = handle(async (req) => {
         threshold: settings.livenessThreshold,
         server: live.server,
         meshFlatness: body.meshFlatness ?? null,
+        // Ghi KHUNG MẶT và cỡ mặt: thiếu hai số này thì không chạy lại được L2 trên chính lượt bị từ chối, nên đợt
+        // 61 lượt từ chối oan (21/09–07/10) phải suy đoán thay vì đo (v1.22.0).
+        faceBox: body.faceBox ?? null,
+        faceSize: body.faceSize ?? null,
         snapshotUrl,
         capturedAt: body.capturedAt.toISOString(),
         clientEventId: body.clientEventId,

@@ -45,6 +45,8 @@ export async function evaluateLiveness(args: {
   serverThreshold: number;
   snapshot: Buffer | null;
   faceBox?: FaceBox | null;
+  /** Hệ số cắt quanh khung mặt cho L2 (xem livenessCropScale trong Cấu hình). */
+  cropScale?: number;
 }) {
   const l1 = l1Score(args.frames);
   const l1Pass = l1 >= args.threshold && args.frames.length >= 3;
@@ -55,7 +57,7 @@ export async function evaluateLiveness(args: {
       server = { status: "missing_input" };
     } else {
       try {
-        const check = g.__l2Override ?? ((s: Buffer, b: FaceBox) => miniFasnetScore(s, b).then((r) => ({ score: r.real, ms: r.ms, probs: r.probs })));
+        const check = g.__l2Override ?? ((s: Buffer, b: FaceBox) => miniFasnetScore(s, b, { scale: args.cropScale }).then((r) => ({ score: r.real, ms: r.ms, probs: r.probs })));
         const r = await check(args.snapshot, args.faceBox);
         server = { status: "checked", score: r.score, threshold: args.serverThreshold, pass: r.score >= args.serverThreshold, ms: r.ms, probs: r.probs };
       } catch (e) {

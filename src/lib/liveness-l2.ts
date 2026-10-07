@@ -84,22 +84,31 @@ export function resizeBilinearCV(src: Uint8Array, sw: number, sh: number, dw: nu
   return out;
 }
 
-/** JPEG + khung mặt → tensor NCHW BGR float32 (0–255). */
-export async function preprocess(jpeg: Buffer, box: FaceBox, size: [number, number]): Promise<Float32Array> {
+/** Cách chuẩn bị ảnh cho L2 — tách ra thành tham số để `scripts/liveness-eval.ts` quét thử trên ảnh thật. */
+export type L2Options = {
+  /** Hệ số cắt quanh khung mặt. Mặc định 2,7 theo mã tham chiếu. */
+  scale?: number;
+  /** true = chia 255 (mã gốc dùng `ToTensor()`); mặc định false, giữ 0–255 như bản ONNX đang dùng. */
+  normalize?: boolean;
+};
+
+/** JPEG + khung mặt → tensor NCHW BGR float32 (0–255, hoặc 0–1 nếu `normalize`). */
+export async function preprocess(jpeg: Buffer, box: FaceBox, size: [number, number], opts: L2Options = {}): Promise<Float32Array> {
   const { default: sharp } = await import("sharp");
   const img = sharp(jpeg, { failOn: "error", limitInputPixels: 1920 * 1080 });
   const meta = await img.metadata();
   if (!meta.width || !meta.height) throw new Error("Không đọc được kích thước snapshot");
-  const region = cropRegion(meta.width, meta.height, box);
+  const region = cropRegion(meta.width, meta.height, box, opts.scale ?? MINIFASNET_SCALE);
   const [H, W] = size;
   const { data, info } = await img.extract(region).removeAlpha().toColourspace("srgb").raw().toBuffer({ resolveWithObject: true });
   const rgb = resizeBilinearCV(new Uint8Array(data.buffer, data.byteOffset, data.length), info.width, info.height, W, H, info.channels);
   const plane = H * W;
   const out = new Float32Array(3 * plane);
+  const k = opts.normalize ? 1 / 255 : 1;
   for (let i = 0; i < plane; i++) {
-    out[i] = rgb[i * 3 + 2]; // B
-    out[plane + i] = rgb[i * 3 + 1]; // G
-    out[2 * plane + i] = rgb[i * 3]; // R
+    out[i] = rgb[i * 3 + 2] * k; // B
+    out[plane + i] = rgb[i * 3 + 1] * k; // G
+    out[2 * plane + i] = rgb[i * 3] * k; // R
   }
   return out;
 }
@@ -141,11 +150,11 @@ export function l2Status() {
 }
 
 /** Xác suất "mặt thật" của MiniFASNetV2 trên vùng mặt của snapshot. */
-export async function miniFasnetScore(jpeg: Buffer, box: FaceBox): Promise<{ real: number; probs: number[]; ms: number }> {
+export async function miniFasnetScore(jpeg: Buffer, box: FaceBox, opts: L2Options = {}): Promise<{ real: number; probs: number[]; ms: number }> {
   const t0 = performance.now();
   const eng = await loadL2();
   const ort = await import("onnxruntime-node");
-  const data = await preprocess(jpeg, box, eng.size);
+  const data = await preprocess(jpeg, box, eng.size, opts);
   const tensor = new ort.Tensor("float32", data, [1, 3, eng.size[0], eng.size[1]]);
   const res = await eng.session.run({ [eng.input]: tensor });
   const probs = softmax(res[eng.output].data as Float32Array);

@@ -12,7 +12,18 @@ const FACE_FIELDS: SettingsField[] = [
   { key: "matchThreshold", label: "Ngưỡng khớp khuôn mặt", hint: "Cosine InsightFace tối thiểu (mặc định 0.45; cùng người thường ≥ 0.5, khác người ≤ 0.35).", step: 0.01 },
   { key: "matchMargin", label: "Chênh lệch top-1/top-2", hint: "Top-1 phải hơn top-2 ít nhất (mặc định 0.08) — chống nhận nhầm người có nét giống.", step: 0.01 },
   { key: "livenessThreshold", label: "Ngưỡng liveness", hint: "Trung bình điểm antispoof + liveness của 5 khung.", step: 0.01 },
-  { key: "livenessServerThreshold", label: "Ngưỡng liveness L2 (server)", hint: "Xác suất “mặt thật” tối thiểu của MiniFASNetV2. Chỉ dùng khi LIVENESS_SERVER=true.", step: 0.01 },
+  {
+    key: "livenessServerThreshold",
+    label: "Ngưỡng liveness L2 (server)",
+    hint: "Xác suất “mặt thật” tối thiểu của MiniFASNetV2. Đặt 0 = L2 vẫn chấm điểm và ghi lại nhưng KHÔNG chặn ai (dùng khi L2 đang từ chối oan).",
+    step: 0.01,
+  },
+  {
+    key: "livenessCropScale",
+    label: "Hệ số cắt mặt cho L2",
+    hint: "Cắt vùng gấp bao nhiêu lần khung mặt trước khi đưa vào mô hình. Đo thật trên phòng khám: 2,7 (mã gốc) cho người thật thấp nhất 0,135 — từ chối oan; 1,2 cho 0,961 và 40/40 đạt. ĐỪNG hạ xuống khi chưa có mẫu giơ ảnh in / màn hình để kiểm, vì cắt sát quá thì mô hình mất dấu hiệu nhận ra ảnh giả.",
+    step: 0.1,
+  },
 ];
 const WORK_FIELDS: SettingsField[] = [
   { key: "absentAfterMinutes", label: "Tính vắng sau (phút)", hint: "Quá số phút này sau giờ vào ca mà chưa chấm => vắng.", step: 1 },

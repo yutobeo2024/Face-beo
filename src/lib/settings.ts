@@ -26,6 +26,8 @@ export const settingsSchema = z.object({
   // v1.21.0 — chế độ chờ của kiosk (camera tắt tới khi có người chạm).
   kioskIdleSeconds: z.coerce.number().int().min(30).max(1800),
   kioskAwakeSeconds: z.coerce.number().int().min(0).max(300),
+  // v1.22.0 — hệ số cắt quanh khung mặt trước khi đưa vào mô hình chống giả mạo L2.
+  livenessCropScale: z.coerce.number().min(1).max(4),
 });
 export type AppSettings = z.infer<typeof settingsSchema>;
 
@@ -50,6 +52,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   medinetCheckDays: 30,
   kioskIdleSeconds: 120,
   kioskAwakeSeconds: 0,
+  livenessCropScale: 2.7,
 };
 
 export async function getSettings(): Promise<AppSettings> {

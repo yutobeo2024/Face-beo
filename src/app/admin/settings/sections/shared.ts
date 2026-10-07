@@ -37,6 +37,7 @@ export type Settings = {
   credentialWarnDays: number;
   kioskIdleSeconds: number;
   kioskAwakeSeconds: number;
+  livenessCropScale: number;
   uniformPassColor: number;
   uniformPassEmbed: number;
   uniformFailScore: number;

@@ -22,7 +22,8 @@
     "postinstall": "prisma generate && node scripts/copy-models.mjs",
     "models:face": "node scripts/fetch-face-model.mjs",
     "models:uniform": "node scripts/fetch-uniform-model.mjs",
-    "uniform:eval": "tsx scripts/uniform-eval.ts"
+    "uniform:eval": "tsx scripts/uniform-eval.ts",
+    "liveness:eval": "tsx scripts/liveness-eval.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
