@@ -351,7 +351,8 @@ Chạy `npm audit` trước mỗi lần phát hành. Mục tiêu là **0 lỗ h�
   Tỉ lệ cắt và ngưỡng chất lượng **đo trên ảnh thật** (v1.21.1–v1.21.2): khung mặt của bộ dò là hình **vuông** nên vùng
   áo bắt đầu **ngay dưới cằm** (`topOffset 1,05`), `CHEST_ROOM_NEEDED` suy từ `SHIRT_CROP` để cổng kiosk không lệch, và
   `QUALITY_LIMITS` là nguồn duy nhất của ngưỡng chất lượng. `minBrightness` gắn với từng camera — đổi camera thì đo lại.
-  Bốn ngưỡng sửa ở Cấu hình → Chấm công → Ngưỡng kiểm đồng phục (v1.21.3).
+  Bốn ngưỡng sửa ở Cấu hình → Chấm công → Ngưỡng kiểm đồng phục (v1.21.3). `uniform:eval` (v1.22.1) xếp **bỏ sót** lên
+  đầu, hòa thì chọn ngưỡng chặt nhất, và không cho `--apply` khi chưa đủ 30 lượt mặc đúng + 10 lượt mặc sai đã gắn nhãn.
 - Chat bot tra cứu y khoa (v1.17.0; trả lời theo luồng từ v1.18.0; bảng gợi ý chia 4 mục ICD / chuyên môn / quy chế / mô tả công việc từ v1.19.0): `/me/chatbot` + `src/lib/chatbot.ts`; gọi dự án medichat qua mạng docker kèm khóa `X-Chat-Key` (`/api/v1/chat/stream`, chữ hiện dần); cấp quyền theo phòng / từng người (`chatbot.grant`); không lưu nội dung, chỉ đếm lượt.
 - Tốc độ (v1.16.0): đi thẳng qua Caddy trên VPS thay vì vòng Cloudflare (`deploy/caddy-face.conf`, `deploy/vn-ip-refresh.sh`); `useApi` nhớ dữ liệu theo URL; ảnh đại diện cache 10 phút; bỏ luxon ở client; thêm chỉ mục DB.
 - Trang Cấu hình (v1.15.0): chia 5 tab (`?tab=`), mã ở `src/app/admin/settings/sections/`. Nhóm Zalo xóa được (DELETE `/api/settings/zalo/groups/[groupId]`) — báo vào nhóm rồi gỡ; webhook có thể thêm lại nhóm ở trạng thái không nhận tin.

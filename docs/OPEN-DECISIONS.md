@@ -77,6 +77,10 @@ hình dáng 0,85–0,91**, tức vạch `0,85` đang nằm **giữa đám**. S�
 **báo oan ≤ 2 %**. Phép đo **bắt buộc có nhóm mặc SAI áo** (10–15 lượt, gồm cả áo sẫm gần giống navy) — chỉ biết áo đúng
 nằm ở đâu thì không đặt được vạch.
 
+**12/10/2026 (v1.22.1):** đã gắn nhãn đủ 41 lượt 03–12/10 — 36 mặc đúng, 3 mặc sai có điểm (1 áo be, 2 áo sẫm gần
+giống navy của cùng một người: màu 0,90–0,94 nên chỉ **hình dáng** tách được — 0,717 / 0,775 so với mặc đúng thấp nhất
+0,819). Còn thiếu ≈ 7 lượt mặc sai. Ngưỡng đang dùng: bắt 1/3, xem lại 2/3, **không bỏ sót, không báo oan** — giữ nguyên.
+
 ### Còn mở
 
 - **Camera cho kiosk**: máy tính webcam ngang (đang dùng) hay tablet camera dọc. Khung dọc dư chỗ hơn hẳn cho vùng ngực;

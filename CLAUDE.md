@@ -7,7 +7,7 @@
   MiniFASNetV2 phía server), đơn từ, tính công/chốt công tháng, xuất Excel, thông báo Zalo OA (nhiều nhóm theo loại tin: minh bạch / chấm công / đơn từ + tin riêng).
 - Stack: Next.js 15 App Router, Prisma 6 (SQLite WAL), zod 4, luxon, exceljs, node-cron, jose JWT (HS256, 7 ngày, `sessionVersion`),
   vitest 4 (test tích hợp gọi thẳng route handler, DB `data/test.db`).
-- Phiên bản hiện tại: **v1.21.4** (tag GitHub `v1.21.4`, repo `yutobeo2024/Face-beo`). Phiên bản ghi trong prose (README, PRD,
+- Phiên bản hiện tại: **v1.22.1** (tag GitHub `v1.22.1`, repo `yutobeo2024/Face-beo`). Phiên bản ghi trong prose (README, PRD,
   OPEN-DECISIONS), không có CHANGELOG; `package.json` version không dùng để đánh số.
 
 ## Lệnh
@@ -119,14 +119,21 @@ chạy cron / khóa Zalo thật song song với VPS (refresh token Zalo dùng m�
   - Số đo thật của phòng khám: mặc đúng áo cho **màu 0,92–0,99 · hình dáng 0,85–0,91**. Ngưỡng sửa ở
     **Cấu hình → Chấm công → Ngưỡng kiểm đồng phục** (v1.21.3), nhưng **phải đo bằng `npm run uniform:eval`** sau
     2 tuần chạy thử — và phép đo cần **cả ca mặc SAI áo**, không có thì không đo được gì.
+  - `uniform:eval` (v1.22.1, xếp hạng ở `src/lib/uniform-eval.ts`): **bỏ sót** (áo sai thành ĐẠT) xếp TRƯỚC "bắt được"
+    và "xem lại"; hòa thì chọn ngưỡng chặt nhất; `--apply` bị chặn khi < 30 đúng / < 10 sai có điểm. Chỉ dùng lượt đã
+    xác nhận — kể cả lượt máy tự Đạt. Chạy trên VPS: `docker exec -w /app facebeo-app-1 node_modules/.bin/tsx scripts/uniform-eval.ts --from=… --to=… --dept=2`.
 - Test có chấm công: **đừng dùng `new Date()` làm giờ quét** — lượt quét ngoài cửa sổ ca sẽ có `shiftId = null` và job
   đồng phục bỏ qua, test đỏ theo giờ chạy / thứ trong tuần. Đặt giờ cố định + gán mẫu tuần đủ 7 ngày cho nhân viên test
   (xem `tests/integration/uniform.test.ts`).
 - zod 4: schema PATCH không được có `.default()` (`.partial()` vẫn áp default → xóa dữ liệu). Cột JSON trong SQLite lưu chuỗi.
 
-## Việc còn mở (05/10/2026)
+## Việc còn mở (12/10/2026)
+- **Chống giả mạo L2** (v1.22.0): VPS đặt `livenessServerThreshold = 0` (L2 chỉ ghi điểm, L1 gác) vì hệ số cắt 2,7 làm
+  ~37 % lượt người thật < 0,5 (đo 08–12/10). Cần mẫu giả (ảnh in / màn hình điện thoại) rồi `npm run liveness:eval -- --gia=…`
+  mới chọn được `livenessCropScale` và bật lại ngưỡng.
 - **Đồng phục — đang chạy thử phòng Kế toán** (từ 03/10/2026): mẫu áo "Áo polo navy" đã bật, 7 ảnh người mặc lấy từ
-  chính lượt chấm công. Mỗi ngày Nhân sự bấm Đạt / Không đạt. **Thiếu nhóm mặc SAI áo** — cần 10–15 lượt (có cả áo sẫm
+  chính lượt chấm công. Mỗi ngày Nhân sự bấm Đạt / Không đạt. 12/10: đã gắn nhãn đủ 41 lượt (36 đúng, 3 sai có điểm — 2 áo sẫm gần navy
+  chỉ tách được bằng hình dáng 0,72–0,78 so với ≥ 0,82). **Vẫn thiếu nhóm mặc SAI áo** — cần 10–15 lượt (có cả áo sẫm
   gần giống navy) thì `npm run uniform:eval` mới tìm được vạch. Hẹn đo khoảng **17/10/2026**, xong mới chuyển sang **Bật**.
   Chưa chốt dùng máy tính webcam ngang hay tablet camera dọc — đổi camera thì phải đo lại `minBrightness`.
 - Chạy thử một phòng. Dữ liệu hiện có (máy cũ và seed demo) chỉ là mockup; máy mới/vận hành thật bắt đầu sạch theo `docs/HANDOFF.md`

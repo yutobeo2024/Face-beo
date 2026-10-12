@@ -785,3 +785,22 @@ không có cách nào đặt vạch an toàn.
 
 Sửa: giờ quét **cố định 09:00 giờ VN** (mỗi lượt lệch một phút, tránh luôn luật trùng 120 giây) và gán cho nhân viên test
 một **mẫu tuần đủ 7 ngày** với ca rộng, trả lại lịch cũ ở `afterAll`. Áp dụng cho mọi test có chấm công về sau.
+
+### 34.5 `uniform:eval` xếp hạng sai — ưu tiên bớt việc xem lại hơn bắt áo sai (v1.22.1, 12/10/2026)
+
+Chạy thử trên dữ liệu Kế toán 03–12/10 (41 lượt đã gắn nhãn: 36 mặc đúng, 3 mặc sai có điểm, 2 ảnh tối không có điểm)
+thì script đề xuất **hình dáng 0,85 → 0,6 · màu 0,8 → 0,3** — kết quả "bắt 33 % · xem lại 0 % · **bỏ sót 67 %**": hai lượt
+NV mặc áo sẫm gần giống navy (hình dáng 0,717 / 0,775, màu 0,94 / 0,90) sẽ thành ĐẠT.
+
+Nguyên nhân: xếp hạng `bắt được ↓ → xem lại ↑ → báo oan ↑` **không có "bỏ sót"**, nên tổ hợp đẩy áo sai thẳng sang ĐẠT
+(0 lượt xem lại) thắng tổ hợp đưa nó sang "cần xem lại". Thêm nữa, khi hòa thì giữ thứ tự lưới (từ nhỏ lên) nên luôn ra
+ngưỡng **lỏng nhất** — 1 127 tổ hợp ngang điểm, lấy đúng mốc "màu ≥ 0,30" (coi như tắt tầng màu).
+
+Sửa (`src/lib/uniform-eval.ts`, hàm thuần có test):
+- Thứ tự mới: **bỏ sót ↑ → bắt được ↓ → xem lại ↑ → báo oan ↑**, hòa thì chọn tổ hợp **chặt nhất** (màu, hình dáng cao
+  nhất; mốc trượt thấp nhất). Lượt xem lại còn có người nhìn; lượt bỏ sót thì không ai biết.
+- In thêm kết quả của **ngưỡng đang dùng** để so.
+- `--apply` **bị chặn** khi chưa đủ ≥ 30 lượt mặc đúng và ≥ 10 lượt mặc sai có điểm (`MIN_EVAL_CASES`), thoát mã 1.
+- Chỉ lượt **đã có người xác nhận** mới vào phép đo — kể cả lượt máy tự chấm Đạt (thiếu chúng thì nhóm "mặc đúng" chỉ
+  gồm các lượt điểm thấp đã qua xem lại, vạch bị đặt lệch).
+- Chạy trên VPS: `docker exec -w /app facebeo-app-1 node_modules/.bin/tsx scripts/uniform-eval.ts --from=… --to=… --dept=2`.

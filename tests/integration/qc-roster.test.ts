@@ -29,6 +29,7 @@ let A: string, H: string, MQ: string, MF: string, E1: string;
 let hc: { id: number }, sang: { id: number }, satAm: { id: number };
 let patHalfSat: { id: number }, patFullSat: { id: number }, patT2T6: { id: number };
 let holidayDate: string;
+let ownHoliday = false;
 const created: number[] = [];
 
 const M0 = () => startOfWeek(todayVN());
@@ -98,13 +99,19 @@ beforeAll(async () => {
   fixOff = await mkEmp(8, "QC Cố định nghỉ T7", "EMPLOYEE", deptF.id, "FIXED", patT2T6.id, hc.id);
   await mkEmp(9, "QC Xoay không QL", "EMPLOYEE", deptN.id, "ROTATING", null, hc.id);
   [A, H, MQ, MF, E1] = await Promise.all([admin, hr, mgrQ, mgrF, rot1].map((e) => sessionCookie(e.id)));
-  holidayDate = (await prisma.holiday.create({ data: { date: dayOf(W(-6), 3), name: `QC lễ ${TS}` } })).date;
+  // "Thứ Tư 6 tuần trước" có tuần trùng ngày lễ THẬT của dữ liệu mẫu (chạy 12/10/2026 → 02/09) ⇒ tạo trùng khóa, cả file
+  // đỏ. Trùng thì dùng luôn ngày lễ có sẵn và KHÔNG xóa nó khi dọn (ngày "QC lễ" sót lại từ lần chạy hỏng thì vẫn dọn).
+  const holDay = dayOf(W(-6), 3);
+  const existing = await prisma.holiday.findUnique({ where: { date: holDay } });
+  if (!existing) await prisma.holiday.create({ data: { date: holDay, name: `QC lễ ${TS}` } });
+  ownHoliday = !existing || existing.name.startsWith("QC lễ");
+  holidayDate = holDay;
 });
 
 afterAll(async () => {
   await prisma.department.updateMany({ where: { id: { in: [deptQ.id, deptF.id, deptN.id] } }, data: { managerId: null } });
   await prisma.employee.updateMany({ where: { id: { in: created } }, data: { active: false } });
-  await prisma.holiday.delete({ where: { date: holidayDate } }).catch(() => {});
+  if (ownHoliday) await prisma.holiday.delete({ where: { date: holidayDate } }).catch(() => {});
 });
 
 // ---------------------------------------------------------------------------

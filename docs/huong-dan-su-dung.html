@@ -872,8 +872,12 @@ sequenceDiagram
   <ol class="steps">
     <li>Khai mẫu áo, lấy đủ 3 ảnh người mặc cho từng mẫu (mục 11.5.4).</li>
     <li>Đặt phòng về <b>Chạy thử</b>, để chạy <b>2 tuần</b>.</li>
-    <li>Nhân sự vào bảng theo dõi bấm Đạt / Không đạt cho các ngày — đây là "đáp án" để đo ngưỡng.</li>
-    <li>Quản trị chạy <code>npm run uniform:eval</code> kèm khoảng ngày; công cụ đề xuất ngưỡng với ràng buộc <b>báo oan ≤ 2 %</b>.</li>
+    <li>Nhân sự vào bảng theo dõi bấm Đạt / Không đạt cho các ngày — đây là "đáp án" để đo ngưỡng. Bấm cho
+    <b>mọi lượt</b>, kể cả lượt máy đã tự chấm "Đạt": phép đo chỉ dùng lượt có người xác nhận. Cần ít nhất
+    <b>30 lượt mặc đúng và 10 lượt mặc sai</b> (có cả áo sẫm gần giống đồng phục) — thiếu thì công cụ chỉ in đề xuất để
+    tham khảo, không cho ghi vào Cấu hình.</li>
+    <li>Quản trị chạy <code>npm run uniform:eval</code> kèm khoảng ngày; công cụ đề xuất ngưỡng với ràng buộc <b>báo oan ≤ 2 %</b>,
+    ưu tiên <b>không bỏ sót áo sai</b> trước rồi mới tới bớt việc xem lại.</li>
     <li>Đặt ngưỡng trong <b>Cấu hình → Chấm công → Ngưỡng kiểm đồng phục</b>, rồi chuyển phòng sang <b>Bật</b>.</li>
     <li>Theo dõi 1 tuần, ổn thì mở rộng sang phòng khác.</li>
   </ol>

@@ -9,11 +9,12 @@
  * "Báo oan" = người MẶC ĐÚNG áo mà máy kết luận KHÔNG ĐẠT. Đây là sai lầm nặng nhất nên ràng buộc trước, rồi mới
  * tối ưu phần còn lại — chứ không tối ưu "độ chính xác" chung chung.
  *
- * Script chỉ ĐỌC; có `--apply` mới ghi ngưỡng vào Cấu hình.
+ * Script chỉ ĐỌC; có `--apply` mới ghi ngưỡng vào Cấu hình — và chỉ khi đủ dữ liệu (MIN_EVAL_CASES).
  */
 import { prisma } from "../src/lib/db";
-import { decideUniform, type TemplateScore, type UniformQuality, type UniformThresholds } from "../src/lib/uniform-score";
-import { saveSettings } from "../src/lib/settings";
+import { type UniformQuality, type UniformThresholds } from "../src/lib/uniform-score";
+import { enoughEvalData, evaluateThresholds, MAX_FALSE_ACCUSE, MIN_EVAL_CASES, rankSafe, sweepThresholds, type EvalCase, type EvalResult } from "../src/lib/uniform-eval";
+import { getSettings, saveSettings } from "../src/lib/settings";
 
 type Detail = {
   scores?: { id: number; name: string; embed: number | null; color: number; score: number }[];
@@ -25,15 +26,9 @@ const arg = (name: string) => process.argv.find((a) => a.startsWith(`--${name}=`
 const has = (name: string) => process.argv.includes(`--${name}`);
 const pct = (num: number, den: number) => (den ? `${((num / den) * 100).toFixed(1)}%` : "—");
 
-/** Trần báo oan mà chủ dự án đã chốt. */
-const MAX_FALSE_ACCUSE = 0.02;
-const GRID = { pass: range(0.3, 0.85, 0.025), fail: range(0.25, 0.7, 0.025), colorWeight: [0.3, 0.4, 0.5, 0.6] };
-
-function range(a: number, b: number, step: number) {
-  const out: number[] = [];
-  for (let v = a; v <= b + 1e-9; v += step) out.push(Math.round(v * 1000) / 1000);
-  return out;
-}
+const line = (r: EvalResult, truthPass: number, truthFail: number, total: number) =>
+  `màu ≥ ${r.th.passColor.toFixed(3)} · hình dáng ≥ ${r.th.passEmbed.toFixed(3)} · trượt ≤ ${r.th.failScore.toFixed(3)} · trọng số màu ${r.th.colorWeight}` +
+  `   →  oan ${pct(r.falseAccuse, truthPass)} · bắt ${pct(r.caught, truthFail)} · xem lại ${pct(r.review, total)} · sót ${pct(r.missed, truthFail)}`;
 
 async function main() {
   const from = arg("from");
@@ -61,8 +56,7 @@ async function main() {
     ]),
   );
 
-  type Case = { truth: "PASS" | "FAIL"; scores: Omit<TemplateScore, "score">[]; quality: UniformQuality | null; pattern: number | null };
-  const cases: Case[] = [];
+  const cases: EvalCase[] = [];
   let skipped = 0;
   for (const r of rows) {
     const d = safe<Detail>(r.detail);
@@ -92,53 +86,25 @@ async function main() {
   const truthPass = cases.filter((c) => c.truth === "PASS").length;
   const truthFail = cases.length - truthPass;
   console.log(`\nDữ liệu: ${cases.length} bản ghi đã xác nhận (${truthPass} mặc đúng, ${truthFail} mặc sai)${skipped ? `, bỏ ${skipped} bản thiếu điểm` : ""}.`);
-  if (truthFail < 10 || truthPass < 30) {
-    console.log("⚠  Còn ít dữ liệu — ngưỡng đề xuất chỉ nên tham khảo. Nên chạy thử đủ 2 tuần rồi đo lại.");
+  const enough = enoughEvalData(truthPass, truthFail);
+  if (!enough) {
+    console.log(`⚠  Còn ít dữ liệu (cần ≥ ${MIN_EVAL_CASES.pass} mặc đúng và ≥ ${MIN_EVAL_CASES.fail} mặc sai) — ngưỡng đề xuất chỉ để tham khảo, KHÔNG ghi vào Cấu hình.`);
   }
 
-  type Result = { th: UniformThresholds; falseAccuse: number; caught: number; review: number; missed: number };
-  const results: Result[] = [];
-  for (const colorWeight of GRID.colorWeight) {
-    for (const passColor of GRID.pass) {
-      for (const passEmbed of GRID.pass) {
-        for (const failScore of GRID.fail) {
-          const th: UniformThresholds = { passColor, passEmbed, failScore, colorWeight };
-          let falseAccuse = 0;
-          let caught = 0;
-          let review = 0;
-          let missed = 0;
-          for (const c of cases) {
-            const scores = withCombined(c.scores, th);
-            const v = decideUniform({ scores, quality: c.quality, pattern: c.pattern, th });
-            if (v.status === "REVIEW") review++;
-            if (c.truth === "PASS" && v.status === "FAIL") falseAccuse++;
-            if (c.truth === "FAIL") {
-              if (v.status === "FAIL") caught++;
-              else if (v.status === "PASS") missed++;
-            }
-          }
-          results.push({ th, falseAccuse, caught, review, missed });
-        }
-      }
-    }
-  }
+  const cfg = await getSettings();
+  const current: UniformThresholds = { passColor: cfg.uniformPassColor, passEmbed: cfg.uniformPassEmbed, failScore: cfg.uniformFailScore, colorWeight: cfg.uniformColorWeight };
+  console.log(`Ngưỡng đang dùng:\n  ${line(evaluateThresholds(cases, current), truthPass, truthFail, cases.length)}\n`);
 
-  const ok = results.filter((r) => r.falseAccuse / Math.max(1, truthPass) <= MAX_FALSE_ACCUSE);
+  const results = sweepThresholds(cases);
+  const ok = rankSafe(results, truthPass);
   console.log(`Đã thử ${results.length} tổ hợp; ${ok.length} tổ hợp đạt trần báo oan ${MAX_FALSE_ACCUSE * 100} %.\n`);
   if (!ok.length) {
     console.log("Không tổ hợp nào đủ an toàn. Thường là do ảnh mẫu chưa đúng điều kiện — hãy chụp lại ảnh mẫu NGAY TẠI KIOSK rồi đo lại.");
     return;
   }
 
-  // Ưu tiên: bắt được nhiều vi phạm nhất → ít phải xem lại bằng tay nhất → báo oan ít nhất.
-  ok.sort((a, b) => b.caught - a.caught || a.review - b.review || a.falseAccuse - b.falseAccuse);
   console.log("Năm tổ hợp tốt nhất (báo oan · bắt được · phải xem lại · bỏ sót):");
-  for (const r of ok.slice(0, 5)) {
-    console.log(
-      `  màu ≥ ${r.th.passColor.toFixed(3)} · hình dáng ≥ ${r.th.passEmbed.toFixed(3)} · trượt ≤ ${r.th.failScore.toFixed(3)} · trọng số màu ${r.th.colorWeight}` +
-        `   →  oan ${pct(r.falseAccuse, truthPass)} · bắt ${pct(r.caught, truthFail)} · xem lại ${pct(r.review, cases.length)} · sót ${pct(r.missed, truthFail)}`,
-    );
-  }
+  for (const r of ok.slice(0, 5)) console.log(`  ${line(r, truthPass, truthFail, cases.length)}`);
 
   const best = ok[0];
   console.log("\nĐề xuất đặt trong Cấu hình → Chấm công:");
@@ -147,7 +113,10 @@ async function main() {
   console.log(`  uniformFailScore  = ${best.th.failScore}`);
   console.log(`  uniformColorWeight= ${best.th.colorWeight}`);
 
-  if (has("apply")) {
+  if (has("apply") && !enough) {
+    console.log("\nKHÔNG ghi: chưa đủ dữ liệu, ngưỡng dò trên vài lượt rất dễ khớp may. Gắn nhãn thêm rồi đo lại.");
+    process.exitCode = 1;
+  } else if (has("apply")) {
     await saveSettings({
       uniformPassColor: best.th.passColor,
       uniformPassEmbed: best.th.passEmbed,
@@ -155,16 +124,9 @@ async function main() {
       uniformColorWeight: best.th.colorWeight,
     });
     console.log("\nĐã ghi vào Cấu hình. Ngưỡng mới áp dụng cho những lượt kiểm SAU, bản ghi cũ giữ nguyên.");
-  } else {
+  } else if (enough) {
     console.log("\n(Chạy lại kèm --apply để ghi thẳng vào Cấu hình.)");
   }
-}
-
-/** Điểm gộp phụ thuộc trọng số màu nên phải tính lại cho từng tổ hợp. */
-function withCombined(scores: Omit<TemplateScore, "score">[], th: UniformThresholds): TemplateScore[] {
-  return scores
-    .map((s) => ({ ...s, score: s.embedScore === null ? s.colorScore : (1 - th.colorWeight) * s.embedScore + th.colorWeight * s.colorScore }))
-    .sort((a, b) => b.score - a.score);
 }
 
 function patternOf(raw: string | null): number | null {
