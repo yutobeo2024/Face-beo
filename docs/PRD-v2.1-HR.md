@@ -915,3 +915,8 @@ TeamTask ghi cứng đúng OA của Face Beo và tự refresh token (job 03:00 +
 nhật VPS lên v1.23.0 phải tắt các Cloud Functions Zalo của TeamTask** (`autoRefreshZaloTokens`, `refreshZaloTokenManual`,
 `onTaskCreated`, `onTaskUpdated`, `onTaskCommentAdded`, `zaloNotifyOverdueTasks`, `checkTaskDueReminders`) hoặc tắt hẳn
 TeamTask. Face Beo bỗng mất token Zalo không rõ lý do ⇒ nghi TeamTask trước.
+
+Đọc code TeamTask thì mọi hàm gửi Zalo đều tự làm mới token khi gặp lỗi, nên danh sách đủ là 15 hàm: thêm `updateZaloTokens`,
+`testZaloToken`, `zaloOAuthCallback`, `checkOverdueTasks`, `getZaloGroups`, `testZaloConnection`, `testOverdueNotification`,
+`zaloWebhook`. Thực tế 14/10/2026: project `teamtask-5b35f` đã **tắt Billing** nên cả 29 hàm không chạy — không cần xóa, nhưng
+**không được bật lại Billing** trước khi xóa 15 hàm trên.
