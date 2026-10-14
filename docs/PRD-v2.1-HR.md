@@ -920,3 +920,46 @@ TeamTask. Face Beo bỗng mất token Zalo không rõ lý do ⇒ nghi TeamTask t
 `testZaloToken`, `zaloOAuthCallback`, `checkOverdueTasks`, `getZaloGroups`, `testZaloConnection`, `testOverdueNotification`,
 `zaloWebhook`. Thực tế 14/10/2026: project `teamtask-5b35f` đã **tắt Billing** nên cả 29 hàm không chạy — không cần xóa, nhưng
 **không được bật lại Billing** trước khi xóa 15 hàm trên.
+
+## 36. Phân hệ Công việc — đợt B: Gantt, Lịch, Dashboard (v1.24.0, 15/10/2026)
+
+Mỗi dự án có thêm 3 tab cạnh "Bảng công việc": **Gantt · Lịch · Dashboard**. Không có migration, không thêm thư viện —
+Gantt và biểu đồ vẽ bằng SVG. Mọi số liệu / danh sách đều lọc theo quyền xem (Cộng tác chỉ thấy việc của mình).
+
+### 36.1 Gantt (`/me/tasks/<id>/gantt`)
+
+- Mỗi việc **có ngày bắt đầu** là một thanh từ ngày bắt đầu tới **ngày của hạn** (giờ VN). Màu theo trạng thái, viền đỏ khi
+  quá hạn; vạch đỏ đứt = hôm nay; mũi tên nối việc phụ thuộc (từ cuối việc phải xong trước tới đầu việc chờ).
+- Khung **92 ngày**, mặc định bắt đầu 2 tuần trước hôm nay và tự cuộn tới hôm nay; nút ‹ › dời 30 ngày, nút "Hôm nay" về lại.
+  Thanh hiện khi khoảng [ngày bắt đầu, hạn] giao với khung (dự án nhiều năm không đẩy hôm nay ra khỏi khung).
+- 3 mức thu phóng: theo ngày (40 px/ngày) · theo tuần (20) · theo tháng (8). Cột tên việc cố định, thang ngày cuộn ngang.
+- **Kéo**: thân thanh ⇒ dời cả hai ngày; mép trái ⇒ đổi ngày bắt đầu; mép phải ⇒ đổi hạn. Bắt theo ngày, hạn **giữ
+  nguyên giờ** (vd. hạn 17:00 thứ Năm kéo sang thứ Sáu ⇒ 17:00 thứ Sáu). Thả ra ⇒ một lệnh sửa việc bình thường (máy chủ
+  kiểm quyền sửa, ngày bắt đầu không sau hạn); chỉ gửi trường thật sự đổi (kéo mép trái không gửi hạn). Lỗi thì thanh tự
+  về chỗ cũ. Việc không có quyền sửa thì chỉ bấm để xem.
+- **Điện thoại / máy tính bảng không kéo**: vuốt để cuộn, chạm thanh để mở chi tiết rồi sửa ngày ở đó — tránh vuốt lỡ tay
+  làm đổi ngày việc.
+- Việc **chưa xong** và **chưa có ngày bắt đầu** liệt kê ở mục riêng dưới biểu đồ (hiện 200 việc hạn gần nhất, kèm tổng số)
+  — bấm để mở và đặt ngày.
+
+### 36.2 Lịch (`/me/tasks/<id>/calendar`)
+
+- Xếp việc theo **hạn**. Chế độ Ngày / Tuần / Tháng; lịch tháng luôn **6 hàng × 7 cột** từ thứ Hai (tháng dài nhất cũng đủ —
+  bản TeamTask cố định 5 tuần nên có tháng thiếu ngày). Ô ngày hiện tối đa 3 việc, còn lại "+N việc" (bấm để xem ngày đó).
+- Chỉ xem; bấm một việc mở chi tiết. Mỗi lần tải tối đa 92 ngày (API `?from&to`).
+
+### 36.3 Dashboard (`/me/tasks/<id>/dashboard`)
+
+- Khoảng 7 / 30 / 90 ngày. Ô số: tổng việc, đã xong (%), quá hạn, **thời gian hoàn thành trung bình** (từ lúc tạo tới lúc
+  xong, của các việc xong trong khoảng).
+- Biểu đồ: **tiến độ** (đường tổng việc và đường đã xong theo từng ngày VN), tròn theo trạng thái, cột theo ưu tiên (kèm số
+  còn mở), cột theo người làm (kèm số xong, số quá hạn; việc chưa giao vào mục "Chưa giao").
+- Đường tiến độ dựng từ trạng thái hiện tại: việc từng xong rồi bị kéo ngược lại thì không còn tính là xong ở các ngày cũ.
+
+### 36.4 API
+
+- `GET /api/tasks/projects/[id]/tasks?from=YYYY-MM-DD&to=YYYY-MM-DD` — việc có hạn trong khoảng (ngày VN, ≤ 92 ngày, phải có
+  cả hai đầu). `?gantt=1` ⇒ `{ tasks: việc có ngày bắt đầu, unscheduled: việc chưa có (≤ 200) }`.
+- `GET /api/tasks/projects/[id]/stats?from&to` — số liệu Dashboard (mặc định 30 ngày tới hôm nay), hàm thuần
+  `computeStats` ở `src/lib/tasks/task-stats.ts`.
+- Kéo thanh Gantt dùng `PATCH /api/tasks/[id]` `{ startDate, dueAt }` sẵn có — không có đường sửa riêng.

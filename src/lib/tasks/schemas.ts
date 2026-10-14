@@ -115,12 +115,31 @@ export const notificationsReadSchema = z.object({ ids: z.array(idNum).max(200).o
 
 const flag = z.enum(["0", "1"]).optional();
 
-export const tasksQuerySchema = z.object({
-  status: status.optional(),
-  assignee: z.union([z.literal("me"), idNum]).optional(),
-  q: z.string().trim().max(100).optional(),
-  done: flag, // "0" = ẩn việc đã xong
-});
+/** Khoảng ngày xem (Lịch, Dashboard): tối đa 92 ngày để một lần tải không quá nặng. */
+export const MAX_RANGE_DAYS = 92;
+const dayCount = (from: string, to: string) => Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000) + 1;
+const rangeOk = (v: { from?: string; to?: string }) => !v.from || !v.to || (v.from <= v.to && dayCount(v.from, v.to) <= MAX_RANGE_DAYS);
+const RANGE_MSG = { message: `khoảng ngày không hợp lệ (từ ≤ đến, tối đa ${MAX_RANGE_DAYS} ngày)`, path: ["to"] };
+
+export const tasksQuerySchema = z
+  .object({
+    status: status.optional(),
+    assignee: z.union([z.literal("me"), idNum]).optional(),
+    q: z.string().trim().max(100).optional(),
+    done: flag, // "0" = ẩn việc đã xong
+    // v1.24.0 — Lịch: chỉ việc có hạn trong [from, to] (ngày VN). Gantt: tách việc chưa có ngày bắt đầu ra `unscheduled`.
+    from: realDate.optional(),
+    to: realDate.optional(),
+    gantt: flag,
+  })
+  .refine((v) => !!v.from === !!v.to, { message: "cần cả from và to", path: ["to"] })
+  .refine(rangeOk, RANGE_MSG);
+export type TasksQuery = z.infer<typeof tasksQuerySchema>;
+
+export const statsQuerySchema = z
+  .object({ from: realDate.optional(), to: realDate.optional() })
+  .refine((v) => !!v.from === !!v.to, { message: "cần cả from và to", path: ["to"] })
+  .refine(rangeOk, RANGE_MSG);
 
 export const myTasksQuerySchema = z.object({ due: z.enum(["overdue", "today", "week", "all"]).default("all"), done: flag });
 

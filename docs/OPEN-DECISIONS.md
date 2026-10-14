@@ -38,6 +38,11 @@ Ghi lại những điểm đã phát hiện trong quá trình làm và test, c�
   Zalo (danh sách 15 hàm ở PRD §35.6) — bật lại là các hàm chạy lại ngay và giật token Zalo của Face Beo.
 - **Trạng thái:** đã an toàn; còn việc tắt hẳn TeamTask khi các nhóm chuyển xong.
 
+## Đã chốt v1.24.0 (15/10/2026) — Công việc, đợt B
+
+- Thêm Gantt (kéo thanh dời ngày, giữ giờ của hạn), Lịch (Ngày / Tuần / Tháng 6×7 từ thứ Hai, chỉ xem), Dashboard (7 / 30 / 90
+  ngày) cho mỗi dự án. SVG tự vẽ, không thư viện, không migration. Mọi số liệu lọc theo quyền xem (PRD §36).
+
 ## Đã chốt v1.23.0 (15/10/2026) — Phân hệ Công việc, đợt A
 
 - **Viết lại** TeamTask trong Face Beo, không chép code, **không nhập Firestore**. Ba đợt: A lõi (v1.23.0) → B Gantt / Lịch /

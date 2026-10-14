@@ -9,7 +9,7 @@
   vitest 4 (test tích hợp gọi thẳng route handler, DB `data/test.db`).
 - Phân hệ **Công việc & dự án** (v1.23.0, thay app TeamTask/Firebase — đợt B Gantt/Lịch/Dashboard v1.24.0, đợt C tệp + webhook
   Zalo tạo việc v1.25.0; plan: `C:\Users\PT_1\.claude\plans\location-d-3a-5c-teamsync-project-c-code-frolicking-locket.md`).
-- Phiên bản hiện tại: **v1.23.0** (tag GitHub `v1.23.0`, repo `yutobeo2024/Face-beo`). Phiên bản ghi trong prose (README, PRD,
+- Phiên bản hiện tại: **v1.24.0** (tag GitHub `v1.24.0`, repo `yutobeo2024/Face-beo`). Phiên bản ghi trong prose (README, PRD,
   OPEN-DECISIONS), không có CHANGELOG; `package.json` version không dùng để đánh số.
 
 ## Lệnh
@@ -139,13 +139,16 @@ chạy cron / khóa Zalo thật song song với VPS (refresh token Zalo dùng m�
   tên / trạng thái / hạn (không mô tả, không nội dung bình luận). Chuông = bảng `InAppNotification` (đừng thêm `readAt` vào
   `NotificationLog`). Nhắc tên theo **mã NV** (`@NV007`). dnd-kit chỉ nạp qua `next/dynamic` ở trang bảng. Test dùng
   `tests/integration/tasks-fixture.ts` (`setupTasksFixture`), giờ nghiệp vụ cố định.
+  Đợt B (v1.24.0): các tab Bảng / Gantt / Lịch dùng chung hook `src/components/tasks/use-project-tasks.tsx` (tải việc,
+  đổi trạng thái có xếp hàng ghi, mở `?task=`) — sửa hành vi ở đó, đừng chép lại vào từng trang. Kéo Gantt chỉ là
+  `PATCH { startDate, dueAt }` (hạn giữ giờ cũ). Số liệu Dashboard = hàm thuần `computeStats`, lọc `taskVisibilityWhere`.
   **TeamTask dùng CHUNG Zalo OA** — Cloud Functions Zalo của TeamTask phải tắt trước khi VPS chạy v1.23.0 (refresh token dùng
   một lần); Face Beo mất token không rõ lý do ⇒ nghi TeamTask trước.
 - zod 4: schema PATCH không được có `.default()` (`.partial()` vẫn áp default → xóa dữ liệu). Cột JSON trong SQLite lưu chuỗi.
 
 ## Việc còn mở (15/10/2026)
 - **Công việc**: chủ dự án tắt Cloud Functions Zalo của TeamTask (Firebase `teamtask-5b35f`) trước khi cập nhật VPS lên v1.23.0;
-  tiếp theo đợt B (v1.24.0) Gantt + Lịch + Dashboard, đợt C (v1.25.0) liên kết + tệp `data/tasks/` + webhook `#viec`.
+  đợt B (v1.24.0) Gantt + Lịch + Dashboard đã xong; tiếp theo đợt C (v1.25.0) liên kết + tệp `data/tasks/` + webhook `#viec`.
 - **Chống giả mạo L2** (v1.22.0): VPS đặt `livenessServerThreshold = 0` (L2 chỉ ghi điểm, L1 gác) vì hệ số cắt 2,7 làm
   ~37 % lượt người thật < 0,5 (đo 08–12/10). Cần mẫu giả (ảnh in / màn hình điện thoại) rồi `npm run liveness:eval -- --gia=…`
   mới chọn được `livenessCropScale` và bật lại ngưỡng.

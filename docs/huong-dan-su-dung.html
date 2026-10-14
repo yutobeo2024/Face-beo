@@ -107,7 +107,7 @@ footer{color:var(--muted);font-size:.85rem;text-align:center;padding:10px}
 <div class="layout">
 <nav class="toc" id="toc">
   <div class="brand">📘 Cẩm nang Face Beo</div>
-  <div class="sub">Hướng dẫn sử dụng · bản v1.23</div>
+  <div class="sub">Hướng dẫn sử dụng · bản v1.24</div>
   <button class="menu-mobile" onclick="document.getElementById('toc').classList.toggle('open')">☰ Mục lục</button>
   <ol>
     <li class="grp">Bắt đầu</li>
@@ -1252,7 +1252,22 @@ stateDiagram-v2
     <p>TeamTask và Face Beo dùng <b>chung một Zalo OA</b>. Mã làm mới token của Zalo chỉ dùng được một lần, nên hai app chạy song song sẽ làm hỏng token của nhau (Face Beo ngừng gửi mọi tin Zalo). Quản trị phải <b>tắt các hàm Zalo của TeamTask bên Firebase</b> trước khi cập nhật máy chủ, và tắt hẳn TeamTask khi các nhóm đã chuyển xong.</p>
   </div>
 
-  <h3>16.7.6 Xóa và khôi phục</h3>
+  <h3>16.7.6 Gantt, Lịch, Dashboard (v1.24)</h3>
+  <p>Mỗi dự án có 3 tab cạnh <b>Bảng công việc</b>. Cả 3 đều chỉ hiện việc bạn được thấy (người <b>Cộng tác</b> chỉ thấy việc của mình).</p>
+  <div class="tw"><table>
+    <tr><th>Tab</th><th>Xem gì</th><th>Làm được gì</th></tr>
+    <tr><td><b>Gantt</b></td><td>Mỗi việc là một thanh từ <b>ngày bắt đầu</b> tới <b>hạn</b>; mũi tên nối việc phụ thuộc; vạch đỏ đứt là hôm nay; thanh viền đỏ là quá hạn</td><td><b>Kéo thanh</b> để dời cả việc; kéo <b>mép trái</b> đổi ngày bắt đầu, <b>mép phải</b> đổi hạn. Hạn giữ nguyên giờ: hạn 17:00 thứ Năm kéo sang thứ Sáu thành 17:00 thứ Sáu. Đổi mức xem: ngày / tuần / tháng; nút ‹ › dời khung 30 ngày. <b>Trên điện thoại</b>: chạm thanh để mở và sửa ngày (không kéo, để vuốt cuộn không làm đổi ngày)</td></tr>
+    <tr><td><b>Lịch</b></td><td>Việc xếp theo <b>hạn</b>; xem Ngày / Tuần / Tháng (lịch tháng đủ 6 hàng, tuần bắt đầu thứ Hai)</td><td>Chỉ xem. Bấm một việc để mở chi tiết; bấm số ngày hoặc "+N việc" để xem riêng ngày đó</td></tr>
+    <tr><td><b>Dashboard</b></td><td>Tổng việc, đã xong, quá hạn, thời gian hoàn thành trung bình; biểu đồ tiến độ, theo trạng thái, ưu tiên, người làm</td><td>Chọn 7 / 30 / 90 ngày</td></tr>
+  </table></div>
+  <div class="callout"><b>Việc không hiện trên Gantt?</b>
+    <p>Gantt cần <b>ngày bắt đầu</b>. Việc chưa có ngày bắt đầu nằm ở mục <b>"Chưa có ngày bắt đầu"</b> ngay dưới biểu đồ — bấm vào, điền ô <b>Bắt đầu</b>, thanh sẽ hiện ngay. Không có quyền sửa việc thì kéo không được, chỉ bấm để xem.</p>
+  </div>
+  <div class="ex"><div class="t">Ví dụ đọc Dashboard</div>
+    <p>30 ngày: Tổng 24 việc · Đã xong 15 (63%) · Quá hạn 3 · Xong trung bình sau 2,5 ngày. Cột "Theo người làm": Lan 8 việc (6 xong, 1 quá hạn) — biết ngay ai đang ôm nhiều việc trễ.</p>
+  </div>
+
+  <h3>16.7.7 Xóa và khôi phục</h3>
   <ul>
     <li><b>Xóa việc</b>: Chủ / Quản lý dự án (không khôi phục được).</li>
     <li><b>Xóa dự án</b>: chỉ Chủ dự án — dự án vào <b>Thùng rác</b> (nút ở trang Công việc), Chủ dự án vào đó bấm <b>Khôi phục dự án</b>.</li>

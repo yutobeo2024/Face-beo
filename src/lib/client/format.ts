@@ -40,6 +40,10 @@ export const addMonthsStr = (month: string, n: number) => {
   return `${d.getUTCFullYear()}-${p2(d.getUTCMonth() + 1)}`;
 };
 export const mondayOf = (date: string) => addDaysStr(date, -(weekdayOf(date) - 1));
+/** Ngày "YYYY-MM-DD" theo giờ VN của một mốc thời gian (v1.24.0 — Gantt / Lịch). */
+export const vnDateOf = (iso: string | Date) => isoDay(vn(iso));
+/** Số ngày từ `a` tới `b` ("YYYY-MM-DD"), âm nếu b trước a. */
+export const daysBetween = (a: string, b: string) => Math.round((dayUTC(b).getTime() - dayUTC(a).getTime()) / 86_400_000);
 
 /** "YYYY-MM-DDTHH:mm" giờ VN cho ô nhập datetime-local <-> ISO UTC. */
 export const toLocalInput = (iso: string) => {

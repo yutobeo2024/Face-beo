@@ -13,7 +13,7 @@ import { badRequest, forbidden, HttpError, notFound } from "../api";
 import type { AuthUser } from "../auth";
 import { can } from "../permissions";
 import { withLock } from "../mutex";
-import { vnDate } from "../attendance";
+import { vnDate, vnDayRange } from "../attendance";
 import {
   canAssignTask,
   canComment,
@@ -28,7 +28,7 @@ import {
   type TaskRel,
 } from "./project-access";
 import { loadProjectCtx, PERSON_SELECT, toPersonDto, type LoadedProject } from "./projects";
-import { parseIdList, type TaskCreateInput, type TaskPatchInput } from "./schemas";
+import { parseIdList, type TaskCreateInput, type TaskPatchInput, type TasksQuery } from "./schemas";
 import type { CommentDto, Recurrence, Reminder, TaskDto, TaskPriority, TaskStatus } from "./types";
 
 export const TASK_INCLUDE = {
@@ -86,13 +86,19 @@ export async function hideInvisibleDeps<T extends { dependsOn: number[] }>(ctx: 
   return dtos.map((d) => ({ ...d, dependsOn: d.dependsOn.filter((id) => visible.has(id)) }));
 }
 
-export async function listTasks(lp: LoadedProject, q: { status?: TaskStatus; assignee?: "me" | number; q?: string; done?: "0" | "1" }) {
+/** Điều kiện lọc chung (đã gồm phạm vi thấy việc của người xem). */
+export function tasksWhere(lp: LoadedProject, q: Omit<TasksQuery, "gantt">): Prisma.TaskWhereInput {
   const and: Prisma.TaskWhereInput[] = [{ projectId: lp.project.id }, taskVisibilityWhere(lp.ctx)];
   if (q.status) and.push({ status: q.status });
   if (q.done === "0") and.push({ status: { not: "DONE" } });
   if (q.assignee) and.push({ assignees: { some: { employeeId: q.assignee === "me" ? lp.user.id : q.assignee } } });
   if (q.q) and.push({ title: { contains: q.q } });
-  return prisma.task.findMany({ where: { AND: and }, include: TASK_INCLUDE, orderBy: [{ dueAt: "asc" }, { id: "asc" }], take: 1000 });
+  if (q.from && q.to) and.push({ dueAt: { gte: vnDayRange(q.from).start, lt: vnDayRange(q.to).end } });
+  return { AND: and };
+}
+
+export async function listTasks(lp: LoadedProject, q: Omit<TasksQuery, "gantt">, extra: Prisma.TaskWhereInput = {}, take = 1000) {
+  return prisma.task.findMany({ where: { AND: [tasksWhere(lp, q), extra] }, include: TASK_INCLUDE, orderBy: [{ dueAt: "asc" }, { id: "asc" }], take });
 }
 
 /** Nạp một việc theo id + quyền của người xem; không thấy ⇒ 404. */

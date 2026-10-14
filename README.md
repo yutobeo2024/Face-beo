@@ -74,7 +74,7 @@ Seed còn tạo 4 ca (Hành chính 08:00–17:00, Sáng sớm 07:00–17:00, Ca 
 | `/admin/settings/permissions` | 🔒 ADMIN | Ma trận phân quyền |
 | `/admin/links` | `links.manage` (HR mặc định; Quản lý nếu được cấp, giới hạn theo phòng) | Liên kết nhanh của mục "Thông tin": thêm/sửa/ẩn, chọn icon, giới hạn vai trò + phòng ban được xem (v1.5.0) |
 | `/admin/tasks` | `tasks.manageAll` (HR mặc định) | Tổng quan mọi dự án: chủ dự án, số việc, đã xong, quá hạn (v1.23.0) |
-| `/me/tasks`, `/me/tasks/my`, `/me/tasks/<id>` | `tasks.use` (mọi vai trò mặc định) + vai trò trong dự án | Công việc & dự án: Kanban, việc con, phụ thuộc, việc lặp, bình luận `@mã NV`, chuông, Zalo nhóm theo dự án (v1.23.0, PRD §35) |
+| `/me/tasks`, `/me/tasks/my`, `/me/tasks/<id>` | `tasks.use` (mọi vai trò mặc định) + vai trò trong dự án | Công việc & dự án: Kanban, việc con, phụ thuộc, việc lặp, bình luận `@mã NV`, chuông, Zalo nhóm theo dự án (v1.23.0, PRD §35); Gantt kéo thả, Lịch, Dashboard (v1.24.0, PRD §36) |
 | `/me`, `/me/requests`, `/me/attendance`, `/me/zalo`, `/me/info`, `/me/password` | Mọi người đăng nhập | Lịch tuần, đơn của tôi (nghỉ, về sớm, tăng ca, bổ sung công), lịch sử công, liên kết Zalo, mục Thông tin (ô liên kết web app / Google Sheet / Drive), đổi mật khẩu |
 | `/kiosk`, `/kiosk/pair`, `/kiosk/benchmark` | Thiết bị đã ghép | Chấm công, ghép thiết bị, đo hiệu năng |
 

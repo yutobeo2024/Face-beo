@@ -25,6 +25,9 @@ function Frame({ children }: { children: React.ReactNode }) {
   const base = `/me/tasks/${projectId}`;
   const tabs = [
     { href: base, label: "Bảng công việc", icon: "grid" as const },
+    { href: `${base}/gantt`, label: "Gantt", icon: "gantt" as const },
+    { href: `${base}/calendar`, label: "Lịch", icon: "calendar" as const },
+    { href: `${base}/dashboard`, label: "Dashboard", icon: "chart" as const },
     { href: `${base}/settings`, label: perms.manage ? "Cài đặt & thành viên" : "Thành viên", icon: "users" as const },
   ];
   return (
