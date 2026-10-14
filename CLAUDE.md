@@ -7,7 +7,9 @@
   MiniFASNetV2 phía server), đơn từ, tính công/chốt công tháng, xuất Excel, thông báo Zalo OA (nhiều nhóm theo loại tin: minh bạch / chấm công / đơn từ + tin riêng).
 - Stack: Next.js 15 App Router, Prisma 6 (SQLite WAL), zod 4, luxon, exceljs, node-cron, jose JWT (HS256, 7 ngày, `sessionVersion`),
   vitest 4 (test tích hợp gọi thẳng route handler, DB `data/test.db`).
-- Phiên bản hiện tại: **v1.22.1** (tag GitHub `v1.22.1`, repo `yutobeo2024/Face-beo`). Phiên bản ghi trong prose (README, PRD,
+- Phân hệ **Công việc & dự án** (v1.23.0, thay app TeamTask/Firebase — đợt B Gantt/Lịch/Dashboard v1.24.0, đợt C tệp + webhook
+  Zalo tạo việc v1.25.0; plan: `C:\Users\PT_1\.claude\plans\location-d-3a-5c-teamsync-project-c-code-frolicking-locket.md`).
+- Phiên bản hiện tại: **v1.23.0** (tag GitHub `v1.23.0`, repo `yutobeo2024/Face-beo`). Phiên bản ghi trong prose (README, PRD,
   OPEN-DECISIONS), không có CHANGELOG; `package.json` version không dùng để đánh số.
 
 ## Lệnh
@@ -125,9 +127,25 @@ chạy cron / khóa Zalo thật song song với VPS (refresh token Zalo dùng m�
 - Test có chấm công: **đừng dùng `new Date()` làm giờ quét** — lượt quét ngoài cửa sổ ca sẽ có `shiftId = null` và job
   đồng phục bỏ qua, test đỏ theo giờ chạy / thứ trong tuần. Đặt giờ cố định + gán mẫu tuần đủ 7 ngày cho nhân viên test
   (xem `tests/integration/uniform.test.ts`).
+- Công việc (v1.23.0, `src/lib/tasks/`): quyền kiểm TOÀN BỘ ở server qua `project-access.ts` (hàm thuần, có bảng chân trị) —
+  client chỉ nhận cờ `perms` để ẩn/hiện nút. Route vào phân hệ dùng `requireTasks` (có MỘT trong `tasks.use` /
+  `tasks.createProject` / `tasks.manageAll` — test ma trận cấp từng quyền riêng lẻ); route có dự án đi qua `loadProjectCtx`,
+  việc qua `loadTask` ⇒ không thấy thì **404**, đừng trả 403. Cộng tác chỉ thấy việc tự tạo / được giao (`taskVisibilityWhere`),
+  Thành viên không xóa, Quản lý dự án không hạ / gỡ Quản lý dự án khác, Quản trị hệ thống = Chủ của mọi dự án.
+  `status` + `completedAt` CHỈ đổi qua `changeStatus` (withLock + updateMany có điều kiện ⇒ 409; còn việc con ⇒ 400
+  `SUBTASKS_PENDING`) — `taskPatchSchema` là `.strict()` và không có `status`. `Project.ownerId` luôn khớp đúng một dòng
+  OWNER, đổi chủ chỉ qua `transferOwner`. Bản lặp unique `(parentId, occurrenceDate)`, không bù quá 24 giờ. Tin Zalo dự án
+  đi thẳng `sendZaloMessage({ toGroupId: Project.zaloGroupId })` theo `zaloPrefs`, KHÔNG thêm `ZALO_CATEGORY`, chỉ tiêu đề /
+  tên / trạng thái / hạn (không mô tả, không nội dung bình luận). Chuông = bảng `InAppNotification` (đừng thêm `readAt` vào
+  `NotificationLog`). Nhắc tên theo **mã NV** (`@NV007`). dnd-kit chỉ nạp qua `next/dynamic` ở trang bảng. Test dùng
+  `tests/integration/tasks-fixture.ts` (`setupTasksFixture`), giờ nghiệp vụ cố định.
+  **TeamTask dùng CHUNG Zalo OA** — Cloud Functions Zalo của TeamTask phải tắt trước khi VPS chạy v1.23.0 (refresh token dùng
+  một lần); Face Beo mất token không rõ lý do ⇒ nghi TeamTask trước.
 - zod 4: schema PATCH không được có `.default()` (`.partial()` vẫn áp default → xóa dữ liệu). Cột JSON trong SQLite lưu chuỗi.
 
-## Việc còn mở (12/10/2026)
+## Việc còn mở (15/10/2026)
+- **Công việc**: chủ dự án tắt Cloud Functions Zalo của TeamTask (Firebase `teamtask-5b35f`) trước khi cập nhật VPS lên v1.23.0;
+  tiếp theo đợt B (v1.24.0) Gantt + Lịch + Dashboard, đợt C (v1.25.0) liên kết + tệp `data/tasks/` + webhook `#viec`.
 - **Chống giả mạo L2** (v1.22.0): VPS đặt `livenessServerThreshold = 0` (L2 chỉ ghi điểm, L1 gác) vì hệ số cắt 2,7 làm
   ~37 % lượt người thật < 0,5 (đo 08–12/10). Cần mẫu giả (ảnh in / màn hình điện thoại) rồi `npm run liveness:eval -- --gia=…`
   mới chọn được `livenessCropScale` và bật lại ngưỡng.

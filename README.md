@@ -73,6 +73,8 @@ Seed còn tạo 4 ca (Hành chính 08:00–17:00, Sáng sớm 07:00–17:00, Ca 
 | `/admin/settings` | 🔒 ADMIN / `org.manage` | Ca, mẫu tuần, ngày lễ, phòng ban, ngưỡng, các nhóm Zalo và loại tin nhận |
 | `/admin/settings/permissions` | 🔒 ADMIN | Ma trận phân quyền |
 | `/admin/links` | `links.manage` (HR mặc định; Quản lý nếu được cấp, giới hạn theo phòng) | Liên kết nhanh của mục "Thông tin": thêm/sửa/ẩn, chọn icon, giới hạn vai trò + phòng ban được xem (v1.5.0) |
+| `/admin/tasks` | `tasks.manageAll` (HR mặc định) | Tổng quan mọi dự án: chủ dự án, số việc, đã xong, quá hạn (v1.23.0) |
+| `/me/tasks`, `/me/tasks/my`, `/me/tasks/<id>` | `tasks.use` (mọi vai trò mặc định) + vai trò trong dự án | Công việc & dự án: Kanban, việc con, phụ thuộc, việc lặp, bình luận `@mã NV`, chuông, Zalo nhóm theo dự án (v1.23.0, PRD §35) |
 | `/me`, `/me/requests`, `/me/attendance`, `/me/zalo`, `/me/info`, `/me/password` | Mọi người đăng nhập | Lịch tuần, đơn của tôi (nghỉ, về sớm, tăng ca, bổ sung công), lịch sử công, liên kết Zalo, mục Thông tin (ô liên kết web app / Google Sheet / Drive), đổi mật khẩu |
 | `/kiosk`, `/kiosk/pair`, `/kiosk/benchmark` | Thiết bị đã ghép | Chấm công, ghép thiết bị, đo hiệu năng |
 
@@ -87,6 +89,7 @@ Các luật khóa cứng trong code (ma trận không đổi được):
 - Cấu hình hệ thống, thiết bị, phân quyền và gán vai trò HR/ADMIN chỉ thuộc ADMIN.
 - Không ai tự duyệt đơn của mình, tự chấm tay đơn của mình hay tự đổi vai trò của mình. HR không sửa được tài khoản HR/ADMIN.
 - **Phạm vi dữ liệu:** ADMIN/HR thấy toàn công ty, MANAGER chỉ thấy phòng mình quản lý (`Department.managerId`), nhân viên chỉ thấy dữ liệu của mình. Mọi API đều kiểm tra lại ở server.
+- **Công việc (v1.23.0):** quyền hệ thống `tasks.use` / `tasks.createProject` / `tasks.manageAll` + vai trò trong dự án (Chủ / Quản lý dự án / Thành viên / Cộng tác), luật ở `src/lib/tasks/project-access.ts`. Quản trị = Chủ của mọi dự án.
 
 ### Tuyến duyệt đơn
 
@@ -297,6 +300,9 @@ curl -X POST -H "x-cron-secret: $CRON_SECRET" https://<máy-chủ>/api/cron/abse
 | `db-backup` | 03:00 | `VACUUM INTO data/backups/`, giữ 14 bản |
 | `medinet-check` | 06:30 | Tự tra GPHN trên tracuu.medinet.org.vn (Sở Y tế TP.HCM) cho người chưa tra quá 30 ngày (tối đa 30 người/ngày, cách nhau ≥ 4 giây); kết quả vào `credential-check` |
 | `credential-check` | 07:30 | Hồ sơ hành nghề: thiếu / hết hạn GPHN, thiếu tiết CME, chứng chỉ sắp hết hạn → nhóm Zalo minh bạch, mỗi vấn đề tối đa 1 lần / tháng |
+| `task-recurrence` | 10 phút | Công việc: bản lặp của hôm nay cho việc lặp (không bù quá 24 giờ, unique `parentId + occurrenceDate`) |
+| `task-reminders` | phút 05 mỗi giờ | Nhắc hạn cá nhân (chuông + Zalo riêng) + một tin nhóm dự án gom việc đến hạn trong 1 giờ tới |
+| `task-overdue-digest` | 09:00 | Mỗi dự án một tin việc quá hạn vào nhóm Zalo của dự án; chuông một dòng / người |
 
 Mọi job đều idempotent: chạy lại không sinh tin trùng, nhờ ràng buộc unique `NotificationLog.dedupeKey`.
 

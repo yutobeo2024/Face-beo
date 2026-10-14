@@ -107,7 +107,7 @@ footer{color:var(--muted);font-size:.85rem;text-align:center;padding:10px}
 <div class="layout">
 <nav class="toc" id="toc">
   <div class="brand">📘 Cẩm nang Face Beo</div>
-  <div class="sub">Hướng dẫn sử dụng · bản v1.21</div>
+  <div class="sub">Hướng dẫn sử dụng · bản v1.23</div>
   <button class="menu-mobile" onclick="document.getElementById('toc').classList.toggle('open')">☰ Mục lục</button>
   <ol>
     <li class="grp">Bắt đầu</li>
@@ -135,6 +135,7 @@ footer{color:var(--muted);font-size:.85rem;text-align:center;padding:10px}
     <li><a href="#nhan-vien-tu-phuc-vu">16. Trang cá nhân nhân viên</a></li>
     <li><a href="#cai-app">16.5 Cài Face Beo thành app</a></li>
     <li><a href="#chat-bot">16.6 Chat bot tra cứu y khoa</a></li>
+    <li><a href="#cong-viec">16.7 Công việc &amp; dự án</a></li>
     <li><a href="#lich-thang">17. Lịch làm việc hằng tháng</a></li>
     <li><a href="#hoi-dap">18. Hỏi đáp &amp; xử lý sự cố</a></li>
   </ol>
@@ -258,6 +259,9 @@ npm run admin:create -- --code AD01 --name "Nguyễn Văn A" --phone 0901234567<
     <tr><td>Xem / quản lý nhân viên, enroll khuôn mặt</td><td class="y">✔</td><td class="y">✔</td><td>chỉ xem</td><td class="n">–</td></tr>
     <tr><td>Phòng ban, ngày lễ, định nghĩa ca, mẫu tuần</td><td class="y">✔</td><td class="n">–</td><td class="n">–</td><td class="n">–</td></tr>
     <tr><td>Thông tin: thêm / sửa liên kết nhanh (web app, Google Sheet, Drive…)</td><td class="y">✔</td><td class="y">✔</td><td>chỉ khi được cấp, giới hạn phòng mình</td><td class="n">–</td></tr>
+    <tr><td>Dùng mục Công việc (dự án được mời vào, việc của tôi)</td><td class="y">✔</td><td class="y">✔</td><td class="y">✔</td><td class="y">✔</td></tr>
+    <tr><td>Tạo dự án mới (người tạo là Chủ dự án)</td><td class="y">✔</td><td class="y">✔</td><td class="y">✔</td><td class="n">–</td></tr>
+    <tr><td>Xem / sửa mọi dự án, trang tổng quan Công việc</td><td class="y">✔</td><td class="y">✔</td><td class="n">–</td><td class="n">–</td></tr>
     <tr><td>🔒 Cấu hình hệ thống, thiết bị, phân quyền, gán vai trò HR/QT, <b>mở khóa tháng</b></td><td class="y">✔</td><td colspan="3">Luôn chỉ Quản trị, không chỉnh được</td></tr>
   </table></div>
 
@@ -1194,6 +1198,66 @@ stateDiagram-v2
   <div class="callout ok"><b>Chia sẻ link ra ngoài không dùng được</b>
     <p><b>Hỏi đáp</b> chỉ nhận câu đi qua Face Beo: người ngoài mở địa chỉ cũ của chat bot và bấm gửi sẽ bị từ chối, nên không lo nhân viên gửi link cho người ngoài tra cứu. (Riêng <i>hình minh họa</i> của chat bot vẫn mở cho ai biết đúng đường dẫn tệp — đó chỉ là hình vẽ quy trình trong tài liệu Bộ Y tế, không có dữ liệu nhân viên hay bệnh nhân.)</p>
   </div>
+</section>
+
+<!-- 16.7 -->
+<section id="cong-viec">
+  <h2><span class="num">16.7</span>Công việc &amp; dự án</h2>
+  <p class="lead"><span class="pill e">Mọi vai trò</span><span class="pill m">Quản lý tạo dự án</span> Giao việc, theo dõi tiến độ bằng bảng Kanban, việc lặp, nhắc hạn và báo vào nhóm Zalo của dự án. Thay cho app <b>TeamTask</b> cũ — dữ liệu cũ <b>không</b> chuyển sang, các nhóm tạo lại dự án trên Face Beo. Mục <b>Công việc</b> nằm ở thanh dưới điện thoại (Hôm nay · Đơn từ · Công việc · Lịch sử công) và thanh bên máy tính. Mục <b>Zalo</b> chuyển vào nút <b>Thêm</b>.</p>
+
+  <h3>16.7.1 Vai trò trong dự án</h3>
+  <p>Ngoài vai trò hệ thống (Quản trị, Nhân sự, Quản lý, Nhân viên), mỗi người trong một dự án có <b>một vai trò dự án</b>:</p>
+  <div class="tw"><table>
+    <tr><th>Vai trò dự án</th><th>Thấy việc</th><th>Sửa việc</th><th>Xóa việc</th><th>Thành viên, nhóm Zalo</th><th>Đổi tên, xóa dự án, chuyển chủ</th></tr>
+    <tr><td><b>Chủ dự án</b> (người tạo)</td><td>mọi việc</td><td>mọi việc</td><td class="y">✔</td><td class="y">✔</td><td class="y">✔</td></tr>
+    <tr><td><b>Quản lý dự án</b></td><td>mọi việc</td><td>mọi việc</td><td class="y">✔</td><td>✔ (không hạ / gỡ Quản lý dự án khác)</td><td class="n">–</td></tr>
+    <tr><td><b>Thành viên</b></td><td>mọi việc</td><td>việc mình tạo / được giao</td><td class="n">–</td><td class="n">–</td><td class="n">–</td></tr>
+    <tr><td><b>Cộng tác</b></td><td>chỉ việc mình tạo / được giao</td><td>như cột bên</td><td class="n">–</td><td class="n">–</td><td class="n">–</td></tr>
+  </table></div>
+  <p>Ví dụ: phòng Ngoại viện tạo dự án <i>"Khám sức khỏe công ty ABC tháng 11"</i>. Trưởng phòng là Chủ dự án, 2 điều dưỡng là Thành viên, bạn kế toán chỉ lo phần hóa đơn là <b>Cộng tác</b> — bạn ấy chỉ thấy đúng 2 việc "Xuất hóa đơn" và "Đối chiếu công nợ" được giao, không thấy danh sách khám của khách.</p>
+  <div class="callout"><b>Quản trị và Nhân sự</b>
+    <p>Quản trị luôn có quyền như Chủ dự án ở mọi dự án (dùng khi chủ dự án nghỉ việc: vào <b>Cài đặt &amp; thành viên</b> → <b>Chuyển chủ</b> cho người khác). Nhân sự (quyền <b>"Xem / sửa mọi dự án"</b>) có quyền như Quản lý dự án ở mọi dự án và xem trang tổng quan <b>Quản trị → Công việc</b>.</p>
+  </div>
+
+  <h3>16.7.2 Tạo dự án và thêm người</h3>
+  <ol class="steps">
+    <li><b>Công việc</b> → <b>Dự án mới</b> (Quản lý, Nhân sự, Quản trị). Đặt tên, chọn màu, mô tả.</li>
+    <li>Chọn <b>Nhóm Zalo nhận tin</b> của dự án (danh sách do Quản trị cấu hình ở Cấu hình → Zalo OA) hoặc <i>Không gửi Zalo</i>, rồi tích các loại tin muốn gửi: việc mới · đổi trạng thái · sắp đến hạn và báo cáo quá hạn · bình luận · nhắc tên. Về sau chỉ người có quyền tạo dự án (Quản lý, Nhân sự, Quản trị) đổi được nhóm; Quản lý dự án khác chỉ bật / tắt loại tin.</li>
+    <li>Vào dự án → tab <b>Cài đặt &amp; thành viên</b> → <b>Thêm người</b>: tìm theo mã NV hoặc tên, chọn vai trò từng người.</li>
+  </ol>
+
+  <h3>16.7.3 Bảng công việc (Kanban)</h3>
+  <ul>
+    <li>4 cột: <b>Cần làm → Đang làm → Chờ duyệt → Hoàn thành</b>. Máy tính: kéo thẻ sang cột khác. Điện thoại: chạm giữ thẻ rồi kéo, hoặc dùng ô <b>chọn trạng thái</b> ngay dưới thẻ.</li>
+    <li>Bấm <b>+</b> ở đầu cột hoặc <b>Việc mới</b>: tiêu đề, <b>hạn kèm giờ</b>, ngày bắt đầu, ưu tiên, người được giao, nhắc hạn, lặp lại, việc con (mỗi dòng một việc).</li>
+    <li>Bấm thẻ để mở <b>chi tiết</b>: sửa từng ô (tự lưu khi rời ô), tích việc con, thêm <b>việc phải xong trước</b>, bình luận.</li>
+    <li>Còn việc con chưa tích thì <b>không chuyển được sang Hoàn thành</b> — máy mở chi tiết và tô vàng danh sách việc con.</li>
+    <li>Hai người kéo cùng một thẻ cùng lúc: người sau nhận thông báo "việc vừa được người khác đổi" và bảng tự tải lại — không ai ghi đè ai.</li>
+    <li>Tab <b>Việc của tôi</b>: việc bạn được giao hoặc tự tạo ở mọi dự án, lọc <b>Quá hạn / Hôm nay / 7 ngày tới / Tất cả</b>.</li>
+  </ul>
+
+  <h3>16.7.4 Việc lặp</h3>
+  <p>Đặt <b>Lặp lại</b> = Hằng ngày / Hằng tuần / Hằng tháng. Lúc <b>00:00</b> của mỗi kỳ, hệ thống tạo một <b>bản mới</b> (chép tiêu đề, người được giao, việc con chưa tích), hạn cùng giờ với việc gốc.</p>
+  <p>Ví dụ: "Báo cáo doanh thu tuần" hạn 17:00 thứ Sáu 16/10, lặp hằng tuần ⇒ 00:00 thứ Sáu 23/10 có bản mới hạn 17:00 23/10. Lặp hằng tháng ngày 31 ⇒ tháng 2 rơi vào ngày 28 (hoặc 29). Máy chủ tắt vài ngày thì bật lại chỉ tạo bản của hôm nay, không đổ dồn bản cũ. Xóa một bản lặp thì nó không hiện lại. Việc lặp có <b>nhắc trước 1 tuần</b> thì bản mới có sẵn từ 1 tuần trước hạn để kịp nhắc.</p>
+
+  <h3>16.7.5 Thông báo</h3>
+  <ul>
+    <li><b>Chuông 🔔</b> ở góc trên (điện thoại) / đầu thanh bên (máy tính): được giao việc, việc mình liên quan đổi trạng thái, có bình luận, được nhắc tên, nhắc hạn, việc quá hạn, được thêm vào dự án. Bấm một dòng để mở đúng việc đó.</li>
+    <li><b>Nhắc tên</b> trong bình luận bằng <b>mã NV</b>: gõ <code>@</code> rồi chọn người (vd. <code>@NV007</code>). Người được nhắc nhận chuông và tin Zalo riêng (nếu đã liên kết Zalo).</li>
+    <li><b>Nhắc hạn</b> (ô "Nhắc hạn" của việc): đúng hạn / trước 1 ngày / 2 ngày / 1 tuần — chuông + tin Zalo riêng cho người được giao. Đổi hạn thì được nhắc lại theo hạn mới.</li>
+    <li><b>Nhóm Zalo của dự án</b>: tin việc mới, đổi trạng thái, bình luận; mỗi giờ một tin gom các việc <b>đến hạn trong 1 giờ tới</b>; <b>09:00</b> hằng ngày một tin <b>báo cáo việc quá hạn</b>. Tin chỉ có tiêu đề, tên người, trạng thái, hạn — <b>không</b> có mô tả và nội dung bình luận.</li>
+  </ul>
+
+  <div class="callout warn"><b>Trước khi bật trên máy chủ: tắt Zalo của TeamTask</b>
+    <p>TeamTask và Face Beo dùng <b>chung một Zalo OA</b>. Mã làm mới token của Zalo chỉ dùng được một lần, nên hai app chạy song song sẽ làm hỏng token của nhau (Face Beo ngừng gửi mọi tin Zalo). Quản trị phải <b>tắt các hàm Zalo của TeamTask bên Firebase</b> trước khi cập nhật máy chủ, và tắt hẳn TeamTask khi các nhóm đã chuyển xong.</p>
+  </div>
+
+  <h3>16.7.6 Xóa và khôi phục</h3>
+  <ul>
+    <li><b>Xóa việc</b>: Chủ / Quản lý dự án (không khôi phục được).</li>
+    <li><b>Xóa dự án</b>: chỉ Chủ dự án — dự án vào <b>Thùng rác</b> (nút ở trang Công việc), Chủ dự án vào đó bấm <b>Khôi phục dự án</b>.</li>
+    <li><b>Rời dự án</b>: ai cũng tự rời được, trừ Chủ dự án (phải <b>Chuyển chủ</b> trước).</li>
+  </ul>
 </section>
 
 <!-- 17 -->

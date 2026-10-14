@@ -114,6 +114,10 @@ const gates: [string, string, Capability[]][] = [
   ["devices", "GET", ["devices.manage"]], ["devices", "POST", ["devices.manage"]], ["devices/[id]/pair-code", "POST", ["devices.manage"]], ["devices/[id]/revoke", "POST", ["devices.manage"]],
   ["settings", "GET", ["settings.system"]], ["settings", "PUT", ["settings.system"]],
   ["permissions", "GET", ["permissions.manage"]], ["permissions", "PUT", ["permissions.manage"]],
+  // v1.23.0 — Công việc: có một trong ba quyền là vào được phân hệ; tạo dự án / tổng quan cần quyền riêng.
+  ["tasks/projects", "GET", ["tasks.use", "tasks.createProject", "tasks.manageAll"]], ["tasks/projects", "POST", ["tasks.createProject"]],
+  ["tasks/my", "GET", ["tasks.use", "tasks.createProject", "tasks.manageAll"]], ["tasks/notifications", "GET", ["tasks.use", "tasks.createProject", "tasks.manageAll"]],
+  ["tasks/overview", "GET", ["tasks.manageAll"]], ["tasks/zalo-groups", "GET", ["tasks.createProject", "tasks.manageAll"]],
 ];
 const probe = (path: string, method: string, cookie?: string) => call(path, method, cookie, method === "GET" ? undefined : {}, { id: "0", date: "invalid", month: "invalid" });
 

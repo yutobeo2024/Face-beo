@@ -804,3 +804,114 @@ Sửa (`src/lib/uniform-eval.ts`, hàm thuần có test):
 - Chỉ lượt **đã có người xác nhận** mới vào phép đo — kể cả lượt máy tự chấm Đạt (thiếu chúng thì nhóm "mặc đúng" chỉ
   gồm các lượt điểm thấp đã qua xem lại, vạch bị đặt lệch).
 - Chạy trên VPS: `docker exec -w /app facebeo-app-1 node_modules/.bin/tsx scripts/uniform-eval.ts --from=… --to=… --dept=2`.
+
+## 35. Phân hệ Công việc & dự án — đợt A: phần lõi (v1.23.0, 15/10/2026)
+
+Viết lại các tính năng của app riêng **TeamTask / Nexus Task Manager** (React + Firebase) thành một phân hệ của Face Beo, để
+tắt dần TeamTask. Không chép code, **không nhập dữ liệu Firestore** — bắt đầu sạch. Chạy chung app, chung DB SQLite, chung
+đăng nhập, chung Zalo OA (không thêm container / dịch vụ nào). Ba đợt: **A** lõi (bản này) → **B** Gantt, Lịch, Dashboard
+(v1.24.0) → **C** liên kết, tệp đính kèm, tạo việc từ tin nhóm Zalo (v1.25.0). Bỏ hẳn: AI Gemini (chưa có khóa), chat
+realtime, Slack, OAuth Zalo từng người.
+
+### 35.1 Phân quyền hai lớp — kiểm toàn bộ ở server
+
+Lớp 1, **quyền hệ thống** (ma trận `RolePermission`, nhóm "Công việc"):
+
+| Quyền | Ý nghĩa | Mặc định |
+| --- | --- | --- |
+| `tasks.use` | Vào mục Công việc (dự án mình là thành viên, Việc của tôi, chuông) | Nhân sự, Quản lý, Nhân viên |
+| `tasks.createProject` | Tạo dự án mới — người tạo là Chủ dự án | Nhân sự, Quản lý |
+| `tasks.manageAll` | Xem / sửa mọi dự án như Quản lý dự án, trang `/admin/tasks` | Nhân sự |
+
+Có một trong ba quyền là vào được phân hệ. Quản trị luôn đủ quyền và được coi như **Chủ dự án** của mọi dự án (xử lý khi
+chủ dự án nghỉ việc).
+
+Lớp 2, **vai trò trong dự án** (`ProjectMember.role`) — luật ở `src/lib/tasks/project-access.ts` (hàm thuần, có bảng chân trị):
+
+| Vai trò | Xem việc | Sửa việc | Xóa việc | Thành viên, Zalo, mô tả | Đổi tên, xóa / khôi phục dự án, chuyển chủ |
+| --- | --- | --- | --- | --- | --- |
+| Chủ dự án (OWNER) | mọi việc | mọi việc | ✓ | ✓ | ✓ |
+| Quản lý dự án (ADMIN) | mọi việc | mọi việc | ✓ | ✓ (không hạ / gỡ Quản lý dự án khác) | — |
+| Thành viên (MEMBER) | mọi việc | việc mình tạo / được giao | — | — | — |
+| Cộng tác (CONTRIBUTOR) | chỉ việc mình tạo / được giao | như cột Xem | — | — | — |
+
+- Việc / dự án không được thấy ⇒ **404** (không lộ là có tồn tại).
+- Giao việc cho người khác: Quản lý dự án, hoặc người tạo việc (Thành viên trở lên). Cộng tác chỉ tự nhận.
+- Người được giao phải là thành viên đang làm việc của dự án; gỡ khỏi dự án ⇒ gỡ luôn khỏi các việc.
+- Dự án luôn có đúng một Chủ (`Project.ownerId` + một dòng OWNER); đổi chủ chỉ qua "Chuyển quyền sở hữu" (chủ cũ thành
+  Quản lý dự án). Chủ dự án muốn rời thì phải chuyển quyền trước.
+- Xóa dự án là **xóa mềm** (thùng rác), chủ dự án / Quản trị khôi phục được.
+- Không xóa cứng được nhân viên còn dấu vết trong dự án / việc (dùng "Nghỉ việc").
+
+### 35.2 Công việc, Kanban, việc con, phụ thuộc
+
+- Việc có: tiêu đề, mô tả, trạng thái **Cần làm → Đang làm → Chờ duyệt → Hoàn thành**, ưu tiên (Thấp / Trung bình / Cao /
+  Khẩn), ngày bắt đầu (tùy chọn), **hạn kèm giờ**, người được giao, việc con, việc phải xong trước, bình luận.
+- Kéo thẻ giữa các cột (máy tính: chuột; điện thoại: chạm giữ, hoặc ô chọn trạng thái ngay trên thẻ).
+- **Trạng thái chỉ đổi qua một đường** (`POST /api/tasks/[id]/status`): khóa theo việc + cập nhật có điều kiện. Hai người
+  kéo cùng một thẻ cùng lúc ⇒ một người thành công, người kia nhận 409 và bảng tự tải lại. `PATCH` sửa việc **không nhận**
+  trạng thái.
+- Sang **Hoàn thành** khi còn việc con chưa xong ⇒ bị chặn, mở chi tiết việc và tô vàng danh sách việc con.
+  `completedAt` đặt khi sang Hoàn thành, xóa khi kéo ngược lại. Việc đã Hoàn thành thì không thêm / bỏ tích việc con
+  được nữa (chuyển về trạng thái khác trước).
+- Ngày bắt đầu phải là ngày có thật (30/02 ⇒ lỗi) và không sau hạn.
+- Phụ thuộc: cùng dự án, không tự trỏ, không vòng lặp (A chờ B, B lại chờ A ⇒ từ chối); tối đa 20. Việc con tối đa 50.
+
+### 35.3 Việc lặp
+
+Việc gốc đặt "Lặp lại" Hằng ngày / Hằng tuần / Hằng tháng. Job `task-recurrence` (10 phút) tạo **bản lặp** cho ngày lặp
+lúc 00:00 giờ VN: chép tiêu đề, mô tả, ưu tiên, nhắc hạn, người được giao, việc con (chưa xong); hạn = ngày đó lúc giờ hạn
+của việc gốc. Ví dụ: việc gốc "Giao ban" hạn 17:00 thứ Năm 15/10, lặp hằng tuần ⇒ thứ Năm 22/10 lúc 00:00 có bản mới hạn
+17:00 22/10.
+
+- Hằng tháng: ngày 29–31 rơi vào tháng ngắn ⇒ ngày cuối tháng (31/01 → 28/02 → 31/03).
+- **Không bù quá 24 giờ**: server tắt một tuần thì bật lên chỉ có bản của hôm nay.
+- Không bao giờ trùng: unique `(parentId, occurrenceDate)`. Việc gốc nhớ ngày đã sinh gần nhất (`lastOccurrence`) ⇒ xóa
+  một bản lặp thì nó **không** hiện lại ở lượt job sau.
+- Việc có "Nhắc hạn trước 1 ngày / 2 ngày / 1 tuần": bản lặp sinh **sớm đúng chừng đó** trước hạn (vd. nhắc trước 1 tuần,
+  hạn 17:00 22/10 ⇒ bản lặp có từ 17:00 15/10) để nhắc kịp.
+- Người được giao đã nghỉ việc / đã rời dự án không được chép sang bản lặp mới.
+
+### 35.4 Thông báo
+
+**Chuông trong app** (bảng `InAppNotification`, tách khỏi nhật ký Zalo `NotificationLog`): được giao việc, đổi trạng
+thái việc mình liên quan, bình luận, được nhắc tên, nhắc hạn, việc quá hạn, được thêm vào dự án. Làm mới mỗi phút; bấm một
+dòng mở thẳng việc đó (`/me/tasks/<dự án>?task=<việc>`).
+
+**Zalo nhóm theo dự án**: mỗi dự án chọn một nhóm trong danh sách nhóm Zalo đã cấu hình (hoặc "Không gửi Zalo") và 5 cờ:
+có việc mới · đổi trạng thái · việc sắp đến hạn (trong 1 giờ) và báo cáo quá hạn 09:00 · bình luận mới · nhắc tên. Tin đi
+thẳng vào nhóm của dự án (không qua loại tin MINH_BACH / CHAM_CONG / DON_TU) và **chỉ có tiêu đề, tên người, trạng thái,
+hạn** — không mô tả, không nội dung bình luận. Xóa nhóm Zalo ở Cấu hình ⇒ dự án thôi gắn nhóm đó. **Đổi nhóm** chỉ
+người có quyền tạo dự án / quản lý mọi dự án (Quản lý dự án là nhân viên thường không trỏ được tin dự án vào nhóm Nhân sự /
+minh bạch); Quản lý dự án vẫn bật / tắt được các cờ.
+
+Mọi thông báo (chuông, Zalo riêng) chỉ tới người **đang làm việc và còn là thành viên** dự án.
+
+**Zalo cá nhân**: người được nhắc tên `@mã NV` (vd. `@NV007`, theo mã vì tên có thể trùng), và nhắc hạn theo ô "Nhắc hạn"
+(đúng hạn / trước 1 ngày / 2 ngày / 1 tuần). Người chưa liên kết Zalo vẫn có chuông.
+
+**Job**:
+
+| Job | Lịch | Việc |
+| --- | --- | --- |
+| `task-recurrence` | 10 phút | Bản lặp của hôm nay |
+| `task-reminders` | phút 05 mỗi giờ | Nhắc hạn cá nhân (mỗi mốc một lần, đổi hạn ⇒ nhắc lại; mốc quá 24 giờ thì bỏ) + một tin nhóm / dự án gom việc đến hạn trong 1 giờ tới |
+| `task-overdue-digest` | 09:00 | Mỗi dự án một tin việc quá hạn (≤ 15 dòng), chuông một dòng / người / ngày; không có thì không gửi |
+
+### 35.5 Màn hình
+
+- Nhân viên: **Công việc** ở thanh dưới điện thoại (Hôm nay · Đơn từ · Công việc · Lịch sử công — "Zalo" chuyển vào menu
+  "Thêm" vì liên kết chỉ làm một lần). `/me/tasks` danh sách dự án + thùng rác; `/me/tasks/my` Việc của tôi (Quá hạn / Hôm
+  nay / 7 ngày tới / Tất cả); `/me/tasks/<id>` bảng Kanban + chi tiết việc (panel phải trên máy tính, hộp thoại trên điện
+  thoại); `/me/tasks/<id>/settings` thành viên, thông tin, nhóm Zalo, xóa / khôi phục.
+- Quản trị: `/admin/tasks` (`tasks.manageAll`) bảng tổng quan mọi dự án: chủ dự án (báo khi chủ đã nghỉ việc), số việc,
+  đã xong, quá hạn, số người.
+- Chuông ở thanh trên điện thoại và đầu thanh bên máy tính (cả trang nhân viên lẫn trang quản trị).
+
+### 35.6 Cảnh báo: TeamTask dùng CHUNG Zalo OA
+
+TeamTask ghi cứng đúng OA của Face Beo và tự refresh token (job 03:00 + khi gặp lỗi -216). Refresh token Zalo **chỉ dùng
+được một lần** ⇒ hai app giật token của nhau (TeamTask từng ghi 4 lần "token hết hạn" tháng 12/2025). **Trước khi cập
+nhật VPS lên v1.23.0 phải tắt các Cloud Functions Zalo của TeamTask** (`autoRefreshZaloTokens`, `refreshZaloTokenManual`,
+`onTaskCreated`, `onTaskUpdated`, `onTaskCommentAdded`, `zaloNotifyOverdueTasks`, `checkTaskDueReminders`) hoặc tắt hẳn
+TeamTask. Face Beo bỗng mất token Zalo không rõ lý do ⇒ nghi TeamTask trước.

@@ -16,6 +16,9 @@ const SCHEDULE: Record<JobName, string> = {
   "medinet-check": "30 6 * * *", // 06:30: tự tra GPHN trên medinet (người chưa tra quá N ngày) — kết quả vào tin 07:30
   "uniform-digest": "0 18 * * *", // 18:00: một tin tổng hợp cho quản lý mỗi phòng/ca; cả phòng đạt thì không gửi
   "uniform-check": "*/5 * * * *", // kiểm đồng phục ở lượt chấm vào đầu ca; chạy ngoài đường chấm công nên không làm chậm kiosk
+  "task-recurrence": "*/10 * * * *", // tạo bản lặp của việc lặp cho hôm nay (không bù quá 24 giờ)
+  "task-reminders": "5 * * * *", // phút 05 mỗi giờ: nhắc hạn cá nhân theo "Nhắc trước" + tin nhóm việc đến hạn trong 1 giờ
+  "task-overdue-digest": "0 9 * * *", // 09:00: một tin việc quá hạn mỗi dự án (không có thì không gửi)
 };
 
 const g = globalThis as unknown as { __cronStarted?: boolean; __jobRunning?: Set<string> };

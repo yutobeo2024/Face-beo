@@ -2,6 +2,7 @@
 import { createContext, useContext } from "react";
 import { AppShell, type NavItem, type ShellUser } from "@/components/shell";
 import type { Capability } from "@/lib/permissions";
+import { NotificationBell } from "@/components/tasks/notification-bell";
 
 type AdminUser = ShellUser & { id: number; caps: string[] };
 const UserCtx = createContext<AdminUser | null>(null);
@@ -21,6 +22,7 @@ export function AdminNav({ user, caps, children }: { user: ShellUser & { id: num
     (has("requests.decide") || has("attendance.executeCorrection")) && { href: "/admin/requests", label: "Đơn từ", icon: "inbox", mobile: true },
     has("attendance.view") && { href: "/admin/attendance", label: "Chấm công", icon: "clock", mobile: true },
     has("uniform.view") && { href: "/admin/uniform", label: "Đồng phục", icon: "shirt" },
+    has("tasks.manageAll") && { href: "/admin/tasks", label: "Công việc", icon: "tasks" },
     has("reports.view") && { href: "/admin/reports", label: "Báo cáo", icon: "chart" },
     (has("employees.view") || has("employees.manage")) && { href: "/admin/employees", label: "Nhân viên", icon: "users" },
     has("links.manage") && { href: "/admin/links", label: "Liên kết", icon: "link" },
@@ -30,7 +32,13 @@ export function AdminNav({ user, caps, children }: { user: ShellUser & { id: num
   ].filter(Boolean) as NavItem[];
   return (
     <UserCtx.Provider value={{ ...user, caps }}>
-      <AppShell user={user} nav={nav} brandSub="Quản trị" extraLinks={[{ href: "/me", label: "Trang cá nhân", icon: "home" }]}>
+      <AppShell
+        user={user}
+        nav={nav}
+        brandSub="Quản trị"
+        extraLinks={[{ href: "/me", label: "Trang cá nhân", icon: "home" }]}
+        headerExtra={has("tasks.use") || has("tasks.createProject") || has("tasks.manageAll") ? (onDark) => <NotificationBell onDark={onDark} /> : undefined}
+      >
         {children}
       </AppShell>
     </UserCtx.Provider>

@@ -49,11 +49,37 @@ function UserBlock({ user, compact }: { user: ShellUser; compact?: boolean }) {
  * - ≥1024px: sidebar cố định bên trái.
  * - <1024px: top bar + bottom nav (các mục `mobile`) + drawer cho toàn bộ menu.
  */
-export function AppShell({ user, nav, extraLinks, children, brandSub }: { user: ShellUser; nav: NavItem[]; extraLinks?: NavItem[]; children: React.ReactNode; brandSub: string }) {
+export function AppShell({
+  user,
+  nav,
+  extraLinks,
+  children,
+  brandSub,
+  headerExtra,
+}: {
+  user: ShellUser;
+  nav: NavItem[];
+  extraLinks?: NavItem[];
+  children: React.ReactNode;
+  brandSub: string;
+  /** Nút phụ ở đầu sidebar + thanh trên điện thoại (v1.23.0: chuông thông báo). `onDark` = nền sidebar tối. */
+  headerExtra?: (onDark: boolean) => React.ReactNode;
+}) {
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   useEffect(() => setOpen(false), [pathname]);
+  // headerExtra (chuông) chỉ gắn MỘT chỗ theo bề rộng màn hình — gắn cả hai thì hỏi máy chủ gấp đôi, đếm chưa đọc lệch nhau.
+  const [wideScreen, setWideScreen] = useState<boolean | null>(null);
+  const hasExtra = !!headerExtra;
+  useEffect(() => {
+    if (!hasExtra) return;
+    const m = window.matchMedia("(min-width: 1024px)");
+    const on = () => setWideScreen(m.matches);
+    on();
+    m.addEventListener("change", on);
+    return () => m.removeEventListener("change", on);
+  }, [hasExtra]);
   const mobileNav = nav.filter((n) => n.mobile).slice(0, 4);
   const current = [...nav, ...(extraLinks ?? [])].find((n) => isActive(pathname, n));
 
@@ -83,14 +109,17 @@ export function AppShell({ user, nav, extraLinks, children, brandSub }: { user: 
     <div className="min-h-dvh lg:pl-64">
       {/* Sidebar desktop */}
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col bg-gradient-to-b from-brand-900 to-brand-950 px-3 py-4 lg:flex">
-        <Link href="/" className="mb-6 flex items-center gap-2.5 px-2">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/icon.svg" alt="" className="size-9 rounded-xl" />
-          <div>
-            <p className="text-base leading-tight font-bold text-white">Face Beo</p>
-            <p className="text-xs text-brand-200/70">{brandSub}</p>
-          </div>
-        </Link>
+        <div className="mb-6 flex items-center justify-between gap-2 px-2">
+          <Link href="/" className="flex min-w-0 items-center gap-2.5">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/icon.svg" alt="" className="size-9 rounded-xl" />
+            <div>
+              <p className="text-base leading-tight font-bold text-white">Face Beo</p>
+              <p className="text-xs text-brand-200/70">{brandSub}</p>
+            </div>
+          </Link>
+          {wideScreen === true && headerExtra?.(true)}
+        </div>
         <div className="flex-1 overflow-y-auto">{links(true)}</div>
         {extraLinks && (
           <div className="mt-2 border-t border-white/10 pt-2">
@@ -120,6 +149,7 @@ export function AppShell({ user, nav, extraLinks, children, brandSub }: { user: 
       <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-slate-200/80 bg-white px-2 lg:hidden">
         <IconButton icon="menu" label="Mở menu" onClick={() => setOpen(true)} />
         <p className="min-w-0 flex-1 truncate text-[15px] font-semibold text-slate-800">{current?.label ?? "Face Beo"}</p>
+        {wideScreen === false && headerExtra?.(false)}
         <Link href="/" aria-label="Trang chủ" className="mr-1">
           <Avatar name={user.name} className="size-8" />
         </Link>

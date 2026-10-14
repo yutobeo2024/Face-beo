@@ -22,6 +22,32 @@ Ghi lại những điểm đã phát hiện trong quá trình làm và test, c�
   tạo lại OA Secret Key webhook (nếu Zalo cho), dán lại vào `/opt/facebeo/.env`, `up -d --force-recreate`.
 - **Trạng thái:** chờ chủ dự án thao tác.
 
+### D8. Trợ lý AI trong phân hệ Công việc (gợi ý chia việc, tóm tắt dự án)
+
+- **Ghi nhận:** 14/10/2026, khi đưa TeamTask vào Face Beo. TeamTask có nút AI (Gemini) nhưng chưa có khóa dùng được.
+- **Trạng thái:** để mở — chưa có khóa Gemini (một khóa đã hết tiền trả trước). Khi có khóa thì quyết định: tính năng nào, gửi
+  dữ liệu gì ra ngoài (không gửi dữ liệu cá nhân), giới hạn lượt như Chat bot.
+
+### D9. Tắt TeamTask sau khi phân hệ Công việc chạy ổn
+
+- TeamTask (Firebase `teamtask-5b35f`) dùng **chung Zalo OA** với Face Beo ⇒ phải tắt các Cloud Functions Zalo của TeamTask
+  trước khi cập nhật VPS lên v1.23.0 (PRD §35.6). Khi các nhóm (Ngoại viện, Kế toán, Nhân sự) chuyển hẳn sang Face Beo thì tắt
+  hẳn TeamTask; dữ liệu cũ không chuyển (đã chốt bắt đầu sạch).
+- **Trạng thái:** chờ chủ dự án thao tác bên Firebase.
+
+## Đã chốt v1.23.0 (15/10/2026) — Phân hệ Công việc, đợt A
+
+- **Viết lại** TeamTask trong Face Beo, không chép code, **không nhập Firestore**. Ba đợt: A lõi (v1.23.0) → B Gantt / Lịch /
+  Dashboard (v1.24.0) → C liên kết + tệp đính kèm + tạo việc từ tin nhóm Zalo (v1.25.0). Bỏ: AI, chat realtime, Slack, OAuth
+  Zalo từng người, màn hình token Zalo.
+- Quyền hai lớp, **kiểm toàn bộ ở server**: `tasks.use` / `tasks.createProject` / `tasks.manageAll` + vai trò dự án
+  Chủ / Quản lý dự án / Thành viên / Cộng tác (bảng ở PRD §35.1). Sửa các lỗ của TeamTask: Cộng tác chỉ thấy việc của mình,
+  Thành viên không xóa, Quản lý dự án không hạ Quản lý dự án khác, việc không thấy trả 404.
+- Trạng thái chỉ đổi qua một đường, 409 khi hai người kéo cùng lúc; còn việc con chưa xong thì không sang Hoàn thành.
+- Việc lặp: bản lặp lúc 00:00 giờ VN, không bù quá 24 giờ, tháng ngắn kẹp về cuối tháng.
+- Zalo theo dự án: chọn nhóm + 5 cờ; tin đi thẳng nhóm, chỉ tiêu đề / tên / trạng thái / hạn. Nhắc tên theo **mã NV**.
+- Thanh dưới điện thoại: Hôm nay · Đơn từ · Công việc · Lịch sử công; "Zalo" vào menu "Thêm".
+
 ## Đã chốt v1.21.x (30/09 – 05/10/2026) — Kiosk và hiệu chỉnh đồng phục bằng dữ liệu thật
 
 ### Kiosk: chạm rồi mới chấm (v1.21.0)

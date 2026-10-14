@@ -1,5 +1,10 @@
 /** Dữ liệu icon nét (stroke) 24px — file .ts thuần để lib/validators và test nhập được mà không cần JSX. */
 export const ICON_PATHS: Record<string, string> = {
+  // v1.23.0 — Công việc
+  tasks: "M9 6h11M9 12h11M9 18h11M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2",
+  flag: "M5 21V4M5 4h11l-2 4 2 4H5",
+  gantt: "M4 4v16h16M8 8h6M11 12h7M7 16h5",
+  paperclip: "M21 11.5 12.5 20a5 5 0 0 1-7-7L14 4.5a3.3 3.3 0 0 1 4.7 4.7l-8.5 8.5a1.7 1.7 0 0 1-2.4-2.4L15.5 7.5",
   dashboard: "M4 13h6V4H4v9Zm0 7h6v-4H4v4Zm10 0h6v-9h-6v9Zm0-16v4h6V4h-6Z",
   calendar: "M7 3v3M17 3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z",
   inbox: "M4 13h4l2 3h4l2-3h4M5 5h14l1 8v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-5l1-8Z",

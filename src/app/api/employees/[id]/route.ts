@@ -205,7 +205,7 @@ export const DELETE = handle<{ id: string }>(async (req, ctx) => {
   if (!e) throw notFound();
   if (u.id === id) throw badRequest("Không thể tự xóa tài khoản của chính mình");
   await assertCanModify(u, e, { active: false });
-  const [logs, requests, schedules, locked, locks, weeks, links, facesForOthers, actions, notifications] = await Promise.all([
+  const [logs, requests, schedules, locked, locks, weeks, links, facesForOthers, actions, notifications, projects, tasks] = await Promise.all([
     prisma.attendanceLog.count({ where: { OR: [{ employeeId: id }, { createdById: id }] } }),
     prisma.leaveRequest.count({ where: { OR: [{ employeeId: id }, { approverId: id }, { managerApproverId: id }, { executedById: id }] } }),
     prisma.workSchedule.count({ where: { employeeId: id } }),
@@ -216,6 +216,9 @@ export const DELETE = handle<{ id: string }>(async (req, ctx) => {
     prisma.faceTemplate.count({ where: { createdById: id, employeeId: { not: id } } }),
     prisma.auditLog.count({ where: { actorId: id } }),
     prisma.notificationLog.count({ where: { toEmployeeId: id } }),
+    // v1.23.0: người tạo / chủ dự án / tác giả bình luận lưu Int trơn — xóa sẽ để lại việc "không rõ ai tạo".
+    prisma.project.count({ where: { OR: [{ ownerId: id }, { createdById: id }, { members: { some: { employeeId: id } } }] } }),
+    prisma.task.count({ where: { OR: [{ createdById: id }, { comments: { some: { authorId: id } } }, { assignees: { some: { employeeId: id } } }] } }),
   ]);
   const reasons = [
     logs > 0 && `${logs} log chấm công (của họ hoặc do họ chấm tay)`,
@@ -228,6 +231,8 @@ export const DELETE = handle<{ id: string }>(async (req, ctx) => {
     facesForOthers > 0 && `${facesForOthers} mẫu khuôn mặt do người này enroll cho người khác`,
     actions > 0 && `${actions} thao tác trong nhật ký hệ thống`,
     notifications > 0 && `${notifications} thông báo đã gửi`,
+    projects > 0 && `${projects} dự án (chủ / người tạo / thành viên)`,
+    tasks > 0 && `${tasks} công việc (tạo, được giao hoặc đã bình luận)`,
   ].filter(Boolean);
   if (reasons.length) {
     throw badRequest(`Không thể xóa ${e.code} — ${e.name}: đã có ${reasons.join(", ")}. Hãy dùng "Nghỉ việc" (bỏ tích Đang làm việc) để giữ lịch sử.`);

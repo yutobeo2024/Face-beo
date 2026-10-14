@@ -94,6 +94,10 @@ model Employee {
   license                PracticeLicense?
   credentials            Credential[]
   notifications          NotificationLog[]
+  // v1.23.0 — phân hệ Công việc
+  projectMemberships     ProjectMember[]
+  taskAssignments        TaskAssignee[]
+  inAppNotifications     InAppNotification[]
 
   // v1.16.0: mọi danh sách đều lọc active + phòng rồi sắp theo mã; notify tra người duyệt theo vai trò.
   @@index([active, departmentId, code])
@@ -515,4 +519,137 @@ model UniformCheck {
   @@unique([employeeId, workDate])
   @@index([workDate, status])
   @@index([departmentId, workDate])
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Công việc & dự án (v1.23.0). Quyền kiểm TOÀN BỘ ở server (src/lib/tasks/project-access.ts): capability hệ thống
+// tasks.use / tasks.createProject / tasks.manageAll + vai trò trong dự án. Người tạo / tác giả để Int trơn (không quan hệ):
+// route xóa cứng nhân viên chặn nếu còn dấu vết ở đây.
+
+model Project {
+  id          Int             @id @default(autoincrement())
+  name        String
+  color       String          @default("blue") // tên màu trong PROJECT_COLORS (src/lib/tasks/types.ts)
+  description String          @default("")
+  ownerId     Int // bất biến: luôn có ProjectMember OWNER tương ứng (đổi qua transferOwner)
+  zaloGroupId String? // ZaloGroup.groupId (không FK) — tin dự án gửi thẳng nhóm này, không qua category
+  zaloPrefs   String          @default("{\"onNewTask\":true,\"onStatusChange\":true,\"onTaskNearDueDate\":true,\"onNewComment\":true,\"onUserMention\":true}")
+  deletedAt   DateTime? // xóa mềm; chủ dự án / Quản trị khôi phục được
+  createdById Int
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  members     ProjectMember[]
+  tasks       Task[]
+
+  @@index([deletedAt, updatedAt])
+  @@index([zaloGroupId])
+}
+
+model ProjectMember {
+  projectId  Int
+  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  employeeId Int
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  role       String // OWNER | ADMIN | MEMBER | CONTRIBUTOR
+  addedById  Int?
+  createdAt  DateTime @default(now())
+
+  @@id([projectId, employeeId])
+  @@index([employeeId])
+}
+
+// Bản lặp của việc lặp: parentId = việc gốc, occurrenceDate = ngày của bản lặp; unique chặn job tạo trùng.
+model Task {
+  id             Int              @id @default(autoincrement())
+  projectId      Int
+  project        Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title          String
+  description    String           @default("")
+  status         String           @default("TODO") // TODO | DOING | REVIEW | DONE — chỉ đổi qua changeStatus
+  priority       String           @default("MEDIUM") // LOW | MEDIUM | HIGH | URGENT
+  startDate      String? // "YYYY-MM-DD" giờ VN
+  dueAt          DateTime // hạn kèm giờ
+  reminder       String           @default("NONE") // NONE | ON_DUE | D1 | D2 | W1
+  recurrence     String           @default("NONE") // NONE | DAILY | WEEKLY | MONTHLY (chỉ việc gốc)
+  recurrenceTime String? // "HH:mm" — giờ hạn của bản lặp; trống = giờ hạn của việc gốc
+  parentId       Int?
+  occurrenceDate String?
+  lastOccurrence String? // chỉ việc gốc: ngày lặp gần nhất đã sinh — bản lặp bị xóa không sinh lại
+  completedAt    DateTime? // chỉ changeStatus đặt / xóa
+  createdById    Int
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  assignees      TaskAssignee[]
+  subtasks       Subtask[]
+  dependsOn      TaskDependency[] @relation("TaskDependsOn")
+  blocks         TaskDependency[] @relation("TaskBlocks")
+  comments       TaskComment[]
+
+  @@unique([parentId, occurrenceDate])
+  @@index([projectId, status])
+  @@index([dueAt, status])
+  @@index([recurrence, parentId])
+}
+
+model TaskAssignee {
+  taskId     Int
+  task       Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  employeeId Int
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@id([taskId, employeeId])
+  @@index([employeeId])
+}
+
+model Subtask {
+  id        Int     @id @default(autoincrement())
+  taskId    Int
+  task      Task    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  text      String
+  done      Boolean @default(false)
+  sortOrder Int     @default(0)
+
+  @@index([taskId, sortOrder])
+}
+
+// taskId phụ thuộc dependsOnId (phải xong dependsOnId trước). Cùng dự án, không chu trình — kiểm ở setDependencies.
+model TaskDependency {
+  taskId      Int
+  task        Task @relation("TaskDependsOn", fields: [taskId], references: [id], onDelete: Cascade)
+  dependsOnId Int
+  dependsOn   Task @relation("TaskBlocks", fields: [dependsOnId], references: [id], onDelete: Cascade)
+
+  @@id([taskId, dependsOnId])
+  @@index([dependsOnId])
+}
+
+model TaskComment {
+  id        Int      @id @default(autoincrement())
+  taskId    Int
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  authorId  Int
+  text      String
+  mentions  String   @default("[]") // JSON id nhân viên được nhắc (@mã NV)
+  createdAt DateTime @default(now())
+
+  @@index([taskId, createdAt])
+  @@index([authorId])
+}
+
+// Chuông thông báo trong app (tách khỏi NotificationLog — đó là nhật ký gửi Zalo, dedupeKey bắt buộc).
+model InAppNotification {
+  id         Int       @id @default(autoincrement())
+  employeeId Int
+  employee   Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  kind       String // TASK_ASSIGNED | TASK_STATUS | TASK_COMMENT | TASK_MENTION | TASK_DUE_SOON | TASK_OVERDUE | PROJECT_MEMBER
+  title      String
+  body       String?
+  projectId  Int?
+  taskId     Int?
+  actorId    Int?
+  dedupeKey  String?   @unique
+  readAt     DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([employeeId, readAt, createdAt])
 }

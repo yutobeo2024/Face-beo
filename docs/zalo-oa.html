@@ -311,7 +311,7 @@ flowchart LR
 
 <!-- 3 -->
 <section id="tin">
-  <h2><span class="num">3.</span>15 loại tin nhắn</h2>
+  <h2><span class="num">3.</span>22 loại tin nhắn</h2>
   <p class="lead">Nội dung tin lấy từ <code>src/lib/zalo-templates.ts</code>. Mỗi tin có link mở đúng màn hình trong Face Beo (địa chỉ gốc lấy từ <code>APP_BASE_URL</code>).</p>
   <h3>3.1 Tin gửi vào nhóm</h3>
   <div class="tw"><table>
@@ -338,6 +338,21 @@ flowchart LR
     <tr><td><code>REQUEST_OVERDUE</code></td><td>Người phải duyệt / chấm tay</td><td>Job 30 phút, đơn chờ quá 24 giờ</td><td>⏰ Đơn #… đang chờ bạn duyệt đã quá 24 giờ</td></tr>
     <tr><td><code>REQUEST_ESCALATED</code></td><td>Mọi Quản trị (+ nhóm)</td><td>Đơn chờ quá 48 giờ</td><td>🚨 Đơn #… chờ duyệt đã quá 48 giờ — cần Quản trị xem xét</td></tr>
   </table></div>
+  <h3>3.3 Công việc &amp; dự án (v1.23.0)</h3>
+  <p>Tin nhóm của phân hệ Công việc đi <b>thẳng vào nhóm Zalo mà dự án chọn</b> (Cài đặt dự án → Nhóm Zalo nhận tin), không qua loại tin Minh bạch / Chấm công / Đơn từ, và chỉ khi dự án tích loại tin đó. Tin <b>chỉ có tiêu đề việc, tên người, trạng thái, hạn</b> — không mô tả, không nội dung bình luận. Link mở thẳng việc: <code>/me/tasks/&lt;dự án&gt;?task=&lt;việc&gt;</code>.</p>
+  <div class="tw"><table>
+    <tr><th>Loại</th><th>Gửi tới</th><th>Khi nào (cờ của dự án)</th><th>Nội dung mẫu</th></tr>
+    <tr><td><code>TASK_NEW</code></td><td>Nhóm dự án</td><td>Tạo việc (<i>Có việc mới</i>)</td><td>✅ CÓ CÔNG VIỆC MỚI — Khám SK công ty ABC · 📌 Gọi xác nhận lịch · 👤 Giao cho: Lan · ⚡ Ưu tiên: Cao · ⏰ Hạn: 17:00 20/10/2026</td></tr>
+    <tr><td><code>TASK_STATUS</code></td><td>Nhóm dự án</td><td>Đổi trạng thái (<i>Đổi trạng thái</i>)</td><td>🔄 ĐỔI TRẠNG THÁI — … · 📌 … · Đang làm → Chờ duyệt · Người đổi: …</td></tr>
+    <tr><td><code>TASK_COMMENT</code></td><td>Nhóm dự án</td><td>Bình luận mới (<i>Bình luận mới</i>)</td><td>💬 BÌNH LUẬN MỚI — … · 📌 … · Lan vừa bình luận.</td></tr>
+    <tr><td><code>TASK_DUE_SOON</code></td><td>Nhóm dự án</td><td>Job mỗi giờ: việc đến hạn trong 1 giờ tới, gom một tin / dự án (<i>Sắp đến hạn</i>)</td><td>⏰ SẮP ĐẾN HẠN (trong 1 giờ) — … · 1. … — hạn 10:30 05/05 (Lan)</td></tr>
+    <tr><td><code>TASK_OVERDUE_DIGEST</code></td><td>Nhóm dự án</td><td>09:00 hằng ngày, có việc quá hạn (<i>Sắp đến hạn</i>), ≤ 15 dòng</td><td>📢 BÁO CÁO VIỆC QUÁ HẠN — 03/06/2026 · Dự án: … · 1. … — hạn …</td></tr>
+    <tr><td><code>TASK_MENTION</code></td><td>Riêng: người được nhắc <code>@mã NV</code></td><td>Bình luận có nhắc tên (<i>Nhắc tên</i>)</td><td>💬 Lan nhắc đến bạn trong một bình luận · 📌 … (dự án …)</td></tr>
+    <tr><td><code>TASK_DUE_PERSONAL</code></td><td>Riêng: người được giao (không ai thì người tạo)</td><td>Theo ô "Nhắc hạn" của việc: đúng hạn / trước 1 ngày / 2 ngày / 1 tuần</td><td>⏰ Nhắc hạn công việc (Trước 1 ngày) · 📌 … · Hạn: 17:00 10/04/2026</td></tr>
+  </table></div>
+  <div class="callout warn"><b>TeamTask dùng CHUNG OA này</b>
+    <p>App TeamTask cũ (Firebase) ghi cứng đúng OA của Face Beo và tự làm mới token (job 03:00 + khi gặp lỗi -216). Refresh token Zalo <b>chỉ dùng được một lần</b>, nên hai app chạy song song sẽ làm hỏng token của nhau. <b>Trước khi cập nhật máy chủ lên v1.23.0</b>, tắt các Cloud Functions Zalo của TeamTask: <code>autoRefreshZaloTokens</code>, <code>refreshZaloTokenManual</code>, <code>onTaskCreated</code>, <code>onTaskUpdated</code>, <code>onTaskCommentAdded</code>, <code>zaloNotifyOverdueTasks</code>, <code>checkTaskDueReminders</code> — hoặc tắt hẳn TeamTask.</p>
+  </div>
   <div class="callout"><b>Trạng thái trong nhật ký (NotificationLog)</b>
     <p>Trạng thái lưu trong bảng: <code>PENDING</code> vừa ghi, đang gửi · <code>SENT</code> đã gửi · <code>SIMULATED</code> chế độ mô phỏng · <code>SKIPPED_NO_ZALO</code> người nhận chưa liên kết Zalo · <code>FAILED</code> Zalo từ chối (kèm mã lỗi). Hai kết quả chỉ trả về cho nơi gọi, <b>không</b> ghi dòng mới: <code>DUPLICATE</code> (trùng dedupeKey — dòng cũ giữ nguyên, không gửi lại) và <code>ERROR</code> (lỗi nội bộ, dòng có thể còn <code>PENDING</code>). Quản trị xem 10 tin nhóm gần nhất ở Cấu hình → Zalo OA; nhân viên xem tin của mình ở trang cá nhân.</p>
   </div>
@@ -359,6 +374,9 @@ flowchart LR
     <tr><td><code>db-backup</code></td><td>03:00</td><td>Không</td></tr>
     <tr><td><code>medinet-check</code> (v1.11.0)</td><td>06:30</td><td>Không gửi trực tiếp — tự tra GPHN trên medinet (người chưa tra quá 30 ngày, tối đa 30 người / ngày, cách nhau ≥ 4 giây); vấn đề phát hiện đi vào tin tổng hợp <code>credential-check</code> 07:30</td></tr>
     <tr><td><code>credential-check</code> (v1.9.0)</td><td>07:30</td><td><b>Nhóm minh bạch</b>: MỘT tin tổng hợp các vấn đề hồ sơ hành nghề <b>chưa báo trong tháng</b> (thiếu / hết hạn / sắp hết hạn GPHN, GPHN không hoạt động, thiếu tiết CME, chứng chỉ hết hạn; từ v1.11.0 thêm kết quả tra medinet: medinet ghi không còn hoạt động, tên / thông tin khác hồ sơ, không tìm thấy, đăng ký hành nghề nơi khác), tối đa 15 dòng / tin. Mỗi vấn đề nhắc tối đa 1 lần / tháng (AppSetting <code>credentialAlertSent</code>); "chưa đối chiếu medinet" chỉ hiện trên dashboard. Không kèm file, không CCCD. Ví dụ: 🔔 Hệ thống Face Beo cảnh báo hồ sơ hành nghề: 2 vấn đề mới · ⛔ NV021 — Nguyễn Văn A (Khoa Nội): GPHN đã hết hạn ngày 01/09/2026 · ⚠️ NV034 — Trần Thị B (Điều dưỡng): CME 2 năm gần nhất: 30/48 tiết</td></tr>
+    <tr><td><code>task-recurrence</code> (v1.23.0)</td><td>10 phút/lần</td><td>Không gửi Zalo — tạo bản lặp của hôm nay cho việc lặp; chuông trong app cho người được giao</td></tr>
+    <tr><td><code>task-reminders</code> (v1.23.0)</td><td>Phút 05 mỗi giờ</td><td>Riêng: <code>TASK_DUE_PERSONAL</code> theo "Nhắc hạn" (mỗi mốc một lần, đổi hạn thì nhắc lại) · <b>Nhóm dự án</b>: <code>TASK_DUE_SOON</code></td></tr>
+    <tr><td><code>task-overdue-digest</code> (v1.23.0)</td><td>09:00</td><td><b>Nhóm dự án</b>: <code>TASK_OVERDUE_DIGEST</code>, mỗi dự án một tin / ngày; không có việc quá hạn thì không gửi</td></tr>
   </table></div>
   <p>Chạy tay một job (cần <code>CRON_SECRET</code>):</p>
   <div class="formula">curl -X POST -H "x-cron-secret: $CRON_SECRET" https://&lt;máy-chủ&gt;/api/cron/absence-check</div>
@@ -432,6 +450,8 @@ cloudflared tunnel --url http://localhost:3000
     <tr><td>Thêm nhóm báo "toàn chữ số — đây là ID của OA"</td><td>Đã dán phần <code>oaid</code> thay vì <code>gid</code></td><td>Dán cả link chat nhóm, hoặc chỉ phần sau <code>gid=</code> (mục 2.4)</td></tr>
     <tr><td>Kết nối báo "nhóm chưa enabled" / <code>FAILED</code> sai group_id</td><td>Trạng thái nhóm trong OA Manager; OA còn trong nhóm không</td><td>Bật lại nhóm hoặc tạo nhóm GMF mới, kết nối lại</td></tr>
     <tr><td>Cảnh báo đỏ "Refresh token lỗi"</td><td>Refresh token đã hết hạn (~3 tháng) hoặc bị dùng ở nơi khác</td><td>Lấy cặp token mới bằng API Explorer, điền <code>.env</code>, <b>xóa dòng id = 1 trong bảng <code>ZaloToken</code></b> (bắt buộc — hệ thống không ghi đè dòng cũ; token trong <code>.env</code> chỉ được nạp khi bảng trống), khởi động lại</td></tr>
+    <tr><td>Token Zalo tự hỏng dù còn hạn, mọi tin <code>FAILED</code></td><td>Có app khác cùng OA đang làm mới token (TeamTask)</td><td>Tắt các Cloud Functions Zalo của TeamTask (mục 3.3), rồi lấy cặp token mới như dòng trên</td></tr>
+    <tr><td>Dự án không gửi tin vào nhóm</td><td>Cài đặt dự án: đã chọn nhóm chưa, đã tích loại tin chưa; nhóm còn trong Cấu hình → Zalo OA không (xóa nhóm ở Cấu hình thì dự án tự bỏ chọn)</td><td>Chọn lại nhóm, tích loại tin</td></tr>
     <tr><td>Tin riêng <code>SKIPPED_NO_ZALO</code></td><td>Người nhận chưa liên kết Zalo</td><td>Nhân viên vào trang cá nhân → Zalo → lấy mã → nhắn cho OA</td></tr>
     <tr><td>Tin riêng <code>FAILED</code> mã <code>-213</code></td><td>Ngoài cửa sổ 48 giờ tin tư vấn</td><td>Nhân viên nhắn bất kỳ cho OA để mở lại cửa sổ; hoặc cân nhắc ZNS (D4)</td></tr>
     <tr><td>Nhắn mã mà không được liên kết</td><td>Webhook có tới máy chủ không (tunnel còn chạy? URL webhook đúng?); nhật ký 401 = sai chữ ký</td><td>Kiểm tra tunnel và <code>ZALO_WEBHOOK_SECRET</code>; mã hết hạn sau 15 phút thì lấy mã mới</td></tr>

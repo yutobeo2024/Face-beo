@@ -57,6 +57,8 @@ export const DELETE = handle<{ groupId: string }>(async (req, ctx) => {
   // và nhóm chỉ nhận đúng MỘT tin chia tay. sendZaloMessage không đọc bảng ZaloGroup nên xóa rồi vẫn gửi được.
   const gone = await prisma.zaloGroup.deleteMany({ where: { groupId } });
   if (!gone.count) throw notFound("Không có nhóm này");
+  // v1.23.0: dự án đang gửi tin vào nhóm này thôi gửi (chọn lại nhóm trong Cài đặt dự án).
+  const projects = await prisma.project.updateMany({ where: { zaloGroupId: groupId }, data: { zaloGroupId: null } });
   await sendZaloMessage({
     toGroupId: groupId,
     messageType: "GROUP_EVENT",
@@ -69,7 +71,7 @@ export const DELETE = handle<{ groupId: string }>(async (req, ctx) => {
       atText: nowText(),
     },
   });
-  await audit({ actorId: u.id, action: "ZALO_GROUP_ROUTING", entity: "ZaloGroup", entityId: groupId, detail: { deleted: true, groupName: row.name, categories } });
+  await audit({ actorId: u.id, action: "ZALO_GROUP_ROUTING", entity: "ZaloGroup", entityId: groupId, detail: { deleted: true, groupName: row.name, categories, ...(projects.count ? { projectsUnlinked: projects.count } : {}) } });
   await announce(u, `đã xóa nhóm Zalo "${name}" khỏi danh sách nhận tin`, {
     key: `zalo-delete:${groupId}:${Date.now()}`,
     detail: categories.length ? `Nhóm này đang nhận: ${categories.map((c) => ZALO_CATEGORY_INFO[c as keyof typeof ZALO_CATEGORY_INFO]?.label ?? c).join(", ")} — từ nay không nhận nữa.` : "Nhóm này vốn không nhận tin nào.",

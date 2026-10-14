@@ -27,8 +27,9 @@ import { clearFaceAvatar } from "./face-avatar";
 import { clearProfilePhoto } from "./profile-photo";
 import { medinetCheck } from "./medinet-check";
 import { TRACKED_WHERE } from "./attendance-scope";
+import { taskOverdueDigest, taskRecurrence, taskReminders } from "./tasks/task-jobs";
 
-export const JOBS = ["absence-check", "missing-checkout", "zalo-token-refresh", "snapshot-cleanup", "db-backup", "roster-reminder", "roster-report", "request-overdue", "credential-check", "medinet-check", "uniform-check", "uniform-digest"] as const;
+export const JOBS = ["absence-check", "missing-checkout", "zalo-token-refresh", "snapshot-cleanup", "db-backup", "roster-reminder", "roster-report", "request-overdue", "credential-check", "medinet-check", "uniform-check", "uniform-digest", "task-recurrence", "task-reminders", "task-overdue-digest"] as const;
 export type JobName = (typeof JOBS)[number];
 
 type DigestItem = { name: string; code: string; note?: string };
@@ -464,5 +465,11 @@ export async function runJob(name: JobName, now = new Date()) {
       return runUniformCheck(now);
     case "uniform-digest":
       return runUniformDigest(now);
+    case "task-recurrence":
+      return taskRecurrence(now);
+    case "task-reminders":
+      return taskReminders(now);
+    case "task-overdue-digest":
+      return taskOverdueDigest(now);
   }
 }

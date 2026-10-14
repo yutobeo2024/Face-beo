@@ -17,14 +17,58 @@ export type MessageType =
   | "ROSTER_REMINDER"
   | "ROSTER_UNREGISTERED"
   | "REQUEST_OVERDUE"
-  | "REQUEST_ESCALATED";
+  | "REQUEST_ESCALATED"
+  // v1.23.0 — Công việc: tin nhóm của dự án (gửi thẳng Project.zaloGroupId) + tin cá nhân. Chỉ tiêu đề/tên/trạng thái/hạn,
+  // KHÔNG mô tả, không nội dung bình luận.
+  | "TASK_NEW"
+  | "TASK_STATUS"
+  | "TASK_COMMENT"
+  | "TASK_MENTION"
+  | "TASK_DUE_SOON"
+  | "TASK_DUE_PERSONAL"
+  | "TASK_OVERDUE_DIGEST";
 
 const link = (path: string) => `${env.appBaseUrl.replace(/\/$/, "")}${path}`;
 
 type Data = Record<string, unknown>;
 const s = (v: unknown) => (v == null ? "" : String(v));
 
+type TaskLine = { title: string; dueText: string; assignees?: string };
+const taskLink = (d: Data) => link(d.taskId ? `/me/tasks/${s(d.projectId)}?task=${s(d.taskId)}` : `/me/tasks/${s(d.projectId)}`);
+const taskLines = (d: Data) => {
+  const rows = (d.items as TaskLine[]) ?? [];
+  const more = Number(d.more ?? 0);
+  return [
+    ...rows.map((r, i) => `${i + 1}. ${r.title} — hạn ${r.dueText}${r.assignees ? ` (${r.assignees})` : ""}`),
+    more > 0 ? `… và ${more} việc nữa` : "",
+  ];
+};
+
+// v1.23.0 — Công việc
+const taskTemplates = {
+  TASK_NEW: (d: Data) =>
+    [
+      `✅ CÓ CÔNG VIỆC MỚI — ${s(d.projectName)}`,
+      `📌 ${s(d.title)}`,
+      d.assigneeNames ? `👤 Giao cho: ${s(d.assigneeNames)}` : "",
+      `⚡ Ưu tiên: ${s(d.priorityLabel)} · ⏰ Hạn: ${s(d.dueText)}`,
+      `Người tạo: ${s(d.actorName)}`,
+      `Xem chi tiết: ${taskLink(d)}`,
+    ]
+      .filter(Boolean)
+      .join("\n"),
+  TASK_STATUS: (d: Data) =>
+    [`🔄 ĐỔI TRẠNG THÁI — ${s(d.projectName)}`, `📌 ${s(d.title)}`, `${s(d.fromLabel)} → ${s(d.toLabel)}`, `Người đổi: ${s(d.actorName)}`, `Xem chi tiết: ${taskLink(d)}`].join("\n"),
+  TASK_COMMENT: (d: Data) => [`💬 BÌNH LUẬN MỚI — ${s(d.projectName)}`, `📌 ${s(d.title)}`, `${s(d.actorName)} vừa bình luận.`, `Xem chi tiết: ${taskLink(d)}`].join("\n"),
+  TASK_MENTION: (d: Data) => [`💬 ${s(d.actorName)} nhắc đến bạn trong một bình luận`, `📌 ${s(d.title)} (${s(d.projectName)})`, `Xem chi tiết: ${taskLink(d)}`].join("\n"),
+  TASK_DUE_SOON: (d: Data) => [`⏰ SẮP ĐẾN HẠN (trong 1 giờ) — ${s(d.projectName)}`, ...taskLines(d), `Xem chi tiết: ${taskLink(d)}`].filter(Boolean).join("\n"),
+  TASK_DUE_PERSONAL: (d: Data) => [`⏰ Nhắc hạn công việc (${s(d.whenLabel)})`, `📌 ${s(d.title)} (${s(d.projectName)})`, `Hạn: ${s(d.dueText)}`, `Xem chi tiết: ${taskLink(d)}`].join("\n"),
+  TASK_OVERDUE_DIGEST: (d: Data) =>
+    [`📢 BÁO CÁO VIỆC QUÁ HẠN — ${s(d.dateText)}`, `Dự án: ${s(d.projectName)}`, ...taskLines(d), `Xem chi tiết: ${taskLink(d)}`].filter(Boolean).join("\n"),
+} satisfies Record<Extract<MessageType, `TASK_${string}`>, (d: Data) => string>;
+
 export const zaloTemplates: Record<MessageType, (d: Data) => string> = {
+  ...taskTemplates,
   REQUEST_CREATED: (d) =>
     [
       d.fyi ? `📝 Đơn bổ sung công mới (chờ quản lý duyệt — bạn sẽ chấm tay sau khi duyệt)` : `📝 Đơn mới cần duyệt`,

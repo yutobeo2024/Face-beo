@@ -45,7 +45,16 @@ export type AuditAction =
   | "SCAN_NO_MATCH"
   | "LIVENESS_L2_UNAVAILABLE"
   | "MISSING_CHECKOUT"
-  | "ZALO_TOKEN_REFRESH_FAILED";
+  | "ZALO_TOKEN_REFRESH_FAILED"
+  // v1.23.0 — Công việc
+  | "PROJECT_CREATE"
+  | "PROJECT_UPDATE"
+  | "PROJECT_DELETE"
+  | "PROJECT_MEMBER"
+  | "TASK_CREATE"
+  | "TASK_UPDATE"
+  | "TASK_STATUS"
+  | "TASK_DELETE";
 
 export async function audit(args: {
   actorId?: number | null;
