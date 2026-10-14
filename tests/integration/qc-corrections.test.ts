@@ -32,12 +32,13 @@ const cancel = (cookie: string, id: number) => cancelRoute.POST(req(`/api/reques
 const list = async (cookie: string, qs: string) => (await (await requestsRoute.GET(req(`/api/requests?${qs}`, { cookie }), ctx())).json()).requests as Array<Record<string, unknown>>;
 const logsOf = (id: number) => prisma.attendanceLog.count({ where: { sourceRequestId: id } });
 
-/** Ngày đã qua, không rơi Chủ nhật, và LUÔN nằm trong hạn bổ sung công 3 ngày — gặp Chủ nhật thì tiến về phía hôm nay,
- *  lùi tiếp sẽ quá hạn và API từ chối (lộ ra vào thứ Tư: hôm nay − 3 = Chủ nhật). */
+/** Ngày đã qua (KHÔNG bao giờ là hôm nay), không rơi Chủ nhật, LUÔN nằm trong hạn bổ sung công 3 ngày.
+ *  Chọn trong [hôm nay −1, −2, −3] bỏ Chủ nhật; thiếu ngày (thứ Hai/Ba/Tư chỉ còn 2 ngày) thì `back` lớn dùng lại
+ *  ngày xa nhất — nên giờ trong các ca `back = 2` và `back = 3` phải cách nhau > 15 phút (luật trùng đơn).
+ *  Bản cũ "gặp Chủ nhật thì tiến lên" rơi đúng HÔM NAY vào thứ Hai ⇒ 17:31 thành giờ tương lai. */
 function pastWorkday(back: number) {
-  let d = addDays(todayVN(), -back);
-  while (weekday(d) === 7) d = addDays(d, 1);
-  return d;
+  const days = [1, 2, 3].map((n) => addDays(todayVN(), -n)).filter((d) => weekday(d) !== 7);
+  return days[Math.min(back, days.length) - 1];
 }
 async function wipeDay(employeeId: number, d: string) {
   await prisma.attendanceLog.deleteMany({ where: { employeeId, workDate: d } });
