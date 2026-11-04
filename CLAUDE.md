@@ -154,11 +154,13 @@ chạy cron / khóa Zalo thật song song với VPS (refresh token Zalo dùng m�
 - zod 4: schema PATCH không được có `.default()` (`.partial()` vẫn áp default → xóa dữ liệu). Cột JSON trong SQLite lưu chuỗi.
 
 ## Việc còn mở (15/10/2026)
-- **Dashboard CSKH** (nhánh `feature/cskh-dashboard-sso`, 04/11/2026, làm từ phiên Claude của dự án bot Zalo): code + test xong, chờ chủ
-  dự án merge/tag v1.25.0, cập nhật VPS, tạo bí mật chung (lệnh trong `docs/DEPLOY-VPS.md`) và tích quyền `cskh.view`/`cskh.admin` cho
-  người cần. Cẩm nang HTML đã thêm mục 16.8 nhưng **chưa republish artifact**.
+- **Dashboard CSKH**: **đã phát hành v1.25.0** (PR #1 merge 04/11/2026, commit 24333a3, VPS đã cập nhật, bí mật chung đã tạo).
+  Đăng nhập một lần chạy thật: bấm menu vào dashboard https://dashboard.ydsgchatbot.io.vn/dashboard/ hiện "Quản trị · <mã nv>".
+  Còn mở: tích quyền `cskh.view` / `cskh.admin` trong Phân quyền cho những vai cần (mặc định chỉ ADMIN có); cẩm nang HTML đã có mục 16.8
+  nhưng **chưa republish artifact**. Dashboard thay đổi phía bot (trang Nhóm, kỹ năng nhóm, phân trang) không cần sửa gì ở Face Beo.
 - **Công việc**: chủ dự án tắt Cloud Functions Zalo của TeamTask (Firebase `teamtask-5b35f`) trước khi cập nhật VPS lên v1.23.0;
-  đợt B (v1.24.0) Gantt + Lịch + Dashboard đã xong; tiếp theo đợt C (v1.25.0) liên kết + tệp `data/tasks/` + webhook `#viec`.
+  đợt B (v1.24.0) Gantt + Lịch + Dashboard đã xong; tiếp theo đợt C liên kết + tệp `data/tasks/` + webhook `#viec`
+  (số v1.25.0 đã dùng cho Dashboard CSKH, đợt C cần số phiên bản mới, ví dụ v1.26.0).
 - **Chống giả mạo L2** (v1.22.0): VPS đặt `livenessServerThreshold = 0` (L2 chỉ ghi điểm, L1 gác) vì hệ số cắt 2,7 làm
   ~37 % lượt người thật < 0,5 (đo 08–12/10). Cần mẫu giả (ảnh in / màn hình điện thoại) rồi `npm run liveness:eval -- --gia=…`
   mới chọn được `livenessCropScale` và bật lại ngưỡng.
