@@ -54,7 +54,8 @@ export type AuditAction =
   | "TASK_CREATE"
   | "TASK_UPDATE"
   | "TASK_STATUS"
-  | "TASK_DELETE";
+  | "TASK_DELETE"
+  | "CSKH_SSO";
 
 export async function audit(args: {
   actorId?: number | null;

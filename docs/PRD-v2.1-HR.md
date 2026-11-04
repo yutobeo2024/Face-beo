@@ -963,3 +963,22 @@ Gantt và biểu đồ vẽ bằng SVG. Mọi số liệu / danh sách đều l�
 - `GET /api/tasks/projects/[id]/stats?from&to` — số liệu Dashboard (mặc định 30 ngày tới hôm nay), hàm thuần
   `computeStats` ở `src/lib/tasks/task-stats.ts`.
 - Kéo thanh Gantt dùng `PATCH /api/tasks/[id]` `{ startDate, dueAt }` sẵn có — không có đường sửa riêng.
+
+## 37. Dashboard CSKH — đăng nhập một lần sang bot Zalo (v1.25.0, 04/11/2026)
+
+**Mục tiêu.** Người làm chăm sóc khách hàng mở dashboard của bot Zalo phòng khám (dự án Zalo-hermess) ngay từ Face Beo, không nhớ thêm mật khẩu,
+và quyền bên dashboard đi theo Phân quyền của Face Beo.
+
+**Quyền mới** (nhóm "CSKH", không khóa, không có trong ma trận mặc định):
+
+| Quyền | Bên dashboard bot | Ai có |
+|---|---|---|
+| `cskh.view` — Mở Dashboard CSKH | vai lễ tân: tổng quan, hội thoại, đặt lịch, duyệt tài liệu, xem nhóm | Quản trị tích cho từng vai trò |
+| `cskh.admin` — Dashboard CSKH quyền quản trị | vai admin: thêm xóa dữ liệu khách, sửa trợ lý nhóm, nhật ký đầy đủ, sức khỏe dịch vụ | ADMIN luôn có |
+
+**Luồng.** Menu "Dashboard CSKH" (khu Quản trị và khu Nhân viên, chỉ hiện khi có một trong hai quyền, mở tab mới) → `GET /api/cskh/sso`
+(kiểm đăng nhập + quyền ở server) → vé HMAC-SHA256 hạn 120 giây, dùng một lần, chứa vai và mã nhân viên → 302 sang
+`<CSKH_DASHBOARD_URL>/dashboard/sso?t=<vé>` → bot mở phiên 12 giờ, nhật ký ghi mã nhân viên. Không có đường gọi server–server.
+
+**Ràng buộc.** Bí mật ký vé ≥ 32 ký tự, dùng chung hai bên, chỉ nằm trong `.env`; thiếu cấu hình → 503 có thông báo. Đổi định dạng vé phải
+đổi cả hai dự án (test hợp đồng). Thu hồi: bỏ tích quyền (vé mới không cấp được; phiên đã mở bên bot hết hạn sau tối đa 12 giờ).

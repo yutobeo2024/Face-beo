@@ -165,6 +165,39 @@ chung một IP khi giới hạn tần suất đăng nhập.
 `/api/zalo/webhook*` (máy chủ Zalo gọi, đã kiểm chữ ký) và `/.well-known/*` (xác thực chứng chỉ). Script tự dừng nếu tải được dưới
 300 dải (nghi lỗi mạng) để không khóa nhầm cả phòng khám.
 
+## Dashboard CSKH (bot Zalo) — đăng nhập một lần (v1.25.0)
+
+Mục menu **Dashboard CSKH** (thanh bên khu Quản trị và khu Nhân viên) mở dashboard của bot chăm sóc khách hàng Zalo — dự án riêng
+**Zalo-hermess** (`~/zalo-hermess` trên cùng VPS, repo `yutobeo2024/Zalo-hermess`, tài liệu `deploy/README.md` mục "Dashboard theo dõi").
+Face Beo không gọi bot qua mạng docker: nó chỉ **ký vé** và chuyển trình duyệt sang dashboard.
+
+```
+Người dùng bấm "Dashboard CSKH" ──> https://face.ydsg.website/api/cskh/sso  (kiểm đăng nhập + quyền cskh.view / cskh.admin)
+        302 ──> https://<CSKH_DASHBOARD_URL>/dashboard/sso?t=<vé>  (bot kiểm vé, mở phiên riêng 12 giờ) ──> /dashboard/
+```
+
+- **Vé** (`src/lib/cskh-sso.ts`): `b64url(payload) + "." + b64url(HMAC-SHA256(CSKH_SSO_SECRET, payload))`,
+  payload `v1|<admin|staff>|<giây phát hành>|<nonce>|<mã nhân viên>`. Bot nhận vé trong 120 giây (lệch đồng hồ ±30 s), **một lần**.
+  `tests/unit/cskh-sso.test.ts` so từng ký tự với vé do bản chuẩn Python (`make_sso_ticket` bên bot) sinh ra — đổi định dạng thì đổi **cả hai** bên.
+- **Quyền** (nhóm "CSKH" trong Phân quyền): `cskh.view` → vai **lễ tân** bên dashboard (hội thoại, đặt lịch, duyệt tài liệu, xem nhóm);
+  `cskh.admin` → vai **admin** (xóa dữ liệu khách, sửa trợ lý nhóm, nhật ký đầy đủ, sức khỏe dịch vụ). ADMIN có cả hai. Hai quyền
+  mới **không** có trong ma trận mặc định của HR/MANAGER/EMPLOYEE (seed chỉ chạy một lần) — Quản trị tích trong màn Phân quyền.
+- **Biến môi trường** (`/opt/facebeo/.env`, chmod 600; sửa xong `docker compose -p facebeo … up -d --force-recreate app`, restart không đọc lại env):
+  `CSKH_SSO_SECRET=<≥ 32 ký tự, giống hệt CSKH_DASHBOARD_SSO_SECRET trong ~/zalo-hermess/secrets/cskh.env>`,
+  `CSKH_DASHBOARD_URL=https://dashboard.ydsgchatbot.io.vn` (không kèm `/dashboard`). Thiếu một trong hai → route trả 503 "Chưa cấu hình Dashboard CSKH".
+  Tạo bí mật một lần trên VPS và ghi vào cả hai file (không in ra màn hình):
+  ```bash
+  S=$(openssl rand -hex 32)
+  sudo sh -c "sed -i '/^CSKH_SSO_SECRET=/d;/^CSKH_DASHBOARD_URL=/d' /opt/facebeo/.env && printf 'CSKH_SSO_SECRET=%s\nCSKH_DASHBOARD_URL=https://dashboard.ydsgchatbot.io.vn\n' $S >> /opt/facebeo/.env"
+  sed -i '/^CSKH_DASHBOARD_SSO_SECRET=/d' ~/zalo-hermess/secrets/cskh.env && printf 'CSKH_DASHBOARD_SSO_SECRET=%s\n' "$S" >> ~/zalo-hermess/secrets/cskh.env
+  unset S
+  ```
+  rồi tạo lại container app Face Beo và container `cskh` của bot (`cd ~/zalo-hermess/app/deploy && docker compose --profile cskh --profile live-cskh up -d --force-recreate cskh`).
+- **Nhật ký**: Face Beo ghi `CSKH_SSO` (người bấm, vai); bot ghi `sso_login` với tác nhân `dashboard:<vai>:<mã nv>`.
+- **Mạng**: dashboard bot đi qua Cloudflare Tunnel của bot (`zalo-hermess-cloudflared-1`, hostname `dashboard.ydsgchatbot.io.vn → http://127.0.0.1:8790`),
+  không qua Caddy của Face Beo, không cần mạng docker chung. Nếu đặt Cloudflare Access trước hostname đó, lần đầu vé có thể hết hạn trong lúc nhập PIN: bấm lại mục menu.
+- **Gỡ**: xóa hai biến khỏi `.env` (menu vẫn hiện với người có quyền nhưng báo 503) hoặc bỏ tích hai quyền.
+
 ## Chat bot tra cứu y khoa (v1.17.0)
 
 Chat bot (dự án **medichat**, `~/medichat` trên cùng VPS) trước đây công khai không đăng nhập. Từ v1.17.0 chỉ Face Beo gọi được:

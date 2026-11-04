@@ -49,8 +49,15 @@ chạy cron / khóa Zalo thật song song với VPS (refresh token Zalo dùng m�
   Cách nối Face Beo với chat bot medichat (logic, docker, luồng SSE, 12 sự cố đã gặp — viết cho người không chuyên):
   `docs/ket-noi-hai-webapp.html` (cho người không chuyên) + `docs/ket-noi-hai-webapp-ky-thuat.md` (lệnh, VPS/Docker,
   chẩn đoán, rollback). KHÔNG publish artifact hai tài liệu này (chủ dự án muốn giữ trong repo).
+- **Dashboard CSKH (v1.25.0)**: mục menu "Dashboard CSKH" → `/api/cskh/sso` ký vé HMAC (`src/lib/cskh-sso.ts`) và chuyển sang dashboard
+  bot Zalo của dự án **Zalo-hermess** (`D:\zalo harness\Zalo-hermess`, VPS `~/zalo-hermess`). Định dạng vé là **hợp đồng hai bên**: test
+  `tests/unit/cskh-sso.test.ts` so với bản chuẩn Python `make_sso_ticket` (`cskh_engine/dashboard.py`). Quyền `cskh.view` (lễ tân) /
+  `cskh.admin`; biến `CSKH_SSO_SECRET`, `CSKH_DASHBOARD_URL`. Chi tiết và lệnh bật: `docs/DEPLOY-VPS.md` mục "Dashboard CSKH".
 
 ## Luật nghiệp vụ khóa cứng (đừng phá)
+- Dashboard CSKH (v1.25.0): dashboard nằm ở **repo khác** (Zalo-hermess); Face Beo chỉ ký vé ở `/api/cskh/sso`. Vé HMAC 120 giây, dùng một lần,
+  bí mật `CSKH_SSO_SECRET` dùng chung với bot (chỉ trong `.env`, không log, không đưa vào vé hay nhật ký); chỉ cấp khi `Sec-Fetch-Site` là
+  `same-origin`/`none`; định dạng vé khóa bằng test hợp đồng `tests/unit/cskh-sso.test.ts` — đổi thì đổi cả hai repo.
 - Quyền: ma trận `CAPABILITIES` trong `src/lib/permissions.ts` (DB `RolePermission`, ADMIN luôn đủ quyền, quyền `locked` chỉ ADMIN).
   Phạm vi dữ liệu theo vai trò: `deptScope()` / `employeeScopeWhere()` trong `src/lib/auth.ts` (`{ id: -1 }` = không thấy gì; kết hợp bằng
   `AND`, không spread). Quản lý chỉ thấy/sửa phòng mình; luật chống leo thang ở `src/lib/employee-guards.ts`.
@@ -147,6 +154,9 @@ chạy cron / khóa Zalo thật song song với VPS (refresh token Zalo dùng m�
 - zod 4: schema PATCH không được có `.default()` (`.partial()` vẫn áp default → xóa dữ liệu). Cột JSON trong SQLite lưu chuỗi.
 
 ## Việc còn mở (15/10/2026)
+- **Dashboard CSKH** (nhánh `feature/cskh-dashboard-sso`, 04/11/2026, làm từ phiên Claude của dự án bot Zalo): code + test xong, chờ chủ
+  dự án merge/tag v1.25.0, cập nhật VPS, tạo bí mật chung (lệnh trong `docs/DEPLOY-VPS.md`) và tích quyền `cskh.view`/`cskh.admin` cho
+  người cần. Cẩm nang HTML đã thêm mục 16.8 nhưng **chưa republish artifact**.
 - **Công việc**: chủ dự án tắt Cloud Functions Zalo của TeamTask (Firebase `teamtask-5b35f`) trước khi cập nhật VPS lên v1.23.0;
   đợt B (v1.24.0) Gantt + Lịch + Dashboard đã xong; tiếp theo đợt C (v1.25.0) liên kết + tệp `data/tasks/` + webhook `#viec`.
 - **Chống giả mạo L2** (v1.22.0): VPS đặt `livenessServerThreshold = 0` (L2 chỉ ghi điểm, L1 gác) vì hệ số cắt 2,7 làm
