@@ -39,6 +39,8 @@ export const CAPABILITIES = [
   { key: "tasks.use", group: "Công việc", label: "Dùng mục Công việc (dự án được mời vào, việc của tôi)" },
   { key: "tasks.createProject", group: "Công việc", label: "Tạo dự án mới (người tạo là Chủ dự án)" },
   { key: "tasks.manageAll", group: "Công việc", label: "Xem / sửa mọi dự án, trang tổng quan Công việc" },
+  { key: "cskh.view", group: "CSKH", label: "Mở Dashboard CSKH (vai lễ tân: hội thoại, đặt lịch, duyệt tài liệu)" },
+  { key: "cskh.admin", group: "CSKH", label: "Dashboard CSKH quyền quản trị (xóa dữ liệu khách, sửa trợ lý nhóm, nhật ký đầy đủ)" },
   { key: "settings.system", group: "Hệ thống", label: "Cấu hình hệ thống (ngưỡng, Zalo, lưu trữ)", locked: true },
   { key: "devices.manage", group: "Hệ thống", label: "Ghép / thu hồi thiết bị kiosk", locked: true },
   { key: "permissions.manage", group: "Hệ thống", label: "Sửa ma trận phân quyền", locked: true },

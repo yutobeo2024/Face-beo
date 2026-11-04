@@ -7,7 +7,8 @@ import { Avatar, cx, IconButton } from "./ui";
 import { api } from "@/lib/client/api";
 import { InstallBanner, InstallMenuItem } from "./pwa-install";
 
-export type NavItem = { href: string; label: string; icon: IconName; exact?: boolean; mobile?: boolean };
+/** `external`: mở tab mới bằng thẻ <a> (ví dụ Dashboard CSKH qua /api/cskh/sso), không dùng Link của Next. */
+export type NavItem = { href: string; label: string; icon: IconName; exact?: boolean; mobile?: boolean; external?: boolean };
 export type ShellUser = { name: string; code: string; role: string };
 
 const ROLE_LABEL: Record<string, string> = { ADMIN: "Quản trị", MANAGER: "Quản lý", EMPLOYEE: "Nhân viên" };
@@ -87,6 +88,23 @@ export function AppShell({
     <nav className="flex flex-col gap-0.5">
       {nav.map((n) => {
         const active = isActive(pathname, n);
+        if (n.external)
+          return (
+            <a
+              key={n.href}
+              href={n.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={cx(
+                "flex items-center gap-3 rounded-xl px-3 py-2.5 text-[15px] font-medium transition",
+                onDark ? "text-brand-100/80 hover:bg-white/10 hover:text-white" : "text-slate-600 hover:bg-slate-100",
+              )}
+            >
+              <Icon name={n.icon} className="size-5 shrink-0" />
+              {n.label}
+              <Icon name="externalLink" className="ml-auto size-4 shrink-0 opacity-60" />
+            </a>
+          );
         return (
           <Link
             key={n.href}

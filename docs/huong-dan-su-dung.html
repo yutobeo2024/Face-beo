@@ -136,6 +136,7 @@ footer{color:var(--muted);font-size:.85rem;text-align:center;padding:10px}
     <li><a href="#cai-app">16.5 Cài Face Beo thành app</a></li>
     <li><a href="#chat-bot">16.6 Chat bot tra cứu y khoa</a></li>
     <li><a href="#cong-viec">16.7 Công việc &amp; dự án</a></li>
+    <li><a href="#dashboard-cskh">16.8 Dashboard CSKH (bot Zalo)</a></li>
     <li><a href="#lich-thang">17. Lịch làm việc hằng tháng</a></li>
     <li><a href="#hoi-dap">18. Hỏi đáp &amp; xử lý sự cố</a></li>
   </ol>
@@ -1272,6 +1273,16 @@ stateDiagram-v2
     <li><b>Xóa việc</b>: Chủ / Quản lý dự án (không khôi phục được).</li>
     <li><b>Xóa dự án</b>: chỉ Chủ dự án — dự án vào <b>Thùng rác</b> (nút ở trang Công việc), Chủ dự án vào đó bấm <b>Khôi phục dự án</b>.</li>
     <li><b>Rời dự án</b>: ai cũng tự rời được, trừ Chủ dự án (phải <b>Chuyển chủ</b> trước).</li>
+  </ul>
+</section>
+
+<section id="dashboard-cskh">
+  <h2><span class="num">16.8</span>Dashboard CSKH (bot Zalo)</h2>
+  <p class="lead"><span class="pill e">Nhân viên được cấp</span><span class="pill a">Quản trị cấp quyền</span> Mục <b>Dashboard CSKH</b> ở menu bên trái mở bảng theo dõi bot chăm sóc khách hàng Zalo của phòng khám trong một tab mới, <b>không phải đăng nhập lại</b>.</p>
+  <ul>
+    <li>Quản trị vào <b>Phân quyền</b>, nhóm <b>CSKH</b>: tích <b>"Mở Dashboard CSKH"</b> cho vai trò cần xem (lễ tân xem hội thoại, đặt lịch, duyệt tài liệu gửi khách); tích thêm <b>"Dashboard CSKH quyền quản trị"</b> cho người được xóa dữ liệu khách và cài trợ lý nhóm Zalo.</li>
+    <li>Bấm mục menu là vào thẳng. Liên kết chỉ dùng được trong 2 phút và một lần: nếu thấy báo "liên kết đã hết hạn", quay lại Face Beo bấm lại.</li>
+    <li>Bỏ tích quyền thì từ lần bấm sau người đó không vào được nữa (phiên đang mở bên dashboard tự hết sau tối đa 12 giờ).</li>
   </ul>
 </section>
 

@@ -25,4 +25,12 @@ export const env = {
   get cronDisabled() {
     return process.env.DISABLE_CRON === "true";
   },
+  /** Dashboard CSKH (bot Zalo): bí mật ký vé đăng nhập một lần, dùng chung với CSKH_DASHBOARD_SSO_SECRET bên bot. */
+  get cskhSsoSecret() {
+    return process.env.CSKH_SSO_SECRET || "";
+  },
+  /** Gốc của Dashboard CSKH, ví dụ https://dashboard.ydsgchatbot.io.vn (không kèm /dashboard). */
+  get cskhDashboardUrl() {
+    return process.env.CSKH_DASHBOARD_URL || "";
+  },
 };
